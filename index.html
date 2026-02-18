@@ -1,428 +1,446 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="uk" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Розклад занять</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>Розклад ФЕП-13</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* Змінні для світлої теми */
         :root {
-            /* Змінні кольорів: беремо з теми Telegram, якщо є, інакше дефолтні темні */
-            --bg-color: var(--tg-theme-bg-color, #121212);
-            --card-bg: var(--tg-theme-secondary-bg-color, #1e1e1e);
-            --text-main: var(--tg-theme-text-color, #ffffff);
-            --text-hint: var(--tg-theme-hint-color, #aaaaaa);
-            --accent: var(--tg-theme-button-color, #6ab2f2);
-            --border-color: #333333;
+            --bg-body: #f1f5f9;
+            --bg-card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --accent-green: #059669;
+            --bg-green: #d1fae5;
+            --accent-purple: #7c3aed;
+            --bg-purple: #ede9fe;
+            --bg-blue: #dbeafe;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            -webkit-tap-highlight-color: transparent;
+        /* Змінні для темної теми */
+        [data-theme="dark"] {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --primary: #3b82f6;
+            --primary-hover: #60a5fa;
+            --accent-green: #10b981;
+            --bg-green: rgba(16, 185, 129, 0.15);
+            --accent-purple: #a78bfa;
+            --bg-purple: rgba(139, 92, 246, 0.15);
+            --bg-blue: rgba(59, 130, 246, 0.15);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
         }
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            padding-bottom: 20px;
-        }
-
-        /* Шапка */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px;
-            position: sticky;
-            top: 0;
-            background-color: var(--bg-color);
-            z-index: 10;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        .header-title {
-            font-size: 18px;
-            font-weight: 600;
+        body { 
+            background-color: var(--bg-body); 
+            color: var(--text-main); 
+            line-height: 1.5; 
+            padding-bottom: 40px;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-        .icon-btn {
-            background: none;
-            border: none;
-            color: var(--text-main);
-            font-size: 20px;
-            cursor: pointer;
-        }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; position: relative; }
 
-        /* Вибір підгрупи */
-        select {
-            background-color: var(--card-bg);
-            color: var(--text-main);
-            border: 1px solid var(--border-color);
-            padding: 6px 10px;
-            border-radius: 8px;
-            font-size: 14px;
-            outline: none;
-        }
+        /* Header & Theme Toggle */
+        header { text-align: center; margin-bottom: 24px; position: relative; padding-top: 10px; }
+        header h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; background: linear-gradient(90deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        header p { color: var(--text-muted); font-size: 14px; text-transform: capitalize; font-weight: 500; }
 
-        /* Вкладки */
-        .tabs {
-            display: flex;
-            border-bottom: 1px solid var(--border-color);
-            overflow-x: auto;
-            scrollbar-width: none;
-        }
-        .tabs::-webkit-scrollbar { display: none; }
-        
-        .tab {
-            flex: 1;
-            text-align: center;
-            padding: 12px 16px;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-hint);
-            cursor: pointer;
-            white-space: nowrap;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
+        .theme-toggle {
+            position: absolute;
+            top: 5px;
+            right: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            cursor: pointer;
+            color: var(--text-main);
+            box-shadow: var(--shadow);
+            transition: all 0.2s ease;
         }
-        .tab.active {
-            color: var(--accent);
-            border-bottom-color: var(--accent);
-        }
+        .theme-toggle:hover { transform: scale(1.05); }
+        .theme-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-        /* Контент розкладу */
-        .schedule-container {
-            padding: 16px;
+        /* Controls */
+        .controls { display: flex; margin-bottom: 24px; }
+        .select-wrapper { flex: 1; position: relative; }
+        .select-wrapper select { 
+            width: 100%; appearance: none; background-color: var(--bg-card); 
+            border: 1px solid var(--border); color: var(--text-main); 
+            padding: 14px 18px; border-radius: 14px; font-size: 15px; font-weight: 600; 
+            outline: none; cursor: pointer; transition: all 0.2s ease;
+            box-shadow: var(--shadow);
         }
+        .select-wrapper select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
+        .select-wrapper::after { content: "▼"; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text-muted); pointer-events: none; }
 
-        .day-header {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 4px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        /* Days Tabs */
+        .days-nav { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 16px; scrollbar-width: none; }
+        .days-nav::-webkit-scrollbar { display: none; }
+        .day-btn { 
+            background-color: var(--bg-card); border: 1px solid var(--border); 
+            color: var(--text-muted); padding: 10px 18px; border-radius: 20px; 
+            font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; 
+            transition: all 0.2s ease; box-shadow: var(--shadow);
         }
-        
-        .day-subheader {
-            font-size: 13px;
-            color: var(--text-hint);
-            margin-bottom: 16px;
-        }
+        .day-btn:hover { border-color: var(--text-muted); }
+        .day-btn.active { background-color: var(--primary); border-color: var(--primary); color: #fff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
 
-        /* Картка пари */
-        .card {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 12px;
-            display: flex;
-            gap: 16px;
-        }
+        /* Schedule List & Headers */
+        .schedule-list { display: flex; flex-direction: column; gap: 14px; }
+        .day-header { display: flex; justify-content: space-between; align-items: flex-end; margin: 20px 0 8px 0; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
+        .day-header .day-title { font-size: 18px; font-weight: 700; color: var(--text-main); }
+        .day-header .week-badge { font-size: 12px; font-weight: 600; color: var(--text-muted); background: var(--bg-card); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border); }
 
-        .time-col {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 15px;
-            min-width: 50px;
+        /* Lesson Card */
+        .lesson-card { 
+            background-color: var(--bg-card); border: 1px solid var(--border); 
+            border-radius: 16px; padding: 18px; display: flex; gap: 16px; 
+            transition: all 0.3s ease; box-shadow: var(--shadow);
         }
-        .time-col .line {
-            color: var(--text-hint);
-            margin: 2px 0;
-            font-weight: 400;
-        }
+        .lesson-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); border-color: var(--primary); }
 
-        .info-col {
-            flex: 1;
-        }
+        .time-block { min-width: 65px; text-align: center; border-right: 2px dashed var(--border); padding-right: 16px; display: flex; flex-direction: column; justify-content: center; }
+        .time-start { font-size: 18px; font-weight: 800; color: var(--text-main); letter-spacing: -0.5px; }
+        .time-end { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-top: 4px; }
 
-        .lesson-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 4px;
-            line-height: 1.3;
-        }
+        .info-block { flex: 1; }
+        .lesson-title { font-size: 16px; font-weight: 600; margin-bottom: 10px; line-height: 1.4; color: var(--text-main); }
+        .lesson-meta { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
+        .lesson-meta svg { width: 16px; height: 16px; fill: currentColor; opacity: 0.8; }
 
-        .lesson-teacher {
-            font-size: 13px;
-            color: var(--text-hint);
-            margin-bottom: 8px;
-            line-height: 1.2;
-        }
+        /* Badges */
+        .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+        .badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-group { background-color: var(--bg-green); color: var(--accent-green); }
+        .badge-type { background-color: var(--bg-purple); color: var(--accent-purple); }
+        .badge-potik { background-color: var(--bg-blue); color: var(--primary); }
 
-        .badges {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+        /* Empty State */
+        .empty-state { 
+            text-align: center; padding: 40px 20px; color: var(--text-muted); 
+            background: var(--bg-card); border-radius: 16px; 
+            border: 2px dashed var(--border); box-shadow: var(--shadow);
         }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--accent);
-            background-color: rgba(106, 178, 242, 0.1);
-            padding: 4px 8px;
-            border-radius: 6px;
-        }
-
-        .empty-state {
-            text-align: center;
-            color: var(--text-hint);
-            padding: 40px 20px;
-            font-size: 16px;
-        }
+        .empty-state span { font-size: 40px; display: block; margin-bottom: 12px; }
+        .empty-state p { font-size: 16px; font-weight: 600; }
     </style>
 </head>
 <body>
 
+<div class="container">
     <header>
-        <button class="icon-btn" onclick="window.Telegram.WebApp.close()">✖</button>
-        <div class="header-title">Розклад занять</div>
-        <select id="group-select" onchange="renderSchedule()">
-            <option value="all">Усі підгрупи</option>
-            <option value="1">Підгрупа 1</option>
-            <option value="2">Підгрупа 2</option>
-        </select>
+        <h1>Розклад ФЕП-13</h1>
+        <p id="current-date-display">Завантаження...</p>
+        
+        <button id="theme-toggle" class="theme-toggle" aria-label="Змінити тему">
+            </button>
     </header>
 
-    <div class="tabs">
-        <div class="tab active" onclick="setTab('today')" id="tab-today">📅 На сьогодні</div>
-        <div class="tab" onclick="setTab('tomorrow')" id="tab-tomorrow">📅 На завтра</div>
-        <div class="tab" onclick="setTab('week')" id="tab-week">🗓 На цей тиждень</div>
+    <div class="controls">
+        <div class="select-wrapper">
+            <select id="group-select">
+                <option value="all">👥 Показати всі групи</option>
+                <option value="1">👥 Тільки Підгрупа 1</option>
+                <option value="2">👥 Тільки Підгрупа 2</option>
+            </select>
+        </div>
     </div>
 
-    <main class="schedule-container" id="schedule-container">
-        </main>
+    <nav class="days-nav" id="days-nav">
+        <button class="day-btn" data-tab="today">Сьогодні</button>
+        <button class="day-btn" data-tab="tomorrow">Завтра</button>
+        <button class="day-btn" data-tab="this_week">Цей тиждень</button>
+        <button class="day-btn" data-tab="next_week">Наст. тиждень</button>
+    </nav>
 
-    <script>
-        // Ініціалізація Telegram
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+    <main class="schedule-list" id="schedule-container"></main>
+</div>
 
-        // ================== НАЛАШТУВАННЯ ЧАСУ ==================
-        const BASE_MONDAY = "2024-02-05"; // Зміни на потрібний базовий понеділок
-        const BASE_WEEK_TYPE = "numerator"; // "numerator" або "denominator"
-        let currentTab = 'today';
+<script>
+// ================= ТЕМА (DARK / LIGHT) =================
+const themeToggle = document.getElementById('theme-toggle');
+const htmlEl = document.documentElement;
 
-        // ================== ДАНІ РОЗКЛАДУ ==================
-        const SCHEDULE = {
-            numerator: {
-                mon: [
-                    { start: "08:30", end: "09:50", title: "Операційні системи, системне програмування (Лаб)", teacher: "доц. Бойко Я. В.", room: "N10/Б", group: 1 },
-                    { start: "08:30", end: "09:50", title: "Веб-технології та програмування (ч.1) (Лаб)", teacher: "доц. Анохін В. Є.", room: "№5/Б", group: 2 },
-                    { start: "10:10", end: "11:30", title: "Веб-технології та програмування (ч.1) (Лаб)", teacher: "доц. Анохін В. Є.", room: "№5/Б", group: 1 },
-                    { start: "10:10", end: "11:30", title: "Операційні системи, системне програмування (Лаб)", teacher: "доц. Бойко Я. В.", room: "N10/Б", group: 2 },
-                    { start: "11:50", end: "13:10", title: "Українська мова (ПрС)", teacher: "доц. Збір І. М.", room: "129а/Т" },
-                ],
-                tue: [
-                    { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "ас. Шумська О. А.", room: "3/Б", potik: true },
-                    { start: "10:10", end: "11:30", title: "Об’єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П. Н.", room: "N12/Т", group: 1 },
-                    { start: "10:10", end: "11:30", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х. І.", room: "324/Т", group: 2 },
-                    { start: "11:50", end: "13:10", title: "Вища математика (Л)", teacher: "доц. Жумік О. В.", room: "130/Т", potik: true },
-                    { start: "13:30", end: "14:50", title: "Об’єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П. Н.", room: "№6/Т", group: 2 },
-                ],
-                wed: [
-                    { start: "10:10", end: "11:30", title: "Філософія (Л)", teacher: "доц. Лосік О. М.", room: "2/Б", potik: true },
-                    { start: "11:50", end: "13:10", title: "Веб-технології та програмування (ч.1) (Л)", teacher: "ас. Чмихало О. С.", room: "1/Б", potik: true },
-                    { start: "13:30", end: "14:50", title: "Операційні системи, системне програмування (Л)", teacher: "доц. Бойко Я. В.", room: "2/Б", potik: true },
-                ],
-                thu: [
-                    { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "ас. Шумська О. А.", room: "3/Б", potik: true },
-                    { start: "10:10", end: "11:30", title: "Вища математика (ПрС)", teacher: "доц. Жумік О. В.", room: "407/Т" },
-                ],
-                fri: [
-                    { start: "10:10", end: "11:30", title: "Об’єктно-орієнтоване програмування (Л)", teacher: "доц. Кушнір О. О.", room: "130/Т", potik: true },
-                    { start: "11:50", end: "13:10", title: "Дискретна математика (Л)", teacher: "доц. Середницька Х. І.", room: "130/Т", potik: true },
-                    { start: "13:30", end: "14:50", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х. І.", room: "№6/Т", group: 1 },
-                ],
-            },
-            denominator: {
-                mon: [
-                    { start: "08:30", end: "09:50", title: "Операційні системи, системне програмування (Лаб)", teacher: "доц. Бойко Я. В.", room: "N10/Б", group: 1 },
-                    { start: "08:30", end: "09:50", title: "Веб-технології та програмування (ч.1) (Лаб)", teacher: "доц. Анохін В. Є.", room: "№5/Б", group: 2 },
-                    { start: "10:10", end: "11:30", title: "Веб-технології та програмування (ч.1) (Лаб)", teacher: "доц. Анохін В. Є.", room: "№5/Б", group: 1 },
-                    { start: "10:10", end: "11:30", title: "Операційні системи, системне програмування (Лаб)", teacher: "доц. Бойко Я. В.", room: "N10/Б", group: 2 },
-                    { start: "11:50", end: "13:10", title: "Українська мова (Л)", teacher: "доц. Фарина Н. Г.", room: "2/Б", potik: true },
-                    { start: "13:30", end: "14:50", title: "Філософія (ПрС)", teacher: "доц. Бартусяк П. М.", room: "204/Б" },
-                ],
-                tue: [
-                    { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "ас. Шумська О. А.", room: "3/Б", potik: true },
-                    { start: "10:10", end: "11:30", title: "Об’єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П. Н.", room: "N12/Т", group: 1 },
-                    { start: "10:10", end: "11:30", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х. І.", room: "324/Т", group: 2 },
-                    { start: "11:50", end: "13:10", title: "Вища математика (Л)", teacher: "доц. Жумік О. В.", room: "130/Т", potik: true },
-                    { start: "13:30", end: "14:50", title: "Об’єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П. Н.", room: "№6/Т", group: 2 },
-                ],
-                wed: [
-                    { start: "11:50", end: "13:10", title: "Веб-технології та програмування (ч.1) (Л)", teacher: "ас. Чмихало О. С.", room: "1/Б", potik: true },
-                    { start: "13:30", end: "14:50", title: "Операційні системи, системне програмування (Л)", teacher: "доц. Бойко Я. В.", room: "2/Б", potik: true },
-                ],
-                thu: [
-                    { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "ас. Шумська О. А.", room: "3/Б", potik: true },
-                    { start: "10:10", end: "11:30", title: "Вища математика (ПрС)", teacher: "доц. Жумік О. В.", room: "407/Т" },
-                ],
-                fri: [
-                    { start: "10:10", end: "11:30", title: "Об’єктно-орієнтоване програмування (Л)", teacher: "доц. Кушнір О. О.", room: "130/Т", potik: true },
-                    { start: "11:50", end: "13:10", title: "Дискретна математика (Л)", teacher: "доц. Середницька Х. І.", room: "130/Т", potik: true },
-                    { start: "13:30", end: "14:50", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х. І.", room: "№6/Т", group: 1 },
-                ],
-            }
-        };
+// SVG Іконки для кнопок
+const iconsHTML = {
+    sun: `<path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />`,
+    moon: `<path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />`
+};
 
-        // ================== ЛОГІКА ==================
-        const UA_DAYS = ["Неділя", "Понеділок", "Вівторок", "Середа", "Четвер", "Пʼятниця", "Субота"];
-        const UA_MONTHS = ["січ.", "лют.", "бер.", "квіт.", "трав.", "черв.", "лип.", "серп.", "вер.", "жовт.", "лист.", "груд."];
-        const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+// Завантаження збереженої теми
+let currentTheme = localStorage.getItem('fep13_theme') || 'dark';
+htmlEl.setAttribute('data-theme', currentTheme);
+updateThemeIcon();
 
-        function getWeekType(dateObj) {
-            const baseMon = new Date(BASE_MONDAY);
-            const thisDay = new Date(dateObj);
-            // Знаходимо понеділок поточного тижня
-            const day = thisDay.getDay();
-            const diffToMonday = day === 0 ? -6 : 1 - day;
-            thisDay.setDate(thisDay.getDate() + diffToMonday);
-            thisDay.setHours(0,0,0,0);
-            
-            const diffTime = Math.abs(thisDay - baseMon);
-            const diffWeeks = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
-            
-            return diffWeeks % 2 === 0 ? BASE_WEEK_TYPE : (BASE_WEEK_TYPE === "numerator" ? "denominator" : "numerator");
+themeToggle.addEventListener('click', () => {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    htmlEl.setAttribute('data-theme', currentTheme);
+    localStorage.setItem('fep13_theme', currentTheme);
+    updateThemeIcon();
+});
+
+function updateThemeIcon() {
+    themeToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${currentTheme === 'dark' ? iconsHTML.sun : iconsHTML.moon}</svg>`;
+}
+
+// ================= НАЛАШТУВАННЯ СЕМЕСТРУ =================
+const BASE_MONDAY_UTC = Date.UTC(2026, 1, 9); // 9 лютого 2026
+const BASE_WEEK_TYPE = 'numerator'; // Цей тиждень був чисельником
+
+const monthNames = ['січ.', 'лют.', 'бер.', 'квіт.', 'трав.', 'черв.', 'лип.', 'серп.', 'вер.', 'жовт.', 'лист.', 'груд.'];
+const uaDays = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', 'Пʼятниця', 'Субота'];
+const jsDaysMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+// ================= ДАНІ РОЗКЛАДУ =================
+const SCHEDULE = {
+  numerator: {
+    mon: [
+      { start: "08:30", end: "09:50", title: "Операційні системи, системне програмування (Лаб)", teacher: "доц. Бойко Я.В.", room: "N10/Б", group: 1 },
+      { start: "08:30", end: "09:50", title: "Веб-технології та програмування (ч.1) (Лаб)", teacher: "доц. Анохін В.Є.", room: "№5/Б", group: 2 },
+      { start: "10:10", end: "11:30", title: "Веб-технології та програмування (ч.1) (Лаб)", teacher: "доц. Анохін В.Є.", room: "№5/Б", group: 1 },
+      { start: "10:10", end: "11:30", title: "Операційні системи, системне програмування (Лаб)", teacher: "доц. Бойко Я.В.", room: "N10/Б", group: 2 },
+      { start: "11:50", end: "13:10", title: "Українська мова (за проф. спрямуванням) (ПрС)", teacher: "доц. Збір І.М.", room: "129а/Т" },
+    ],
+    tue: [
+      { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "ас. Шумська О.А. (збірна)", room: "3/Б" },
+      { start: "10:10", end: "11:30", title: "Об’єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "N12/Т", group: 1 },
+      { start: "10:10", end: "11:30", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х.І.", room: "324/Т", group: 2 },
+      { start: "11:50", end: "13:10", title: "Вища математика (Л)", teacher: "доц. Жумік О.В. (Потік)", room: "130/Т" },
+      { start: "13:30", end: "14:50", title: "Об’єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "№6/Т", group: 2 },
+    ],
+    wed: [
+      { start: "10:10", end: "11:30", title: "Філософія (Л)", teacher: "доц. Лосік О.М. (Потік)", room: "2/Б" },
+      { start: "11:50", end: "13:10", title: "Веб-технології та програмування (ч.1) (Л)", teacher: "ас. Чмихало О.С. (Потік)", room: "1/Б" },
+      { start: "13:30", end: "14:50", title: "Операційні системи, системне програмування (Л)", teacher: "доц. Бойко Я.В. (Потік)", room: "2/Б" },
+    ],
+    thu: [
+      { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "ас. Шумська О.А. (збірна)", room: "3/Б" },
+      { start: "10:10", end: "11:30", title: "Вища математика (ПрС)", teacher: "доц. Жумік О.В.", room: "407/Т" },
+    ],
+    fri: [
+      { start: "10:10", end: "11:30", title: "Об’єктно-орієнтоване програмування (Л)", teacher: "доц. Кушнір О.О. (Потік)", room: "130/Т" },
+      { start: "11:50", end: "13:10", title: "Дискретна математика (Л)", teacher: "доц. Середницька Х.І. (Потік)", room: "130/Т" },
+      { start: "13:30", end: "14:50", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х.І.", room: "№6/Т", group: 1 },
+    ],
+  },
+  denominator: {
+    mon: [
+      { start: "08:30", end: "09:50", title: "Операційні системи, системне програмування (Лаб)", teacher: "доц. Бойко Я.В.", room: "N10/Б", group: 1 },
+      { start: "08:30", end: "09:50", title: "Веб-технології та програмування (ч.1) (Лаб)", teacher: "доц. Анохін В.Є.", room: "№5/Б", group: 2 },
+      { start: "10:10", end: "11:30", title: "Веб-технології та програмування (ч.1) (Лаб)", teacher: "доц. Анохін В.Є.", room: "№5/Б", group: 1 },
+      { start: "10:10", end: "11:30", title: "Операційні системи, системне програмування (Лаб)", teacher: "доц. Бойко Я.В.", room: "N10/Б", group: 2 },
+      { start: "11:50", end: "13:10", title: "Українська мова (за проф. спрямуванням) (Л)", teacher: "доц. Фарина Н.Г. (Потік)", room: "2/Б" },
+      { start: "13:30", end: "14:50", title: "Філософія (ПрС)", teacher: "доц. Бартусяк П.М.", room: "204/Б" },
+    ],
+    tue: [
+      { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "ас. Шумська О.А. (збірна)", room: "3/Б" },
+      { start: "10:10", end: "11:30", title: "Об’єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "N12/Т", group: 1 },
+      { start: "10:10", end: "11:30", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х.І.", room: "324/Т", group: 2 },
+      { start: "11:50", end: "13:10", title: "Вища математика (Л)", teacher: "доц. Жумік О.В. (Потік)", room: "130/Т" },
+      { start: "13:30", end: "14:50", title: "Об’єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "№6/Т", group: 2 },
+    ],
+    wed: [
+      { start: "11:50", end: "13:10", title: "Веб-технології та програмування (ч.1) (Л)", teacher: "ас. Чмихало О.С. (Потік)", room: "1/Б" },
+      { start: "13:30", end: "14:50", title: "Операційні системи, системне програмування (Л)", teacher: "доц. Бойко Я.В. (Потік)", room: "2/Б" },
+    ],
+    thu: [
+      { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "ас. Шумська О.А. (збірна)", room: "3/Б" },
+      { start: "10:10", end: "11:30", title: "Вища математика (ПрС)", teacher: "доц. Жумік О.В.", room: "407/Т" },
+    ],
+    fri: [
+      { start: "10:10", end: "11:30", title: "Об’єктно-орієнтоване програмування (Л)", teacher: "доц. Кушнір О.О. (Потік)", room: "130/Т" },
+      { start: "11:50", end: "13:10", title: "Дискретна математика (Л)", teacher: "доц. Середницька Х.І. (Потік)", room: "130/Т" },
+      { start: "13:30", end: "14:50", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х.І.", room: "№6/Т", group: 1 },
+    ],
+  }
+};
+
+const ICONS = {
+    room: `<svg viewBox="0 0 24 24"><path d="M12 2L3 9v11h18V9l-9-7zm0 2.8L18 9v9h-3v-5H9v5H6V9l6-4.2z"/></svg>`,
+    teacher: `<svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`
+};
+
+const els = {
+    groupSelect: document.getElementById('group-select'),
+    daysNav: document.getElementById('days-nav'),
+    scheduleContainer: document.getElementById('schedule-container'),
+    dateDisplay: document.getElementById('current-date-display')
+};
+
+let state = {
+    tab: 'today',
+    group: localStorage.getItem('fep13_saved_group') || 'all'
+};
+
+function getLocalMonday(d) {
+    const dInfo = new Date(d);
+    const day = dInfo.getDay() === 0 ? 7 : dInfo.getDay();
+    dInfo.setDate(dInfo.getDate() - day + 1);
+    dInfo.setHours(0, 0, 0, 0);
+    return dInfo;
+}
+
+function getWeekType(dateObj) {
+    const localMonday = getLocalMonday(dateObj);
+    const utcCurrent = Date.UTC(localMonday.getFullYear(), localMonday.getMonth(), localMonday.getDate());
+    const diffDays = Math.floor((utcCurrent - BASE_MONDAY_UTC) / (1000 * 60 * 60 * 24));
+    const diffWeeks = Math.floor(diffDays / 7);
+    return (diffWeeks % 2 === 0) ? BASE_WEEK_TYPE : (BASE_WEEK_TYPE === 'numerator' ? 'denominator' : 'numerator');
+}
+
+function init() {
+    const today = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    els.dateDisplay.textContent = today.toLocaleDateString('uk-UA', options);
+    
+    els.groupSelect.value = state.group;
+
+    els.groupSelect.addEventListener('change', (e) => { 
+        state.group = e.target.value; 
+        localStorage.setItem('fep13_saved_group', state.group);
+        render(); 
+    });
+    
+    els.daysNav.addEventListener('click', (e) => {
+        if(e.target.classList.contains('day-btn')) {
+            state.tab = e.target.dataset.tab;
+            render();
         }
+    });
 
-        function formatDateHeader(dateObj) {
-            const dayName = UA_DAYS[dateObj.getDay()];
-            const dateNum = dateObj.getDate();
-            const monthName = UA_MONTHS[dateObj.getMonth()];
-            return `${dayName}, ${dateNum} ${monthName}`;
-        }
+    render();
+}
 
-        function extractType(title) {
-            if (title.includes("(Лаб)")) return "🧪 Лаб";
-            if (title.includes("(ПрС)")) return "📚 ПрС";
-            if (title.includes("(Л)")) return "🎤 Лекція";
-            return "📝 Заняття";
-        }
+function parseTitle(rawTitle) {
+    let cleanTitle = rawTitle.replace(/\s*\(Потік\)/g, "").trim();
+    let type = "";
+    if(cleanTitle.includes('(Л)')) { type = "Лекція"; cleanTitle = cleanTitle.replace('(Л)', ''); }
+    else if(cleanTitle.includes('(Лаб)')) { type = "Лабораторна"; cleanTitle = cleanTitle.replace('(Лаб)', ''); }
+    else if(cleanTitle.includes('(ПрС)')) { type = "Практична"; cleanTitle = cleanTitle.replace('(ПрС)', ''); }
+    const isPotik = rawTitle.includes('(Потік)');
+    return { title: cleanTitle.trim(), type, isPotik };
+}
 
-        function cleanTitle(title) {
-            return title.replace(/\s*\((Лаб|ПрС|Л)\)/g, '').trim();
-        }
+function renderDayBlock(targetDate, showHeader = true) {
+    const dayIndex = targetDate.getDay();
+    const dayKey = jsDaysMap[dayIndex];
+    const weekType = getWeekType(targetDate);
+    
+    let html = '';
 
-        function buildCardHtml(lesson) {
-            const type = extractType(lesson.title);
-            const clean = cleanTitle(lesson.title);
-            
-            let badgesHTML = `<span class="badge">${type}</span>`;
-            if (lesson.room) {
-                badgesHTML += `<span class="badge">🚪 ${lesson.room}</span>`;
-            }
-            if (lesson.potik) {
-                badgesHTML += `<span class="badge">👥 Потік</span>`;
-            } else if (lesson.group) {
-                badgesHTML += `<span class="badge">👥 Підгр. ${lesson.group}</span>`;
-            }
+    if (showHeader) {
+        const dName = uaDays[dayIndex];
+        const dateStr = `${targetDate.getDate()} ${monthNames[targetDate.getMonth()]}`;
+        const wTypeName = weekType === 'numerator' ? '🔁 Чисельник' : '🔁 Знаменник';
+        html += `
+            <div class="day-header">
+                <span class="day-title">${dName}, ${dateStr}</span>
+                <span class="week-badge">${wTypeName}</span>
+            </div>
+        `;
+    }
 
-            return `
-                <div class="card">
-                    <div class="time-col">
-                        <span class="time">${lesson.start}</span>
-                        <span class="line">—</span>
-                        <span class="time">${lesson.end}</span>
-                    </div>
-                    <div class="info-col">
-                        <div class="lesson-title">${clean}</div>
-                        <div class="lesson-teacher">${lesson.teacher || 'Викладач не вказаний'}</div>
-                        <div class="badges">
-                            ${badgesHTML}
-                        </div>
-                    </div>
+    if (dayIndex === 0 || dayIndex === 6) {
+        html += `<div class="empty-state"><span>🎉</span><p>Ура, вихідний!</p></div>`;
+        return html;
+    }
+
+    const dayLessons = SCHEDULE[weekType][dayKey] || [];
+    const filtered = dayLessons.filter(lesson => {
+        if (state.group === 'all') return true;
+        if (!lesson.group) return true;
+        return lesson.group.toString() === state.group;
+    });
+
+    if (filtered.length === 0) {
+        html += `<div class="empty-state"><span>🙌</span><p>На цей день пар немає</p></div>`;
+        return html;
+    }
+
+    html += filtered.map(lesson => {
+        const { title, type, isPotik } = parseTitle(lesson.title);
+        const cleanTeacher = lesson.teacher.replace(/\s*\(Потік\)/g, "").trim();
+        let badges = '';
+        if(type) badges += `<span class="badge badge-type">${type}</span>`;
+        if(lesson.group) badges += `<span class="badge badge-group">Підгрупа ${lesson.group}</span>`;
+        if(isPotik || lesson.teacher.includes('(Потік)')) badges += `<span class="badge badge-potik">Потік</span>`;
+
+        return `
+            <div class="lesson-card">
+                <div class="time-block">
+                    <span class="time-start">${lesson.start}</span>
+                    <span class="time-end">${lesson.end}</span>
                 </div>
-            `;
+                <div class="info-block">
+                    ${badges ? `<div class="badges">${badges}</div>` : ''}
+                    <h3 class="lesson-title">${title}</h3>
+                    ${lesson.room ? `<div class="lesson-meta">${ICONS.room} <span>${lesson.room}</span></div>` : ''}
+                    ${cleanTeacher ? `<div class="lesson-meta">${ICONS.teacher} <span>${cleanTeacher}</span></div>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    return html;
+}
+
+function render() {
+    document.querySelectorAll('.day-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === state.tab);
+    });
+
+    let contentHTML = '';
+    const now = new Date();
+
+    if (state.tab === 'today') {
+        contentHTML = renderDayBlock(now, true);
+    } 
+    else if (state.tab === 'tomorrow') {
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        contentHTML = renderDayBlock(tomorrow, true);
+    } 
+    else if (state.tab === 'this_week') {
+        const mon = getLocalMonday(now);
+        for(let i=0; i<5; i++) { 
+            const d = new Date(mon);
+            d.setDate(d.getDate() + i);
+            contentHTML += renderDayBlock(d, true);
         }
-
-        function renderDay(dateObj) {
-            const dayKey = DAY_KEYS[dateObj.getDay()];
-            const weekType = getWeekType(dateObj);
-            const typeLabel = weekType === "numerator" ? "Чисельник" : "Знаменник";
-            
-            let html = `
-                <div class="day-header">${formatDateHeader(dateObj)}</div>
-                <div class="day-subheader">🔄 ${typeLabel}</div>
-            `;
-
-            if (dayKey === 'sun' || dayKey === 'sat') {
-                html += `<div class="empty-state">🎉 Вихідний день! Пар немає.</div>`;
-                return html;
-            }
-
-            let lessons = SCHEDULE[weekType][dayKey] || [];
-            const pref = document.getElementById('group-select').value;
-            
-            if (pref !== 'all') {
-                lessons = lessons.filter(l => !l.group || l.group == pref);
-            }
-
-            if (lessons.length === 0) {
-                html += `<div class="empty-state">Пар немає.</div>`;
-            } else {
-                lessons.forEach(l => {
-                    html += buildCardHtml(l);
-                });
-            }
-
-            return html;
+    } 
+    else if (state.tab === 'next_week') {
+        const nextMon = getLocalMonday(now);
+        nextMon.setDate(nextMon.getDate() + 7);
+        for(let i=0; i<5; i++) {
+            const d = new Date(nextMon);
+            d.setDate(d.getDate() + i);
+            contentHTML += renderDayBlock(d, true);
         }
+    }
 
-        function renderSchedule() {
-            const container = document.getElementById('schedule-container');
-            container.innerHTML = '';
+    els.scheduleContainer.innerHTML = contentHTML;
+}
 
-            const today = new Date(); // Локальний час пристрою
-
-            if (currentTab === 'today') {
-                container.innerHTML = renderDay(today);
-            } 
-            else if (currentTab === 'tomorrow') {
-                const tomorrow = new Date(today);
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                container.innerHTML = renderDay(tomorrow);
-            } 
-            else if (currentTab === 'week') {
-                // Починаємо з понеділка поточного тижня
-                const startOfWeek = new Date(today);
-                const day = startOfWeek.getDay();
-                const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
-                startOfWeek.setDate(diff);
-
-                let weekHtml = '';
-                for (let i = 0; i < 5; i++) { // Тільки ПН-ПТ
-                    const d = new Date(startOfWeek);
-                    d.setDate(d.getDate() + i);
-                    weekHtml += renderDay(d) + '<br>';
-                }
-                container.innerHTML = weekHtml;
-            }
-        }
-
-        function setTab(tabName) {
-            currentTab = tabName;
-            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-            document.getElementById('tab-' + tabName).classList.add('active');
-            renderSchedule();
-        }
-
-        // Перший рендер
-        renderSchedule();
-    </script>
+document.addEventListener('DOMContentLoaded', init);
+</script>
 </body>
 </html>
