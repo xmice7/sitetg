@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <meta name="theme-color" content="#1e293b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    
     <title>Розклад ФЕП-13</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -51,11 +57,11 @@
 
         /* Header & Settings Button */
         header { text-align: center; margin-bottom: 24px; position: relative; padding-top: 10px; }
-        header h1 { font-size: 26px; font-weight: 800; margin-bottom: 6px; background: linear-gradient(90deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        header h1 { font-size: 26px; font-weight: 800; margin-bottom: 6px; color: var(--primary); transition: color 0.3s ease; }
         header p { color: var(--text-muted); font-size: 14px; text-transform: capitalize; font-weight: 500; }
 
         .settings-btn { position: absolute; top: 5px; right: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 50%; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-main); box-shadow: var(--shadow); transition: all 0.2s ease; }
-        .settings-btn:hover { transform: rotate(45deg); }
+        .settings-btn:hover { transform: rotate(45deg); color: var(--primary); border-color: var(--primary); }
         .settings-btn svg { width: 22px; height: 22px; fill: currentColor; }
 
         /* Controls */
@@ -140,6 +146,13 @@
         .setting-group { margin-bottom: 20px; }
         .setting-group label { display: block; font-size: 14px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
         
+        /* Color Picker */
+        .color-picker { display: flex; gap: 12px; margin-top: 8px; }
+        .color-circle { width: 36px; height: 36px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: 0.2s; position: relative; }
+        .color-circle.active { border-color: var(--text-main); transform: scale(1.1); }
+        .color-circle::after { content: "✓"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 14px; opacity: 0; font-weight: bold; }
+        .color-circle.active::after { opacity: 1; }
+
         /* Theme Switcher in Modal */
         .theme-switch { display: flex; background: var(--bg-body); border-radius: 12px; padding: 4px; border: 1px solid var(--border); }
         .theme-btn { flex: 1; padding: 10px; border: none; background: transparent; color: var(--text-muted); font-size: 14px; font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
@@ -186,6 +199,12 @@
         </div>
         
         <div class="setting-group">
+            <label>Колір додатку</label>
+            <div class="color-picker" id="color-picker">
+                </div>
+        </div>
+
+        <div class="setting-group">
             <label>Тема оформлення</label>
             <div class="theme-switch">
                 <button class="theme-btn" data-theme-val="light">
@@ -216,15 +235,26 @@
 <script>
 // ================= НАЛАШТУВАННЯ ТА СТАН =================
 const htmlEl = document.documentElement;
+
+const colors = {
+    blue: { main: '#3b82f6', hover: '#2563eb', light: 'rgba(59, 130, 246, 0.15)' },
+    purple: { main: '#8b5cf6', hover: '#7c3aed', light: 'rgba(139, 92, 246, 0.15)' },
+    emerald: { main: '#10b981', hover: '#059669', light: 'rgba(16, 185, 129, 0.15)' },
+    rose: { main: '#f43f5e', hover: '#e11d48', light: 'rgba(244, 63, 94, 0.15)' },
+    amber: { main: '#f59e0b', hover: '#d97706', light: 'rgba(245, 158, 11, 0.15)' }
+};
+
 let state = {
     tab: 'today',
     group: localStorage.getItem('fep13_saved_group') || 'all',
     theme: localStorage.getItem('fep13_theme') || 'dark',
-    engTeacher: localStorage.getItem('fep13_eng_teacher') || 'all'
+    engTeacher: localStorage.getItem('fep13_eng_teacher') || 'all',
+    color: localStorage.getItem('fep13_color') || 'blue'
 };
 
-// Застосування теми при завантаженні
+// Застосування теми та кольору при завантаженні
 htmlEl.setAttribute('data-theme', state.theme);
+applyColor(state.color);
 
 // ================= ЕЛЕМЕНТИ DOM =================
 const els = {
@@ -335,13 +365,37 @@ const ICONS = {
     teacher: `<svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`
 };
 
-// ================= ІНІЦІАЛІЗАЦІЯ =================
+// ================= ФУНКЦІЇ ДОДАТКУ =================
+function applyColor(colorKey) {
+    const c = colors[colorKey];
+    htmlEl.style.setProperty('--primary', c.main);
+    htmlEl.style.setProperty('--primary-hover', c.hover);
+    htmlEl.style.setProperty('--bg-blue', c.light);
+}
+
+function renderColorPicker() {
+    const picker = document.getElementById('color-picker');
+    picker.innerHTML = Object.keys(colors).map(key => 
+        `<div class="color-circle ${state.color === key ? 'active' : ''}" style="background-color: ${colors[key].main}" data-color="${key}"></div>`
+    ).join('');
+    
+    picker.querySelectorAll('.color-circle').forEach(circle => {
+        circle.addEventListener('click', () => {
+            state.color = circle.dataset.color;
+            localStorage.setItem('fep13_color', state.color);
+            applyColor(state.color);
+            renderColorPicker();
+        });
+    });
+}
+
 function init() {
     const todayKyiv = getKyivDate();
     els.dateDisplay.textContent = todayKyiv.toLocaleDateString('uk-UA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     els.groupSelect.value = state.group;
     els.engSelect.value = state.engTeacher;
     updateThemeUI();
+    renderColorPicker();
 
     els.groupSelect.addEventListener('change', (e) => { state.group = e.target.value; localStorage.setItem('fep13_saved_group', state.group); render(); });
     els.engSelect.addEventListener('change', (e) => { state.engTeacher = e.target.value; localStorage.setItem('fep13_eng_teacher', state.engTeacher); render(); });
@@ -371,7 +425,6 @@ function updateThemeUI() {
     });
 }
 
-// ================= ЛОГІКА ТИЖНІВ =================
 function getLocalMonday(d) {
     const dInfo = new Date(d);
     const day = dInfo.getDay() === 0 ? 7 : dInfo.getDay();
@@ -388,7 +441,6 @@ function getWeekType(dateObj) {
     return (diffWeeks % 2 === 0) ? BASE_WEEK_TYPE : (BASE_WEEK_TYPE === 'numerator' ? 'denominator' : 'numerator');
 }
 
-// ================= РЕНДЕР =================
 function parseTitle(rawTitle) {
     let cleanTitle = rawTitle.replace(/\s*\(Потік\)/g, "").trim();
     let type = "";
@@ -535,7 +587,6 @@ function render() {
     updateLiveTimers(); 
 }
 
-// ================= ЛОГІКА ТАЙМЕРІВ =================
 function updateLiveTimers() {
     if (state.tab !== 'today') return;
 
