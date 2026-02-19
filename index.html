@@ -112,6 +112,17 @@
         .live-timer-text svg { width: 14px; height: 14px; animation: spin 2s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
+        /* All Done Message */
+        .all-done-message { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: flex; align-items: center; gap: 16px; margin-top: 8px; box-shadow: var(--shadow); flex-wrap: wrap; animation: slideUp 0.5s ease; position: relative; overflow: hidden; }
+        .all-done-message::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--accent-green); border-radius: 16px 0 0 16px; }
+        .all-done-icon { font-size: 24px; background: var(--bg-green); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+        .all-done-text { flex: 1; min-width: 150px; }
+        .all-done-text h4 { font-size: 16px; font-weight: 800; color: var(--text-main); margin-bottom: 2px; }
+        .all-done-text p { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+        .go-tomorrow-btn { background: var(--primary); color: #fff; border: none; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); display: flex; align-items: center; gap: 6px; margin-left: auto; }
+        .go-tomorrow-btn:hover { background: var(--primary-hover); transform: translateY(-2px); }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
         /* Empty State */
         .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); background: var(--bg-card); border-radius: 16px; border: 2px dashed var(--border); }
         .empty-state span { font-size: 40px; display: block; margin-bottom: 12px; }
@@ -326,25 +337,21 @@ const ICONS = {
 
 // ================= ІНІЦІАЛІЗАЦІЯ =================
 function init() {
-    // Встановлення значень
     const todayKyiv = getKyivDate();
     els.dateDisplay.textContent = todayKyiv.toLocaleDateString('uk-UA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     els.groupSelect.value = state.group;
     els.engSelect.value = state.engTeacher;
     updateThemeUI();
 
-    // Слухачі подій
     els.groupSelect.addEventListener('change', (e) => { state.group = e.target.value; localStorage.setItem('fep13_saved_group', state.group); render(); });
     els.engSelect.addEventListener('change', (e) => { state.engTeacher = e.target.value; localStorage.setItem('fep13_eng_teacher', state.engTeacher); render(); });
     
     els.daysNav.addEventListener('click', (e) => { if(e.target.classList.contains('day-btn')) { state.tab = e.target.dataset.tab; render(); }});
     
-    // Модалка налаштувань
     els.settingsBtn.addEventListener('click', () => els.modal.classList.add('active'));
     els.closeBtn.addEventListener('click', () => els.modal.classList.remove('active'));
     els.modal.addEventListener('click', (e) => { if(e.target === els.modal) els.modal.classList.remove('active'); });
 
-    // Зміна теми
     els.themeBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             state.theme = btn.dataset.themeVal;
@@ -355,7 +362,7 @@ function init() {
     });
 
     render();
-    setInterval(updateLiveTimers, 1000); // Таймер кожну секунду
+    setInterval(updateLiveTimers, 1000);
 }
 
 function updateThemeUI() {
@@ -412,7 +419,6 @@ function renderDayBlock(targetDate, showHeader = true) {
 
     let dayLessons = SCHEDULE[weekType][dayKey] || [];
     
-    // Фільтрація по групі та англійській мові
     let filtered = dayLessons.filter(lesson => {
         if (state.group !== 'all' && lesson.group && lesson.group.toString() !== state.group) return false;
         if (lesson.isEng && state.engTeacher !== 'all' && !lesson.teacher.includes(state.engTeacher)) return false;
@@ -421,7 +427,6 @@ function renderDayBlock(targetDate, showHeader = true) {
 
     if (filtered.length === 0) return html + `<div class="empty-state"><span>🙌</span><p>На цей день пар немає</p></div>`;
 
-    // Пошук поточної або наступної пари (тільки для "Сьогодні")
     let currentLessonId = null;
     let nextLessonId = null;
 
@@ -491,6 +496,27 @@ function renderDayBlock(targetDate, showHeader = true) {
         `;
     }).join('');
 
+    // БЛОК "НА СЬОГОДНІ ВСЕ"
+    if (isTodayKyiv) {
+        const lastLesson = filtered[filtered.length - 1];
+        const lastEndS = timeToSeconds(lastLesson.end);
+        
+        if (nowSecs > lastEndS) {
+            html += `
+                <div class="all-done-message">
+                    <div class="all-done-icon">🎉</div>
+                    <div class="all-done-text">
+                        <h4>На сьогодні все!</h4>
+                        <p>Всі пари успішно завершено. Можна відпочивати.</p>
+                    </div>
+                    <button class="go-tomorrow-btn" onclick="document.querySelector('[data-tab=\\'tomorrow\\']').click()">
+                        На завтра <svg style="width:16px; height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    </button>
+                </div>
+            `;
+        }
+    }
+
     return html;
 }
 
@@ -506,24 +532,23 @@ function render() {
     else if (state.tab === 'next_week') { const nm = getLocalMonday(nowKyiv); nm.setDate(nm.getDate() + 7); for(let i=0; i<5; i++) { const d = new Date(nm); d.setDate(d.getDate() + i); contentHTML += renderDayBlock(d, true); } }
 
     els.scheduleContainer.innerHTML = contentHTML;
-    updateLiveTimers(); // Виклик відразу після рендеру, щоб не було затримки тексту "--:--"
+    updateLiveTimers(); 
 }
 
-// ================= ЛОГІКА ТАЙМЕРІВ (Швидке оновлення) =================
+// ================= ЛОГІКА ТАЙМЕРІВ =================
 function updateLiveTimers() {
     if (state.tab !== 'today') return;
 
     const now = getKyivDate();
     const nowSecs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
 
-    // 1. Оновлення активної пари
     const currentCard = document.getElementById('tracked-current');
     if (currentCard) {
         const start = parseInt(currentCard.dataset.start);
         const end = parseInt(currentCard.dataset.end);
         
         if (nowSecs > end) {
-            render(); // Пара закінчилась, перемальовуємо все
+            render(); 
             return;
         }
 
@@ -540,13 +565,12 @@ function updateLiveTimers() {
         if (progressBarEl) progressBarEl.style.width = `${progressPercent}%`;
     }
 
-    // 2. Оновлення наступної пари
     const nextBadge = document.getElementById('tracked-next');
     if (nextBadge) {
         const start = parseInt(nextBadge.dataset.start);
         
         if (nowSecs >= start) {
-            render(); // Пара почалась, перемальовуємо
+            render(); 
             return;
         }
 
