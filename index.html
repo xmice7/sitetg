@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Розклад ФЕП-13</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         /* Змінні для світлої теми */
         :root {
@@ -22,6 +22,7 @@
             --bg-blue: #dbeafe;
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
             --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --modal-bg: rgba(255, 255, 255, 0.95);
         }
 
         /* Змінні для темної теми */
@@ -40,6 +41,7 @@
             --bg-blue: rgba(59, 130, 246, 0.15);
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
             --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+            --modal-bg: rgba(30, 41, 59, 0.95);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -47,14 +49,14 @@
         body { background-color: var(--bg-body); color: var(--text-main); line-height: 1.5; padding-bottom: 40px; transition: background-color 0.3s ease, color 0.3s ease; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; position: relative; }
 
-        /* Header & Theme Toggle */
+        /* Header & Settings Button */
         header { text-align: center; margin-bottom: 24px; position: relative; padding-top: 10px; }
-        header h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; background: linear-gradient(90deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        header h1 { font-size: 26px; font-weight: 800; margin-bottom: 6px; background: linear-gradient(90deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         header p { color: var(--text-muted); font-size: 14px; text-transform: capitalize; font-weight: 500; }
 
-        .theme-toggle { position: absolute; top: 5px; right: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-main); box-shadow: var(--shadow); transition: all 0.2s ease; }
-        .theme-toggle:hover { transform: scale(1.05); }
-        .theme-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .settings-btn { position: absolute; top: 5px; right: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 50%; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-main); box-shadow: var(--shadow); transition: all 0.2s ease; }
+        .settings-btn:hover { transform: rotate(45deg); }
+        .settings-btn svg { width: 22px; height: 22px; fill: currentColor; }
 
         /* Controls */
         .controls { display: flex; margin-bottom: 24px; }
@@ -67,7 +69,6 @@
         .days-nav { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 16px; scrollbar-width: none; }
         .days-nav::-webkit-scrollbar { display: none; }
         .day-btn { background-color: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.2s ease; box-shadow: var(--shadow); }
-        .day-btn:hover { border-color: var(--text-muted); }
         .day-btn.active { background-color: var(--primary); border-color: var(--primary); color: #fff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
 
         /* Schedule List & Headers */
@@ -77,36 +78,62 @@
         .day-header .week-badge { font-size: 12px; font-weight: 600; color: var(--text-muted); background: var(--bg-card); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border); }
 
         /* Lesson Card */
-        .lesson-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: flex; gap: 16px; transition: all 0.3s ease; box-shadow: var(--shadow); position: relative; }
-        .lesson-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); border-color: var(--primary); }
-
-        /* Підсвітка поточної пари */
-        .lesson-card.current-lesson { border-color: var(--accent-green); box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3), var(--shadow); }
-        [data-theme="dark"] .lesson-card.current-lesson { box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.5), var(--shadow); }
+        .lesson-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; display: flex; gap: 16px; transition: all 0.3s ease; box-shadow: var(--shadow); position: relative; overflow: hidden; }
         
-        .current-badge { position: absolute; top: -12px; right: 16px; background: var(--accent-green); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px; z-index: 10; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+        /* Підсвітка поточної пари */
+        .lesson-card.current-lesson { border-color: var(--accent-green); border-width: 2px; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.15); padding-bottom: 24px; }
+        .current-badge { position: absolute; top: -1px; right: 16px; background: var(--accent-green); color: #fff; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 0 0 8px 8px; text-transform: uppercase; letter-spacing: 0.5px; z-index: 10; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
-        .time-block { min-width: 65px; text-align: center; border-right: 2px dashed var(--border); padding-right: 16px; display: flex; flex-direction: column; justify-content: center; }
+        /* Підсвітка наступної пари (перерва) */
+        .lesson-card.next-lesson { border-color: var(--primary); border-width: 2px; }
+        .next-badge { position: absolute; top: -1px; right: 16px; background: var(--primary); color: #fff; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 0 0 8px 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .time-block { min-width: 60px; text-align: center; border-right: 2px dashed var(--border); padding-right: 12px; display: flex; flex-direction: column; justify-content: center; z-index: 2; }
         .time-start { font-size: 18px; font-weight: 800; color: var(--text-main); letter-spacing: -0.5px; }
         .time-end { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-top: 4px; }
 
-        .info-block { flex: 1; }
-        .lesson-title { font-size: 16px; font-weight: 600; margin-bottom: 10px; line-height: 1.4; color: var(--text-main); }
-        .lesson-meta { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
-        .lesson-meta svg { width: 16px; height: 16px; fill: currentColor; opacity: 0.8; }
+        .info-block { flex: 1; z-index: 2; }
+        .lesson-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; line-height: 1.3; color: var(--text-main); }
+        .lesson-meta { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
+        .lesson-meta svg { width: 14px; height: 14px; fill: currentColor; opacity: 0.8; }
 
         /* Badges */
-        .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-        .badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+        .badge { font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
         .badge-group { background-color: var(--bg-green); color: var(--accent-green); }
         .badge-type { background-color: var(--bg-purple); color: var(--accent-purple); }
         .badge-potik { background-color: var(--bg-blue); color: var(--primary); }
 
+        /* Live Timer UI */
+        .live-timer-wrapper { position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: var(--border); z-index: 1; }
+        .live-timer-progress { height: 100%; background: var(--accent-green); width: 0%; transition: width 1s linear; }
+        .live-timer-text { font-size: 12px; font-weight: 700; color: var(--accent-green); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+        .live-timer-text svg { width: 14px; height: 14px; animation: spin 2s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
         /* Empty State */
-        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); background: var(--bg-card); border-radius: 16px; border: 2px dashed var(--border); box-shadow: var(--shadow); }
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); background: var(--bg-card); border-radius: 16px; border: 2px dashed var(--border); }
         .empty-state span { font-size: 40px; display: block; margin-bottom: 12px; }
-        .empty-state p { font-size: 16px; font-weight: 600; }
+
+        /* --- SETTINGS MODAL --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; display: flex; align-items: flex-end; justify-content: center; }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+        .modal-content { background: var(--modal-bg); width: 100%; max-width: 600px; border-radius: 24px 24px 0 0; padding: 24px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-top: 1px solid var(--border); box-shadow: 0 -10px 40px rgba(0,0,0,0.2); }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .modal-header h2 { font-size: 20px; font-weight: 800; }
+        .close-btn { background: var(--border); border: none; width: 32px; height: 32px; border-radius: 50%; color: var(--text-main); font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+
+        .setting-group { margin-bottom: 20px; }
+        .setting-group label { display: block; font-size: 14px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        /* Theme Switcher in Modal */
+        .theme-switch { display: flex; background: var(--bg-body); border-radius: 12px; padding: 4px; border: 1px solid var(--border); }
+        .theme-btn { flex: 1; padding: 10px; border: none; background: transparent; color: var(--text-muted); font-size: 14px; font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .theme-btn.active { background: var(--bg-card); color: var(--text-main); box-shadow: var(--shadow); }
+        .theme-btn svg { width: 16px; height: 16px; fill: currentColor; }
     </style>
 </head>
 <body>
@@ -115,13 +142,15 @@
     <header>
         <h1>Розклад ФЕП-13</h1>
         <p id="current-date-display">Завантаження...</p>
-        <button id="theme-toggle" class="theme-toggle" aria-label="Змінити тему"></button>
+        <button id="open-settings" class="settings-btn" aria-label="Налаштування">
+            <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+        </button>
     </header>
 
     <div class="controls">
         <div class="select-wrapper">
             <select id="group-select">
-                <option value="all">👥 Показати всі групи</option>
+                <option value="all">👥 Показати всі підгрупи</option>
                 <option value="1">👥 Тільки Підгрупа 1</option>
                 <option value="2">👥 Тільки Підгрупа 2</option>
             </select>
@@ -138,32 +167,70 @@
     <main class="schedule-list" id="schedule-container"></main>
 </div>
 
-<script>
-// ================= ТЕМА (DARK / LIGHT) =================
-const themeToggle = document.getElementById('theme-toggle');
-const htmlEl = document.documentElement;
+<div class="modal-overlay" id="settings-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Налаштування</h2>
+            <button class="close-btn" id="close-settings">×</button>
+        </div>
+        
+        <div class="setting-group">
+            <label>Тема оформлення</label>
+            <div class="theme-switch">
+                <button class="theme-btn" data-theme-val="light">
+                    <svg viewBox="0 0 24 24"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg> Світла
+                </button>
+                <button class="theme-btn" data-theme-val="dark">
+                    <svg viewBox="0 0 24 24"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg> Темна
+                </button>
+            </div>
+        </div>
 
-const iconsHTML = {
-    sun: `<path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />`,
-    moon: `<path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />`
+        <div class="setting-group">
+            <label>Ваш викладач Англійської</label>
+            <div class="select-wrapper">
+                <select id="eng-select">
+                    <option value="all">Усі викладачі</option>
+                    <option value="Брона">доц. Брона О.А.</option>
+                    <option value="Думашівський">доц. Думашівський Я.Є.</option>
+                    <option value="Шандра">доц. Шандра Н.А.</option>
+                    <option value="Довбенко">ас. Довбенко Л.В.</option>
+                    <option value="Шумська">ас. Шумська О.А.</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ================= НАЛАШТУВАННЯ ТА СТАН =================
+const htmlEl = document.documentElement;
+let state = {
+    tab: 'today',
+    group: localStorage.getItem('fep13_saved_group') || 'all',
+    theme: localStorage.getItem('fep13_theme') || 'dark',
+    engTeacher: localStorage.getItem('fep13_eng_teacher') || 'all'
 };
 
-let currentTheme = localStorage.getItem('fep13_theme') || 'dark';
-htmlEl.setAttribute('data-theme', currentTheme);
-updateThemeIcon();
+// Застосування теми при завантаженні
+htmlEl.setAttribute('data-theme', state.theme);
 
-themeToggle.addEventListener('click', () => {
-    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    htmlEl.setAttribute('data-theme', currentTheme);
-    localStorage.setItem('fep13_theme', currentTheme);
-    updateThemeIcon();
-});
+// ================= ЕЛЕМЕНТИ DOM =================
+const els = {
+    groupSelect: document.getElementById('group-select'),
+    engSelect: document.getElementById('eng-select'),
+    daysNav: document.getElementById('days-nav'),
+    scheduleContainer: document.getElementById('schedule-container'),
+    dateDisplay: document.getElementById('current-date-display'),
+    
+    // Модалка
+    settingsBtn: document.getElementById('open-settings'),
+    closeBtn: document.getElementById('close-settings'),
+    modal: document.getElementById('settings-modal'),
+    themeBtns: document.querySelectorAll('.theme-btn')
+};
 
-function updateThemeIcon() {
-    themeToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${currentTheme === 'dark' ? iconsHTML.sun : iconsHTML.moon}</svg>`;
-}
-
-// ================= НАЛАШТУВАННЯ ЧАСУ ТА СЕМЕСТРУ =================
+// ================= НАЛАШТУВАННЯ СЕМЕСТРУ ТА ЧАСУ =================
 const BASE_MONDAY_UTC = Date.UTC(2026, 1, 9); // 9 лютого 2026
 const BASE_WEEK_TYPE = 'numerator';
 
@@ -171,12 +238,24 @@ const monthNames = ['січ.', 'лют.', 'бер.', 'квіт.', 'трав.', '
 const uaDays = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', 'Пʼятниця', 'Субота'];
 const jsDaysMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
-// Функція для отримання точного часу за Києвом
-function getKyivDate() {
-    return new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Kyiv"}));
+function getKyivDate() { return new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Kyiv"})); }
+function timeToSeconds(timeStr) { const [h, m] = timeStr.split(':').map(Number); return h * 3600 + m * 60; }
+function formatTimeLeft(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h > 0 ? h + ':' : ''}${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
 // ================= ДАНІ РОЗКЛАДУ =================
+const getEngLessons = (roomShumska) => [
+    { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "доц. Брона О.А.", room: "5/Б", isEng: true },
+    { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "доц. Думашівський Я.Є.", room: "123/Т", isEng: true },
+    { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "доц. Шандра Н.А.", room: "406/Т", isEng: true },
+    { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "ас. Довбенко Л.В.", room: "129а/Т", isEng: true },
+    { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "ас. Шумська О.А.", room: roomShumska, isEng: true }
+];
+
 const SCHEDULE = {
   numerator: {
     mon: [
@@ -187,7 +266,7 @@ const SCHEDULE = {
       { start: "11:50", end: "13:10", title: "Українська мова (за проф. спрямуванням) (ПрС)", teacher: "доц. Збір І.М.", room: "129а/Т" },
     ],
     tue: [
-      { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "ас. Шумська О.А. (збірна)", room: "3/Б" },
+      ...getEngLessons("3/Б"),
       { start: "10:10", end: "11:30", title: "Об’єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "N12/Т", group: 1 },
       { start: "10:10", end: "11:30", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х.І.", room: "324/Т", group: 2 },
       { start: "11:50", end: "13:10", title: "Вища математика (Л)", teacher: "доц. Жумік О.В. (Потік)", room: "130/Т" },
@@ -199,7 +278,7 @@ const SCHEDULE = {
       { start: "13:30", end: "14:50", title: "Операційні системи, системне програмування (Л)", teacher: "доц. Бойко Я.В. (Потік)", room: "2/Б" },
     ],
     thu: [
-      { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "ас. Шумська О.А. (збірна)", room: "3/Б" },
+      ...getEngLessons("204/Б"),
       { start: "10:10", end: "11:30", title: "Вища математика (ПрС)", teacher: "доц. Жумік О.В.", room: "407/Т" },
     ],
     fri: [
@@ -218,7 +297,7 @@ const SCHEDULE = {
       { start: "13:30", end: "14:50", title: "Філософія (ПрС)", teacher: "доц. Бартусяк П.М.", room: "204/Б" },
     ],
     tue: [
-      { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "ас. Шумська О.А. (збірна)", room: "3/Б" },
+      ...getEngLessons("3/Б"),
       { start: "10:10", end: "11:30", title: "Об’єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "N12/Т", group: 1 },
       { start: "10:10", end: "11:30", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х.І.", room: "324/Т", group: 2 },
       { start: "11:50", end: "13:10", title: "Вища математика (Л)", teacher: "доц. Жумік О.В. (Потік)", room: "130/Т" },
@@ -229,7 +308,7 @@ const SCHEDULE = {
       { start: "13:30", end: "14:50", title: "Операційні системи, системне програмування (Л)", teacher: "доц. Бойко Я.В. (Потік)", room: "2/Б" },
     ],
     thu: [
-      { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "ас. Шумська О.А. (збірна)", room: "3/Б" },
+      ...getEngLessons("204/Б"),
       { start: "10:10", end: "11:30", title: "Вища математика (ПрС)", teacher: "доц. Жумік О.В.", room: "407/Т" },
     ],
     fri: [
@@ -245,18 +324,47 @@ const ICONS = {
     teacher: `<svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`
 };
 
-const els = {
-    groupSelect: document.getElementById('group-select'),
-    daysNav: document.getElementById('days-nav'),
-    scheduleContainer: document.getElementById('schedule-container'),
-    dateDisplay: document.getElementById('current-date-display')
-};
+// ================= ІНІЦІАЛІЗАЦІЯ =================
+function init() {
+    // Встановлення значень
+    const todayKyiv = getKyivDate();
+    els.dateDisplay.textContent = todayKyiv.toLocaleDateString('uk-UA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    els.groupSelect.value = state.group;
+    els.engSelect.value = state.engTeacher;
+    updateThemeUI();
 
-let state = {
-    tab: 'today',
-    group: localStorage.getItem('fep13_saved_group') || 'all'
-};
+    // Слухачі подій
+    els.groupSelect.addEventListener('change', (e) => { state.group = e.target.value; localStorage.setItem('fep13_saved_group', state.group); render(); });
+    els.engSelect.addEventListener('change', (e) => { state.engTeacher = e.target.value; localStorage.setItem('fep13_eng_teacher', state.engTeacher); render(); });
+    
+    els.daysNav.addEventListener('click', (e) => { if(e.target.classList.contains('day-btn')) { state.tab = e.target.dataset.tab; render(); }});
+    
+    // Модалка налаштувань
+    els.settingsBtn.addEventListener('click', () => els.modal.classList.add('active'));
+    els.closeBtn.addEventListener('click', () => els.modal.classList.remove('active'));
+    els.modal.addEventListener('click', (e) => { if(e.target === els.modal) els.modal.classList.remove('active'); });
 
+    // Зміна теми
+    els.themeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            state.theme = btn.dataset.themeVal;
+            htmlEl.setAttribute('data-theme', state.theme);
+            localStorage.setItem('fep13_theme', state.theme);
+            updateThemeUI();
+        });
+    });
+
+    render();
+    setInterval(updateLiveTimers, 1000); // Таймер кожну секунду
+}
+
+function updateThemeUI() {
+    els.themeBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.themeVal === state.theme);
+    });
+}
+
+// ================= ЛОГІКА ТИЖНІВ =================
 function getLocalMonday(d) {
     const dInfo = new Date(d);
     const day = dInfo.getDay() === 0 ? 7 : dInfo.getDay();
@@ -273,42 +381,14 @@ function getWeekType(dateObj) {
     return (diffWeeks % 2 === 0) ? BASE_WEEK_TYPE : (BASE_WEEK_TYPE === 'numerator' ? 'denominator' : 'numerator');
 }
 
-function init() {
-    const todayKyiv = getKyivDate();
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    els.dateDisplay.textContent = todayKyiv.toLocaleDateString('uk-UA', options);
-    
-    els.groupSelect.value = state.group;
-
-    els.groupSelect.addEventListener('change', (e) => { 
-        state.group = e.target.value; 
-        localStorage.setItem('fep13_saved_group', state.group);
-        render(); 
-    });
-    
-    els.daysNav.addEventListener('click', (e) => {
-        if(e.target.classList.contains('day-btn')) {
-            state.tab = e.target.dataset.tab;
-            render();
-        }
-    });
-
-    render();
-
-    // Авто-оновлення для підсвічування кожної хвилини
-    setInterval(() => {
-        if (state.tab === 'today' || state.tab === 'this_week') render();
-    }, 60000);
-}
-
+// ================= РЕНДЕР =================
 function parseTitle(rawTitle) {
     let cleanTitle = rawTitle.replace(/\s*\(Потік\)/g, "").trim();
     let type = "";
     if(cleanTitle.includes('(Л)')) { type = "Лекція"; cleanTitle = cleanTitle.replace('(Л)', ''); }
     else if(cleanTitle.includes('(Лаб)')) { type = "Лабораторна"; cleanTitle = cleanTitle.replace('(Лаб)', ''); }
     else if(cleanTitle.includes('(ПрС)')) { type = "Практична"; cleanTitle = cleanTitle.replace('(ПрС)', ''); }
-    const isPotik = rawTitle.includes('(Потік)');
-    return { title: cleanTitle.trim(), type, isPotik };
+    return { title: cleanTitle.trim(), type, isPotik: rawTitle.includes('(Потік)') };
 }
 
 function renderDayBlock(targetDate, showHeader = true) {
@@ -317,80 +397,96 @@ function renderDayBlock(targetDate, showHeader = true) {
     const weekType = getWeekType(targetDate);
     const kyivNow = getKyivDate();
     
-    // Перевірка чи це сьогодні за Києвом
-    const isTodayKyiv = targetDate.getDate() === kyivNow.getDate() && 
-                        targetDate.getMonth() === kyivNow.getMonth() && 
-                        targetDate.getFullYear() === kyivNow.getFullYear();
-    const currentMins = kyivNow.getHours() * 60 + kyivNow.getMinutes();
+    const isTodayKyiv = targetDate.getDate() === kyivNow.getDate() && targetDate.getMonth() === kyivNow.getMonth() && targetDate.getFullYear() === kyivNow.getFullYear();
+    const nowSecs = kyivNow.getHours() * 3600 + kyivNow.getMinutes() * 60 + kyivNow.getSeconds();
 
     let html = '';
 
     if (showHeader) {
-        const dName = uaDays[dayIndex];
         const dateStr = `${targetDate.getDate()} ${monthNames[targetDate.getMonth()]}`;
         const wTypeName = weekType === 'numerator' ? '🔁 Чисельник' : '🔁 Знаменник';
-        html += `
-            <div class="day-header">
-                <span class="day-title">${dName}, ${dateStr}</span>
-                <span class="week-badge">${wTypeName}</span>
-            </div>
-        `;
+        html += `<div class="day-header"><span class="day-title">${uaDays[dayIndex]}, ${dateStr}</span><span class="week-badge">${wTypeName}</span></div>`;
     }
 
-    if (dayIndex === 0 || dayIndex === 6) {
-        html += `<div class="empty-state"><span>🎉</span><p>Ура, вихідний!</p></div>`;
-        return html;
-    }
+    if (dayIndex === 0 || dayIndex === 6) return html + `<div class="empty-state"><span>🎉</span><p>Ура, вихідний!</p></div>`;
 
-    const dayLessons = SCHEDULE[weekType][dayKey] || [];
-    const filtered = dayLessons.filter(lesson => {
-        if (state.group === 'all') return true;
-        if (!lesson.group) return true;
-        return lesson.group.toString() === state.group;
+    let dayLessons = SCHEDULE[weekType][dayKey] || [];
+    
+    // Фільтрація по групі та англійській мові
+    let filtered = dayLessons.filter(lesson => {
+        if (state.group !== 'all' && lesson.group && lesson.group.toString() !== state.group) return false;
+        if (lesson.isEng && state.engTeacher !== 'all' && !lesson.teacher.includes(state.engTeacher)) return false;
+        return true;
     });
 
-    if (filtered.length === 0) {
-        html += `<div class="empty-state"><span>🙌</span><p>На цей день пар немає</p></div>`;
-        return html;
+    if (filtered.length === 0) return html + `<div class="empty-state"><span>🙌</span><p>На цей день пар немає</p></div>`;
+
+    // Пошук поточної або наступної пари (тільки для "Сьогодні")
+    let currentLessonId = null;
+    let nextLessonId = null;
+
+    if (isTodayKyiv) {
+        for (let i = 0; i < filtered.length; i++) {
+            const l = filtered[i];
+            const startS = timeToSeconds(l.start);
+            const endS = timeToSeconds(l.end);
+            
+            if (nowSecs >= startS && nowSecs <= endS) {
+                currentLessonId = i; break;
+            } else if (nowSecs < startS && nextLessonId === null) {
+                nextLessonId = i;
+            }
+        }
     }
 
-    html += filtered.map(lesson => {
+    html += filtered.map((lesson, idx) => {
         const { title, type, isPotik } = parseTitle(lesson.title);
         const cleanTeacher = lesson.teacher.replace(/\s*\(Потік\)/g, "").trim();
         
-        // Логіка підсвічування "Триває зараз"
-        let isCurrent = false;
-        if (isTodayKyiv) {
-            const [sh, sm] = lesson.start.split(':').map(Number);
-            const [eh, em] = lesson.end.split(':').map(Number);
-            const startMins = sh * 60 + sm;
-            const endMins = eh * 60 + em;
-            if (currentMins >= startMins && currentMins <= endMins) {
-                isCurrent = true;
-            }
-        }
-
         let badges = '';
         if(type) badges += `<span class="badge badge-type">${type}</span>`;
         if(lesson.group) badges += `<span class="badge badge-group">Підгрупа ${lesson.group}</span>`;
         if(isPotik || lesson.teacher.includes('(Потік)')) badges += `<span class="badge badge-potik">Потік</span>`;
+        if(lesson.isEng && state.engTeacher === 'all') badges += `<span class="badge badge-group">Збірна група</span>`;
 
-        const cardClasses = isCurrent ? "lesson-card current-lesson" : "lesson-card";
-        const currentBadgeHTML = isCurrent ? `<div class="current-badge">Триває зараз</div>` : '';
+        let extraHTML = '';
+        let cardClasses = "lesson-card";
+        let timerData = '';
+
+        if (idx === currentLessonId) {
+            cardClasses += " current-lesson";
+            extraHTML = `
+                <div class="current-badge">Триває зараз</div>
+                <div class="live-timer-text">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    До кінця: <span id="live-time-val">--:--</span>
+                </div>
+                <div class="live-timer-wrapper"><div class="live-timer-progress" id="live-progress-bar"></div></div>
+            `;
+            timerData = `data-start="${timeToSeconds(lesson.start)}" data-end="${timeToSeconds(lesson.end)}" id="tracked-current"`;
+        } else if (idx === nextLessonId) {
+            cardClasses += " next-lesson";
+            extraHTML = `<div class="next-badge" id="tracked-next" data-start="${timeToSeconds(lesson.start)}">Почнеться через --:--</div>`;
+        }
 
         return `
-            <div class="${cardClasses}">
-                ${currentBadgeHTML}
-                <div class="time-block">
-                    <span class="time-start">${lesson.start}</span>
-                    <span class="time-end">${lesson.end}</span>
+            <div class="${cardClasses}" ${timerData}>
+                ${extraHTML.includes('current-badge') ? '<div class="current-badge">Триває зараз</div>' : ''}
+                ${extraHTML.includes('next-badge') ? extraHTML : ''}
+                <div style="display: flex; width: 100%; gap: 16px;">
+                    <div class="time-block">
+                        <span class="time-start">${lesson.start}</span>
+                        <span class="time-end">${lesson.end}</span>
+                    </div>
+                    <div class="info-block">
+                        ${badges ? `<div class="badges">${badges}</div>` : ''}
+                        <h3 class="lesson-title">${title}</h3>
+                        ${lesson.room ? `<div class="lesson-meta">${ICONS.room} <span>${lesson.room}</span></div>` : ''}
+                        ${cleanTeacher ? `<div class="lesson-meta">${ICONS.teacher} <span>${cleanTeacher}</span></div>` : ''}
+                        ${extraHTML.includes('live-timer-text') ? '<div class="live-timer-text"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> До кінця: <span id="live-time-val">--:--</span></div>' : ''}
+                    </div>
                 </div>
-                <div class="info-block">
-                    ${badges ? `<div class="badges">${badges}</div>` : ''}
-                    <h3 class="lesson-title">${title}</h3>
-                    ${lesson.room ? `<div class="lesson-meta">${ICONS.room} <span>${lesson.room}</span></div>` : ''}
-                    ${cleanTeacher ? `<div class="lesson-meta">${ICONS.teacher} <span>${cleanTeacher}</span></div>` : ''}
-                </div>
+                ${extraHTML.includes('live-timer-wrapper') ? '<div class="live-timer-wrapper"><div class="live-timer-progress" id="live-progress-bar"></div></div>' : ''}
             </div>
         `;
     }).join('');
@@ -399,40 +495,64 @@ function renderDayBlock(targetDate, showHeader = true) {
 }
 
 function render() {
-    document.querySelectorAll('.day-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === state.tab);
-    });
+    document.querySelectorAll('.day-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === state.tab));
 
     let contentHTML = '';
     const nowKyiv = getKyivDate();
 
-    if (state.tab === 'today') {
-        contentHTML = renderDayBlock(nowKyiv, true);
-    } 
-    else if (state.tab === 'tomorrow') {
-        const tomorrow = new Date(nowKyiv);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        contentHTML = renderDayBlock(tomorrow, true);
-    } 
-    else if (state.tab === 'this_week') {
-        const mon = getLocalMonday(nowKyiv);
-        for(let i=0; i<5; i++) { 
-            const d = new Date(mon);
-            d.setDate(d.getDate() + i);
-            contentHTML += renderDayBlock(d, true);
-        }
-    } 
-    else if (state.tab === 'next_week') {
-        const nextMon = getLocalMonday(nowKyiv);
-        nextMon.setDate(nextMon.getDate() + 7);
-        for(let i=0; i<5; i++) {
-            const d = new Date(nextMon);
-            d.setDate(d.getDate() + i);
-            contentHTML += renderDayBlock(d, true);
-        }
-    }
+    if (state.tab === 'today') contentHTML = renderDayBlock(nowKyiv, true);
+    else if (state.tab === 'tomorrow') { const t = new Date(nowKyiv); t.setDate(t.getDate() + 1); contentHTML = renderDayBlock(t, true); }
+    else if (state.tab === 'this_week') { const m = getLocalMonday(nowKyiv); for(let i=0; i<5; i++) { const d = new Date(m); d.setDate(d.getDate() + i); contentHTML += renderDayBlock(d, true); } }
+    else if (state.tab === 'next_week') { const nm = getLocalMonday(nowKyiv); nm.setDate(nm.getDate() + 7); for(let i=0; i<5; i++) { const d = new Date(nm); d.setDate(d.getDate() + i); contentHTML += renderDayBlock(d, true); } }
 
     els.scheduleContainer.innerHTML = contentHTML;
+    updateLiveTimers(); // Виклик відразу після рендеру, щоб не було затримки тексту "--:--"
+}
+
+// ================= ЛОГІКА ТАЙМЕРІВ (Швидке оновлення) =================
+function updateLiveTimers() {
+    if (state.tab !== 'today') return;
+
+    const now = getKyivDate();
+    const nowSecs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
+    // 1. Оновлення активної пари
+    const currentCard = document.getElementById('tracked-current');
+    if (currentCard) {
+        const start = parseInt(currentCard.dataset.start);
+        const end = parseInt(currentCard.dataset.end);
+        
+        if (nowSecs > end) {
+            render(); // Пара закінчилась, перемальовуємо все
+            return;
+        }
+
+        const totalDuration = end - start;
+        const elapsed = nowSecs - start;
+        const remaining = end - nowSecs;
+        
+        const progressPercent = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+        
+        const timeValEl = document.getElementById('live-time-val');
+        const progressBarEl = document.getElementById('live-progress-bar');
+        
+        if (timeValEl) timeValEl.textContent = formatTimeLeft(remaining);
+        if (progressBarEl) progressBarEl.style.width = `${progressPercent}%`;
+    }
+
+    // 2. Оновлення наступної пари
+    const nextBadge = document.getElementById('tracked-next');
+    if (nextBadge) {
+        const start = parseInt(nextBadge.dataset.start);
+        
+        if (nowSecs >= start) {
+            render(); // Пара почалась, перемальовуємо
+            return;
+        }
+
+        const remaining = start - nowSecs;
+        nextBadge.textContent = `Почнеться через ${formatTimeLeft(remaining)}`;
+    }
 }
 
 document.addEventListener('DOMContentLoaded', init);
