@@ -44,14 +44,7 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        body { 
-            background-color: var(--bg-body); 
-            color: var(--text-main); 
-            line-height: 1.5; 
-            padding-bottom: 40px;
-            transition: background-color 0.3s ease, color 0.3s ease;
-        }
-
+        body { background-color: var(--bg-body); color: var(--text-main); line-height: 1.5; padding-bottom: 40px; transition: background-color 0.3s ease, color 0.3s ease; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; position: relative; }
 
         /* Header & Theme Toggle */
@@ -59,48 +52,21 @@
         header h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; background: linear-gradient(90deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         header p { color: var(--text-muted); font-size: 14px; text-transform: capitalize; font-weight: 500; }
 
-        .theme-toggle {
-            position: absolute;
-            top: 5px;
-            right: 0;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: var(--text-main);
-            box-shadow: var(--shadow);
-            transition: all 0.2s ease;
-        }
+        .theme-toggle { position: absolute; top: 5px; right: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-main); box-shadow: var(--shadow); transition: all 0.2s ease; }
         .theme-toggle:hover { transform: scale(1.05); }
         .theme-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
         /* Controls */
         .controls { display: flex; margin-bottom: 24px; }
         .select-wrapper { flex: 1; position: relative; }
-        .select-wrapper select { 
-            width: 100%; appearance: none; background-color: var(--bg-card); 
-            border: 1px solid var(--border); color: var(--text-main); 
-            padding: 14px 18px; border-radius: 14px; font-size: 15px; font-weight: 600; 
-            outline: none; cursor: pointer; transition: all 0.2s ease;
-            box-shadow: var(--shadow);
-        }
+        .select-wrapper select { width: 100%; appearance: none; background-color: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 14px 18px; border-radius: 14px; font-size: 15px; font-weight: 600; outline: none; cursor: pointer; transition: all 0.2s ease; box-shadow: var(--shadow); }
         .select-wrapper select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
         .select-wrapper::after { content: "▼"; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text-muted); pointer-events: none; }
 
         /* Days Tabs */
         .days-nav { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 16px; scrollbar-width: none; }
         .days-nav::-webkit-scrollbar { display: none; }
-        .day-btn { 
-            background-color: var(--bg-card); border: 1px solid var(--border); 
-            color: var(--text-muted); padding: 10px 18px; border-radius: 20px; 
-            font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; 
-            transition: all 0.2s ease; box-shadow: var(--shadow);
-        }
+        .day-btn { background-color: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.2s ease; box-shadow: var(--shadow); }
         .day-btn:hover { border-color: var(--text-muted); }
         .day-btn.active { background-color: var(--primary); border-color: var(--primary); color: #fff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
 
@@ -111,12 +77,15 @@
         .day-header .week-badge { font-size: 12px; font-weight: 600; color: var(--text-muted); background: var(--bg-card); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border); }
 
         /* Lesson Card */
-        .lesson-card { 
-            background-color: var(--bg-card); border: 1px solid var(--border); 
-            border-radius: 16px; padding: 18px; display: flex; gap: 16px; 
-            transition: all 0.3s ease; box-shadow: var(--shadow);
-        }
+        .lesson-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: flex; gap: 16px; transition: all 0.3s ease; box-shadow: var(--shadow); position: relative; }
         .lesson-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); border-color: var(--primary); }
+
+        /* Підсвітка поточної пари */
+        .lesson-card.current-lesson { border-color: var(--accent-green); box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3), var(--shadow); }
+        [data-theme="dark"] .lesson-card.current-lesson { box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.5), var(--shadow); }
+        
+        .current-badge { position: absolute; top: -12px; right: 16px; background: var(--accent-green); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px; z-index: 10; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
 
         .time-block { min-width: 65px; text-align: center; border-right: 2px dashed var(--border); padding-right: 16px; display: flex; flex-direction: column; justify-content: center; }
         .time-start { font-size: 18px; font-weight: 800; color: var(--text-main); letter-spacing: -0.5px; }
@@ -135,11 +104,7 @@
         .badge-potik { background-color: var(--bg-blue); color: var(--primary); }
 
         /* Empty State */
-        .empty-state { 
-            text-align: center; padding: 40px 20px; color: var(--text-muted); 
-            background: var(--bg-card); border-radius: 16px; 
-            border: 2px dashed var(--border); box-shadow: var(--shadow);
-        }
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); background: var(--bg-card); border-radius: 16px; border: 2px dashed var(--border); box-shadow: var(--shadow); }
         .empty-state span { font-size: 40px; display: block; margin-bottom: 12px; }
         .empty-state p { font-size: 16px; font-weight: 600; }
     </style>
@@ -150,9 +115,7 @@
     <header>
         <h1>Розклад ФЕП-13</h1>
         <p id="current-date-display">Завантаження...</p>
-        
-        <button id="theme-toggle" class="theme-toggle" aria-label="Змінити тему">
-            </button>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Змінити тему"></button>
     </header>
 
     <div class="controls">
@@ -180,13 +143,11 @@
 const themeToggle = document.getElementById('theme-toggle');
 const htmlEl = document.documentElement;
 
-// SVG Іконки для кнопок
 const iconsHTML = {
     sun: `<path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />`,
     moon: `<path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />`
 };
 
-// Завантаження збереженої теми
 let currentTheme = localStorage.getItem('fep13_theme') || 'dark';
 htmlEl.setAttribute('data-theme', currentTheme);
 updateThemeIcon();
@@ -202,13 +163,18 @@ function updateThemeIcon() {
     themeToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${currentTheme === 'dark' ? iconsHTML.sun : iconsHTML.moon}</svg>`;
 }
 
-// ================= НАЛАШТУВАННЯ СЕМЕСТРУ =================
+// ================= НАЛАШТУВАННЯ ЧАСУ ТА СЕМЕСТРУ =================
 const BASE_MONDAY_UTC = Date.UTC(2026, 1, 9); // 9 лютого 2026
-const BASE_WEEK_TYPE = 'numerator'; // Цей тиждень був чисельником
+const BASE_WEEK_TYPE = 'numerator';
 
 const monthNames = ['січ.', 'лют.', 'бер.', 'квіт.', 'трав.', 'черв.', 'лип.', 'серп.', 'вер.', 'жовт.', 'лист.', 'груд.'];
 const uaDays = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', 'Пʼятниця', 'Субота'];
 const jsDaysMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+// Функція для отримання точного часу за Києвом
+function getKyivDate() {
+    return new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Kyiv"}));
+}
 
 // ================= ДАНІ РОЗКЛАДУ =================
 const SCHEDULE = {
@@ -308,9 +274,9 @@ function getWeekType(dateObj) {
 }
 
 function init() {
-    const today = new Date();
+    const todayKyiv = getKyivDate();
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    els.dateDisplay.textContent = today.toLocaleDateString('uk-UA', options);
+    els.dateDisplay.textContent = todayKyiv.toLocaleDateString('uk-UA', options);
     
     els.groupSelect.value = state.group;
 
@@ -328,6 +294,11 @@ function init() {
     });
 
     render();
+
+    // Авто-оновлення для підсвічування кожної хвилини
+    setInterval(() => {
+        if (state.tab === 'today' || state.tab === 'this_week') render();
+    }, 60000);
 }
 
 function parseTitle(rawTitle) {
@@ -344,7 +315,14 @@ function renderDayBlock(targetDate, showHeader = true) {
     const dayIndex = targetDate.getDay();
     const dayKey = jsDaysMap[dayIndex];
     const weekType = getWeekType(targetDate);
+    const kyivNow = getKyivDate();
     
+    // Перевірка чи це сьогодні за Києвом
+    const isTodayKyiv = targetDate.getDate() === kyivNow.getDate() && 
+                        targetDate.getMonth() === kyivNow.getMonth() && 
+                        targetDate.getFullYear() === kyivNow.getFullYear();
+    const currentMins = kyivNow.getHours() * 60 + kyivNow.getMinutes();
+
     let html = '';
 
     if (showHeader) {
@@ -379,13 +357,30 @@ function renderDayBlock(targetDate, showHeader = true) {
     html += filtered.map(lesson => {
         const { title, type, isPotik } = parseTitle(lesson.title);
         const cleanTeacher = lesson.teacher.replace(/\s*\(Потік\)/g, "").trim();
+        
+        // Логіка підсвічування "Триває зараз"
+        let isCurrent = false;
+        if (isTodayKyiv) {
+            const [sh, sm] = lesson.start.split(':').map(Number);
+            const [eh, em] = lesson.end.split(':').map(Number);
+            const startMins = sh * 60 + sm;
+            const endMins = eh * 60 + em;
+            if (currentMins >= startMins && currentMins <= endMins) {
+                isCurrent = true;
+            }
+        }
+
         let badges = '';
         if(type) badges += `<span class="badge badge-type">${type}</span>`;
         if(lesson.group) badges += `<span class="badge badge-group">Підгрупа ${lesson.group}</span>`;
         if(isPotik || lesson.teacher.includes('(Потік)')) badges += `<span class="badge badge-potik">Потік</span>`;
 
+        const cardClasses = isCurrent ? "lesson-card current-lesson" : "lesson-card";
+        const currentBadgeHTML = isCurrent ? `<div class="current-badge">Триває зараз</div>` : '';
+
         return `
-            <div class="lesson-card">
+            <div class="${cardClasses}">
+                ${currentBadgeHTML}
                 <div class="time-block">
                     <span class="time-start">${lesson.start}</span>
                     <span class="time-end">${lesson.end}</span>
@@ -409,18 +404,18 @@ function render() {
     });
 
     let contentHTML = '';
-    const now = new Date();
+    const nowKyiv = getKyivDate();
 
     if (state.tab === 'today') {
-        contentHTML = renderDayBlock(now, true);
+        contentHTML = renderDayBlock(nowKyiv, true);
     } 
     else if (state.tab === 'tomorrow') {
-        const tomorrow = new Date(now);
+        const tomorrow = new Date(nowKyiv);
         tomorrow.setDate(tomorrow.getDate() + 1);
         contentHTML = renderDayBlock(tomorrow, true);
     } 
     else if (state.tab === 'this_week') {
-        const mon = getLocalMonday(now);
+        const mon = getLocalMonday(nowKyiv);
         for(let i=0; i<5; i++) { 
             const d = new Date(mon);
             d.setDate(d.getDate() + i);
@@ -428,7 +423,7 @@ function render() {
         }
     } 
     else if (state.tab === 'next_week') {
-        const nextMon = getLocalMonday(now);
+        const nextMon = getLocalMonday(nowKyiv);
         nextMon.setDate(nextMon.getDate() + 7);
         for(let i=0; i<5; i++) {
             const d = new Date(nextMon);
