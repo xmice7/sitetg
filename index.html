@@ -12,7 +12,9 @@
     <title>Розклад ФЕП-13</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* Змінні для світлої теми */
+        /* =============================================
+           CSS ЗМІННІ
+        ============================================= */
         :root {
             --bg-body: #f1f5f9;
             --bg-card: #ffffff;
@@ -27,9 +29,9 @@
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
             --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             --modal-bg: rgba(255, 255, 255, 0.95);
+            --orb-opacity: 0.12;
         }
 
-        /* Змінні для темної теми */
         [data-theme="dark"] {
             --bg-body: #0f172a;
             --bg-card: #1e293b;
@@ -44,9 +46,9 @@
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
             --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
             --modal-bg: rgba(30, 41, 59, 0.95);
+            --orb-opacity: 0.18;
         }
 
-        /* Змінні для теми Total Black (OLED) */
         [data-theme="black"] {
             --bg-body: #000000;
             --bg-card: #121212;
@@ -61,8 +63,12 @@
             --shadow: none;
             --shadow-hover: 0 0 15px rgba(255,255,255,0.05);
             --modal-bg: rgba(15, 15, 15, 0.98);
+            --orb-opacity: 0.12;
         }
 
+        /* =============================================
+           БАЗОВІ СТИЛІ
+        ============================================= */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         
         body { 
@@ -70,33 +76,154 @@
             color: var(--text-main); 
             line-height: 1.5; 
             padding-bottom: calc(80px + env(safe-area-inset-bottom));
-            transition: background-color 0.3s ease, color 0.3s ease; 
+            transition: background-color 0.3s ease, color 0.3s ease;
+            overflow-x: hidden;
         }
-        
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; position: relative; }
 
-        /* Навігація сторінок */
-        .page { display: none; animation: fadeIn 0.3s ease; }
+        /* =============================================
+           АНІМОВАНИЙ ФОН — ОРБИ / СФЕРИ
+        ============================================= */
+        .bg-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .bg-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: var(--orb-opacity);
+            animation: orbFloat linear infinite;
+            will-change: transform;
+        }
+
+        .bg-orb-1 {
+            width: 420px; height: 420px;
+            background: var(--primary, #3b82f6);
+            top: -100px; left: -100px;
+            animation-duration: 22s;
+            animation-name: orbFloat1;
+        }
+        .bg-orb-2 {
+            width: 320px; height: 320px;
+            background: var(--accent-purple);
+            top: 30%; right: -80px;
+            animation-duration: 28s;
+            animation-name: orbFloat2;
+        }
+        .bg-orb-3 {
+            width: 260px; height: 260px;
+            background: var(--accent-green);
+            bottom: 15%; left: 20%;
+            animation-duration: 18s;
+            animation-name: orbFloat3;
+        }
+        .bg-orb-4 {
+            width: 180px; height: 180px;
+            background: var(--primary, #3b82f6);
+            bottom: 30%; right: 15%;
+            animation-duration: 32s;
+            animation-name: orbFloat1;
+            animation-delay: -10s;
+        }
+
+        /* Решітка-сітка поверх орбів */
+        .bg-grid {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        [data-theme="light"] .bg-grid {
+            background-image:
+                linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+        }
+
+        @keyframes orbFloat1 {
+            0%   { transform: translate(0px, 0px) scale(1); }
+            25%  { transform: translate(40px, 30px) scale(1.05); }
+            50%  { transform: translate(20px, 60px) scale(0.97); }
+            75%  { transform: translate(-20px, 30px) scale(1.03); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        @keyframes orbFloat2 {
+            0%   { transform: translate(0px, 0px) scale(1); }
+            33%  { transform: translate(-50px, 40px) scale(1.08); }
+            66%  { transform: translate(30px, -30px) scale(0.95); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        @keyframes orbFloat3 {
+            0%   { transform: translate(0px, 0px) scale(1); }
+            40%  { transform: translate(60px, -40px) scale(1.1); }
+            80%  { transform: translate(-30px, 20px) scale(0.93); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+
+        /* =============================================
+           LAYOUT
+        ============================================= */
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; position: relative; z-index: 1; }
+
+        .page { display: none; animation: fadeIn 0.35s ease; }
         .page.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Header & Settings Button */
+        /* =============================================
+           HEADER + ЛОГОТИП
+        ============================================= */
         header { text-align: center; margin-bottom: 24px; position: relative; padding-top: 10px; }
-        header h1 { font-size: 26px; font-weight: 800; margin-bottom: 6px; color: var(--primary); transition: color 0.3s ease; }
+
+        .header-logo-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .site-logo {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            object-fit: cover;
+            border: 2px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            flex-shrink: 0;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .site-logo:hover {
+            transform: scale(1.08) rotate(3deg);
+            box-shadow: 0 4px 16px rgba(59,130,246,0.35);
+        }
+
+        header h1 { font-size: 26px; font-weight: 800; color: var(--primary); transition: color 0.3s ease; }
         header p { color: var(--text-muted); font-size: 14px; text-transform: capitalize; font-weight: 500; }
 
-        .settings-btn { position: absolute; top: 5px; right: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 50%; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-main); box-shadow: var(--shadow); transition: all 0.2s ease; }
+        .settings-btn { position: absolute; top: 5px; right: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 50%; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-main); box-shadow: var(--shadow); transition: all 0.25s ease; }
         .settings-btn:hover { transform: rotate(45deg); color: var(--primary); border-color: var(--primary); }
         .settings-btn svg { width: 22px; height: 22px; fill: currentColor; }
 
-        /* Controls */
+        /* =============================================
+           CONTROLS
+        ============================================= */
         .controls { display: flex; margin-bottom: 16px; }
         .select-wrapper { flex: 1; position: relative; }
         .select-wrapper select { width: 100%; appearance: none; background-color: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 14px 18px; border-radius: 14px; font-size: 15px; font-weight: 600; outline: none; cursor: pointer; transition: all 0.2s ease; box-shadow: var(--shadow); }
         .select-wrapper select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
         .select-wrapper::after { content: "▼"; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text-muted); pointer-events: none; }
 
-        /* Days Tabs (Sticky) */
+        /* =============================================
+           DAYS NAV (sticky)
+        ============================================= */
         .days-nav { 
             display: flex; 
             gap: 10px; 
@@ -114,14 +241,58 @@
         .day-btn { background-color: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.2s ease; box-shadow: var(--shadow); }
         .day-btn.active { background-color: var(--primary); border-color: var(--primary); color: #fff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
 
-        /* Schedule List & Headers */
+        /* =============================================
+           SCHEDULE LIST
+        ============================================= */
         .schedule-list { display: flex; flex-direction: column; gap: 14px; }
         .day-header { display: flex; justify-content: space-between; align-items: flex-end; margin: 10px 0 8px 0; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
         .day-header .day-title { font-size: 18px; font-weight: 700; color: var(--text-main); }
         .day-header .week-badge { font-size: 12px; font-weight: 600; color: var(--text-muted); background: var(--bg-card); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border); }
 
-        /* Lesson Card */
-        .lesson-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; display: flex; gap: 16px; transition: all 0.3s ease; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+        /* =============================================
+           LESSON CARD — з анімацією появи
+        ============================================= */
+        .lesson-card { 
+            background-color: var(--bg-card); 
+            border: 1px solid var(--border); 
+            border-radius: 16px; 
+            padding: 16px; 
+            display: flex; 
+            gap: 16px; 
+            transition: all 0.3s ease; 
+            box-shadow: var(--shadow); 
+            position: relative; 
+            overflow: hidden;
+            animation: cardSlideIn 0.4s ease both;
+        }
+
+        /* Стагерований вхід карток */
+        .schedule-list .lesson-card:nth-child(1)  { animation-delay: 0.04s; }
+        .schedule-list .lesson-card:nth-child(2)  { animation-delay: 0.09s; }
+        .schedule-list .lesson-card:nth-child(3)  { animation-delay: 0.14s; }
+        .schedule-list .lesson-card:nth-child(4)  { animation-delay: 0.19s; }
+        .schedule-list .lesson-card:nth-child(5)  { animation-delay: 0.24s; }
+        .schedule-list .lesson-card:nth-child(6)  { animation-delay: 0.29s; }
+
+        @keyframes cardSlideIn {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Тонкий shimmer-ефект поверх картки при наведенні */
+        .lesson-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 60%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+            transform: skewX(-15deg);
+            transition: left 0.5s ease;
+            pointer-events: none;
+        }
+        .lesson-card:hover::before { left: 160%; }
+        .lesson-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
         
         .lesson-card.current-lesson { border-color: var(--accent-green); border-width: 2px; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.15); padding-bottom: 24px; }
         .current-badge { position: absolute; top: -1px; right: 16px; background: var(--accent-green); color: #fff; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 0 0 8px 8px; text-transform: uppercase; letter-spacing: 0.5px; z-index: 10; animation: pulse 2s infinite; }
@@ -139,21 +310,21 @@
         .lesson-meta { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
         .lesson-meta svg { width: 14px; height: 14px; fill: currentColor; opacity: 0.8; }
 
-        /* Badges */
+        /* BADGES */
         .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
         .badge { font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
         .badge-group { background-color: var(--bg-green); color: var(--accent-green); }
         .badge-type { background-color: var(--bg-purple); color: var(--accent-purple); }
         .badge-potik { background-color: var(--bg-blue); color: var(--primary); }
 
-        /* Live Timer UI */
+        /* LIVE TIMER */
         .live-timer-wrapper { position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: var(--border); z-index: 1; }
         .live-timer-progress { height: 100%; background: var(--accent-green); width: 0%; transition: width 1s linear; }
         .live-timer-text { font-size: 12px; font-weight: 700; color: var(--accent-green); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
         .live-timer-text svg { width: 14px; height: 14px; animation: spin 2s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        /* All Done Message */
+        /* ALL DONE */
         .all-done-message { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: flex; align-items: center; gap: 16px; margin-top: 8px; box-shadow: var(--shadow); flex-wrap: wrap; animation: slideUp 0.5s ease; position: relative; overflow: hidden; }
         .all-done-message::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--accent-green); border-radius: 16px 0 0 16px; }
         .all-done-icon { font-size: 24px; background: var(--bg-green); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
@@ -167,7 +338,9 @@
         .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); background: var(--bg-card); border-radius: 16px; border: 2px dashed var(--border); }
         .empty-state span { font-size: 40px; display: block; margin-bottom: 12px; }
 
-        /* --- КОРИСНЕ (USEFUL PAGE) --- */
+        /* =============================================
+           USEFUL PAGE
+        ============================================= */
         .useful-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding-top: 10px; }
         @media (max-width: 380px) { .useful-grid { grid-template-columns: 1fr; } }
         .useful-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px; text-decoration: none; transition: 0.2s; box-shadow: var(--shadow); cursor: pointer; text-align: left; }
@@ -177,14 +350,18 @@
         .useful-card h3 { font-size: 17px; font-weight: 700; color: var(--text-main); margin: 0; line-height: 1.2; }
         .useful-card p { font-size: 13px; color: var(--text-muted); font-weight: 500; margin: 0; line-height: 1.4; }
 
-        /* Нижнє меню (Bottom Nav) */
+        /* =============================================
+           BOTTOM NAV
+        ============================================= */
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 600px; background: var(--bg-card); border-top: 1px solid var(--border); display: flex; z-index: 90; padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -4px 20px rgba(0,0,0,0.05); }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 14px 0; background: none; border: none; color: var(--text-muted); font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px; }
         .nav-item svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: 0.2s; }
         .nav-item.active { color: var(--primary); }
         .nav-item.active svg { transform: translateY(-2px); stroke-width: 2.5; }
 
-        /* Modals */
+        /* =============================================
+           MODALS
+        ============================================= */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; display: flex; align-items: flex-end; justify-content: center; }
         .modal-overlay.active { opacity: 1; pointer-events: all; }
         .modal-content { background: var(--modal-bg); width: 100%; max-width: 600px; border-radius: 24px 24px 0 0; padding: 24px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-top: 1px solid var(--border); box-shadow: 0 -10px 40px rgba(0,0,0,0.2); }
@@ -195,13 +372,12 @@
         .close-btn { background: var(--border); border: none; width: 32px; height: 32px; border-radius: 50%; color: var(--text-main); font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: 0.2s; }
         .close-btn:hover { background: var(--primary); color: #fff; }
 
-        /* Кнопки вибору Moodle */
         .moodle-btn { display: flex; flex-direction: column; align-items: flex-start; background: var(--bg-body); border: 1px solid var(--border); padding: 18px; border-radius: 16px; text-decoration: none; color: var(--text-main); transition: 0.2s; margin-bottom: 14px; position: relative; overflow: hidden; }
         .moodle-btn:hover { border-color: var(--primary); box-shadow: var(--shadow); transform: translateX(4px); }
         .moodle-btn span { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
         .moodle-btn small { font-size: 12px; font-weight: 500; color: var(--text-muted); }
         
-        /* Settings Elements */
+        /* SETTINGS */
         .setting-group { margin-bottom: 20px; }
         .setting-group label { display: block; font-size: 14px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
         
@@ -219,11 +395,32 @@
 </head>
 <body>
 
+<!-- =============================================
+     АНІМОВАНИЙ ФОН
+============================================= -->
+<div class="bg-canvas" aria-hidden="true">
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+    <div class="bg-orb bg-orb-4"></div>
+    <div class="bg-grid"></div>
+</div>
+
 <div class="app-wrapper">
     <div id="page-schedule" class="page active">
         <div class="container">
             <header>
-                <h1>Розклад ФЕП-13</h1>
+                <!-- ЛОГОТИП + ЗАГОЛОВОК -->
+                <div class="header-logo-row">
+                    <img 
+                        src="https://image2url.com/r2/default/images/1771500451851-446b2df9-c4de-4696-bfaf-194abf93ad71.jpg"
+                        alt="ФЕП-13 логотип"
+                        class="site-logo"
+                        loading="lazy"
+                        onerror="this.style.display='none'"
+                    />
+                    <h1>Розклад ФЕП-13</h1>
+                </div>
                 <p id="current-date-display">Завантаження...</p>
                 <button id="open-settings" class="settings-btn" aria-label="Налаштування">
                     <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
@@ -254,7 +451,16 @@
     <div id="page-useful" class="page">
         <div class="container">
             <header>
-                <h1>Корисне</h1>
+                <div class="header-logo-row">
+                    <img 
+                        src="https://image2url.com/r2/default/images/1771500451851-446b2df9-c4de-4696-bfaf-194abf93ad71.jpg"
+                        alt="ФЕП-13 логотип"
+                        class="site-logo"
+                        loading="lazy"
+                        onerror="this.style.display='none'"
+                    />
+                    <h1>Корисне</h1>
+                </div>
                 <p>Важливі посилання та сервіси</p>
             </header>
 
@@ -294,6 +500,7 @@
     </nav>
 </div>
 
+<!-- MODALS (без змін) -->
 <div class="modal-overlay" id="moodle-modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -357,7 +564,10 @@
 </div>
 
 <script>
-// Безпечна робота з localStorage (щоб уникнути білого екрану)
+// =============================================
+// ВСЯ ЛОГІКА — БЕЗ ЗМІН
+// =============================================
+
 const storage = {
     get: (key, def) => { try { return localStorage.getItem(key) || def; } catch(e) { return def; } },
     set: (key, val) => { try { localStorage.setItem(key, val); } catch(e) {} }
@@ -366,11 +576,11 @@ const storage = {
 const htmlEl = document.documentElement;
 
 const colors = {
-    blue: { main: '#3b82f6', hover: '#2563eb', light: 'rgba(59, 130, 246, 0.15)' },
-    purple: { main: '#8b5cf6', hover: '#7c3aed', light: 'rgba(139, 92, 246, 0.15)' },
+    blue:    { main: '#3b82f6', hover: '#2563eb', light: 'rgba(59, 130, 246, 0.15)' },
+    purple:  { main: '#8b5cf6', hover: '#7c3aed', light: 'rgba(139, 92, 246, 0.15)' },
     emerald: { main: '#10b981', hover: '#059669', light: 'rgba(16, 185, 129, 0.15)' },
-    rose: { main: '#f43f5e', hover: '#e11d48', light: 'rgba(244, 63, 94, 0.15)' },
-    amber: { main: '#f59e0b', hover: '#d97706', light: 'rgba(245, 158, 11, 0.15)' }
+    rose:    { main: '#f43f5e', hover: '#e11d48', light: 'rgba(244, 63, 94, 0.15)' },
+    amber:   { main: '#f59e0b', hover: '#d97706', light: 'rgba(245, 158, 11, 0.15)' }
 };
 
 let state = {
@@ -381,24 +591,20 @@ let state = {
     color: storage.get('fep13_color', 'blue')
 };
 
-// Застосування теми та кольору при завантаженні
 htmlEl.setAttribute('data-theme', state.theme);
 applyColor(state.color);
 
-let els = {}; // Буде заповнено в init()
+let els = {};
 
-const BASE_MONDAY_UTC = Date.UTC(2026, 1, 9); // 9 лютого 2026
+const BASE_MONDAY_UTC = Date.UTC(2026, 1, 9);
 const BASE_WEEK_TYPE = 'numerator';
 const monthNames = ['січ.', 'лют.', 'бер.', 'квіт.', 'трав.', 'черв.', 'лип.', 'серп.', 'вер.', 'жовт.', 'лист.', 'груд.'];
 const uaDays = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', 'Пʼятниця', 'Субота'];
 const jsDaysMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
 function getKyivDate() { 
-    try {
-        return new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Kyiv"})); 
-    } catch(e) {
-        return new Date(); // Запасний варіант, якщо браузер не підтримує timeZone
-    }
+    try { return new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Kyiv"})); }
+    catch(e) { return new Date(); }
 }
 
 function timeToSeconds(timeStr) { 
@@ -433,10 +639,10 @@ const SCHEDULE = {
     ],
     tue: [
       ...getEngLessons("3/Б"),
-      { start: "10:10", end: "11:30", title: "Об’єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "N12/Т", group: 1 },
+      { start: "10:10", end: "11:30", title: "Об'єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "N12/Т", group: 1 },
       { start: "10:10", end: "11:30", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х.І.", room: "324/Т", group: 2 },
       { start: "11:50", end: "13:10", title: "Вища математика (Л)", teacher: "доц. Жумік О.В. (Потік)", room: "130/Т" },
-      { start: "13:30", end: "14:50", title: "Об’єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "№6/Т", group: 2 },
+      { start: "13:30", end: "14:50", title: "Об'єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "№6/Т", group: 2 },
     ],
     wed: [
       { start: "10:10", end: "11:30", title: "Філософія (Л)", teacher: "доц. Лосік О.М. (Потік)", room: "2/Б" },
@@ -448,7 +654,7 @@ const SCHEDULE = {
       { start: "10:10", end: "11:30", title: "Вища математика (ПрС)", teacher: "доц. Жумік О.В.", room: "407/Т" },
     ],
     fri: [
-      { start: "10:10", end: "11:30", title: "Об’єктно-орієнтоване програмування (Л)", teacher: "доц. Кушнір О.О. (Потік)", room: "130/Т" },
+      { start: "10:10", end: "11:30", title: "Об'єктно-орієнтоване програмування (Л)", teacher: "доц. Кушнір О.О. (Потік)", room: "130/Т" },
       { start: "11:50", end: "13:10", title: "Дискретна математика (Л)", teacher: "доц. Середницька Х.І. (Потік)", room: "130/Т" },
       { start: "13:30", end: "14:50", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х.І.", room: "№6/Т", group: 1 },
     ],
@@ -464,10 +670,10 @@ const SCHEDULE = {
     ],
     tue: [
       ...getEngLessons("3/Б"),
-      { start: "10:10", end: "11:30", title: "Об’єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "N12/Т", group: 1 },
+      { start: "10:10", end: "11:30", title: "Об'єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "N12/Т", group: 1 },
       { start: "10:10", end: "11:30", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х.І.", room: "324/Т", group: 2 },
       { start: "11:50", end: "13:10", title: "Вища математика (Л)", teacher: "доц. Жумік О.В. (Потік)", room: "130/Т" },
-      { start: "13:30", end: "14:50", title: "Об’єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "№6/Т", group: 2 },
+      { start: "13:30", end: "14:50", title: "Об'єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "№6/Т", group: 2 },
     ],
     wed: [
       { start: "11:50", end: "13:10", title: "Веб-технології та програмування (ч.1) (Л)", teacher: "ас. Чмихало О.С. (Потік)", room: "1/Б" },
@@ -478,7 +684,7 @@ const SCHEDULE = {
       { start: "10:10", end: "11:30", title: "Вища математика (ПрС)", teacher: "доц. Жумік О.В.", room: "407/Т" },
     ],
     fri: [
-      { start: "10:10", end: "11:30", title: "Об’єктно-орієнтоване програмування (Л)", teacher: "доц. Кушнір О.О. (Потік)", room: "130/Т" },
+      { start: "10:10", end: "11:30", title: "Об'єктно-орієнтоване програмування (Л)", teacher: "доц. Кушнір О.О. (Потік)", room: "130/Т" },
       { start: "11:50", end: "13:10", title: "Дискретна математика (Л)", teacher: "доц. Середницька Х.І. (Потік)", room: "130/Т" },
       { start: "13:30", end: "14:50", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х.І.", room: "№6/Т", group: 1 },
     ],
@@ -627,7 +833,6 @@ function renderDayBlock(targetDate, showHeader = true) {
         html += `<div class="day-header"><span class="day-title">${uaDays[dayIndex]}, ${dateStr}</span><span class="week-badge">${wTypeName}</span></div>`;
     }
 
-    // Вихідні дні
     if (dayIndex === 0 || dayIndex === 6) {
         let out = html + `<div class="empty-state"><span>🎉</span><p>Ура, вихідний!</p>`;
         if (isTodayKyiv) {
@@ -644,7 +849,6 @@ function renderDayBlock(targetDate, showHeader = true) {
         return true;
     });
 
-    // Немає пар
     if (filtered.length === 0) {
         let out = html + `<div class="empty-state"><span>🙌</span><p>На цей день пар немає</p>`;
         if (isTodayKyiv) {
@@ -726,7 +930,6 @@ function renderDayBlock(targetDate, showHeader = true) {
         `;
     }).join('');
 
-    // БЛОК "НА СЬОГОДНІ ВСЕ"
     if (isTodayKyiv) {
         const lastLesson = filtered[filtered.length - 1];
         const lastEndS = timeToSeconds(lastLesson.end);
@@ -780,15 +983,11 @@ function updateLiveTimers() {
         const start = parseInt(currentCard.dataset.start);
         const end = parseInt(currentCard.dataset.end);
         
-        if (nowSecs > end) {
-            render(); 
-            return;
-        }
+        if (nowSecs > end) { render(); return; }
 
         const totalDuration = end - start;
         const elapsed = nowSecs - start;
         const remaining = end - nowSecs;
-        
         const progressPercent = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
         
         const timeValEl = document.getElementById('live-time-val');
@@ -801,12 +1000,7 @@ function updateLiveTimers() {
     const nextBadge = document.getElementById('tracked-next');
     if (nextBadge) {
         const start = parseInt(nextBadge.dataset.start);
-        
-        if (nowSecs >= start) {
-            render(); 
-            return;
-        }
-
+        if (nowSecs >= start) { render(); return; }
         const remaining = start - nowSecs;
         nextBadge.textContent = `Почнеться через ${formatTimeLeft(remaining)}`;
     }
