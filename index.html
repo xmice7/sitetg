@@ -807,7 +807,8 @@ const storage = {
 
 // ── ОГОЛОШЕННЯ: Пароль ─────────────────────────────
 // Змініть цей рядок на свій пароль!
-const ADMIN_PASS = 'revalonexgod';
+// Пароль захищено SHA-256 хешем — у коді зберігається лише хеш, не сам пароль
+const ADMIN_PASS_HASH = '42f4190f765a004bdcfe6ed4616d6ca1342e1d20c1030fd0169d071496275367';
 
 // ── ANNOUNCEMENT LOGIC ─────────────────────────────
 function initAnnouncement() {
@@ -916,8 +917,18 @@ function initAnnouncement() {
         passInput.classList.remove('error');
     }
 
+    async function checkPassword(input) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(input);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        return hashHex === ADMIN_PASS_HASH;
+    }
+
     async function saveAnnouncement(clear) {
-        if (passInput.value !== ADMIN_PASS) {
+        const isValid = await checkPassword(passInput.value);
+        if (!isValid) {
             passInput.classList.add('error');
             setTimeout(() => passInput.classList.remove('error'), 600);
             passInput.focus();
