@@ -46,6 +46,23 @@
             --modal-bg: rgba(30, 41, 59, 0.95);
         }
 
+        /* Змінні для теми Total Black (OLED) */
+        [data-theme="black"] {
+            --bg-body: #000000;
+            --bg-card: #121212;
+            --text-main: #ffffff;
+            --text-muted: #888888;
+            --border: #222222;
+            --accent-green: #00ff88;
+            --bg-green: rgba(0, 255, 136, 0.1);
+            --accent-purple: #b388ff;
+            --bg-purple: rgba(179, 136, 255, 0.1);
+            --bg-blue: rgba(59, 130, 246, 0.1);
+            --shadow: none;
+            --shadow-hover: 0 0 15px rgba(255,255,255,0.05);
+            --modal-bg: rgba(15, 15, 15, 0.98);
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         
         body { 
@@ -194,10 +211,10 @@
         .color-circle::after { content: "✓"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 14px; opacity: 0; font-weight: bold; }
         .color-circle.active::after { opacity: 1; }
 
-        .theme-switch { display: flex; background: var(--bg-body); border-radius: 12px; padding: 4px; border: 1px solid var(--border); }
-        .theme-btn { flex: 1; padding: 10px; border: none; background: transparent; color: var(--text-muted); font-size: 14px; font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .theme-switch { display: flex; background: var(--bg-body); border-radius: 12px; padding: 4px; border: 1px solid var(--border); gap: 4px; }
+        .theme-btn { flex: 1; padding: 10px 4px; border: none; background: transparent; color: var(--text-muted); font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .theme-btn.active { background: var(--bg-card); color: var(--text-main); box-shadow: var(--shadow); }
-        .theme-btn svg { width: 16px; height: 16px; fill: currentColor; stroke: none; }
+        .theme-btn svg { width: 14px; height: 14px; fill: currentColor; stroke: none; }
     </style>
 </head>
 <body>
@@ -261,6 +278,16 @@
                         <p>Навчальні матеріали і контроль ваших знань</p>
                     </div>
                 </div>
+
+                <a href="https://teams.cloud.microsoft" target="_blank" class="useful-card">
+                    <div class="useful-icon">
+                        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    </div>
+                    <div>
+                        <h3>Microsoft Teams</h3>
+                        <p>Онлайн-пари, лекції та комунікація</p>
+                    </div>
+                </a>
             </div>
         </div>
     </div>
@@ -317,6 +344,9 @@
                 </button>
                 <button class="theme-btn" data-theme-val="dark">
                     <svg viewBox="0 0 24 24"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Темна
+                </button>
+                <button class="theme-btn" data-theme-val="black">
+                    <svg viewBox="0 0 24 24"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" fill="currentColor"/></svg> Black
                 </button>
             </div>
         </div>
