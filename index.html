@@ -3,18 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
     <meta name="theme-color" content="#1e293b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
-    
     <title>Розклад ФЕП-13</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* =============================================
-           CSS ЗМІННІ
-        ============================================= */
         :root {
             --fs-title: 15px;
             --fs-meta: 13px;
@@ -31,12 +26,11 @@
             --accent-purple: #7c3aed;
             --bg-purple: #ede9fe;
             --bg-blue: #dbeafe;
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-            --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --modal-bg: rgba(255, 255, 255, 0.95);
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+            --shadow-hover: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            --modal-bg: rgba(255,255,255,0.95);
             --orb-opacity: 0.12;
         }
-
         [data-theme="dark"] {
             --bg-body: #0f172a;
             --bg-card: #1e293b;
@@ -44,16 +38,15 @@
             --text-muted: #94a3b8;
             --border: #334155;
             --accent-green: #10b981;
-            --bg-green: rgba(16, 185, 129, 0.15);
+            --bg-green: rgba(16,185,129,0.15);
             --accent-purple: #a78bfa;
-            --bg-purple: rgba(139, 92, 246, 0.15);
-            --bg-blue: rgba(59, 130, 246, 0.15);
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-            --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-            --modal-bg: rgba(30, 41, 59, 0.95);
+            --bg-purple: rgba(139,92,246,0.15);
+            --bg-blue: rgba(59,130,246,0.15);
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+            --shadow-hover: 0 10px 15px -3px rgba(0,0,0,0.4);
+            --modal-bg: rgba(30,41,59,0.95);
             --orb-opacity: 0.18;
         }
-
         [data-theme="black"] {
             --bg-body: #000000;
             --bg-card: #121212;
@@ -61,320 +54,342 @@
             --text-muted: #888888;
             --border: #222222;
             --accent-green: #00ff88;
-            --bg-green: rgba(0, 255, 136, 0.1);
+            --bg-green: rgba(0,255,136,0.1);
             --accent-purple: #b388ff;
-            --bg-purple: rgba(179, 136, 255, 0.1);
-            --bg-blue: rgba(59, 130, 246, 0.1);
+            --bg-purple: rgba(179,136,255,0.1);
+            --bg-blue: rgba(59,130,246,0.1);
             --shadow: none;
             --shadow-hover: 0 0 15px rgba(255,255,255,0.05);
-            --modal-bg: rgba(15, 15, 15, 0.98);
+            --modal-bg: rgba(15,15,15,0.98);
             --orb-opacity: 0.12;
         }
 
-        /* =============================================
-           БАЗОВІ СТИЛІ
-        ============================================= */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        
-        body { 
-            background-color: var(--bg-body); 
-            color: var(--text-main); 
-            line-height: 1.5; 
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.5;
             padding-bottom: calc(80px + env(safe-area-inset-bottom));
             transition: background-color 0.3s ease, color 0.3s ease;
             overflow-x: hidden;
         }
 
-        /* =============================================
-           АНІМОВАНИЙ ФОН — ОРБИ / СФЕРИ
-        ============================================= */
-        .bg-canvas {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 0;
-            overflow: hidden;
-        }
+        /* BG orbs */
+        .bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
+        .bg-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: var(--orb-opacity); will-change: transform; }
+        .bg-orb-1 { width: 420px; height: 420px; background: var(--primary, #3b82f6); top: -100px; left: -100px; animation: orbFloat1 22s linear infinite; }
+        .bg-orb-2 { width: 320px; height: 320px; background: var(--accent-purple); top: 30%; right: -80px; animation: orbFloat2 28s linear infinite; }
+        .bg-orb-3 { width: 260px; height: 260px; background: var(--accent-green); bottom: 15%; left: 20%; animation: orbFloat3 18s linear infinite; }
+        .bg-orb-4 { width: 180px; height: 180px; background: var(--primary, #3b82f6); bottom: 30%; right: 15%; animation: orbFloat1 32s linear infinite; animation-delay: -10s; }
+        @keyframes orbFloat1 { 0% { transform: translate(0,0) scale(1); } 25% { transform: translate(40px,30px) scale(1.05); } 50% { transform: translate(20px,60px) scale(0.97); } 75% { transform: translate(-20px,30px) scale(1.03); } 100% { transform: translate(0,0) scale(1); } }
+        @keyframes orbFloat2 { 0% { transform: translate(0,0) scale(1); } 33% { transform: translate(-50px,40px) scale(1.08); } 66% { transform: translate(30px,-30px) scale(0.95); } 100% { transform: translate(0,0) scale(1); } }
+        @keyframes orbFloat3 { 0% { transform: translate(0,0) scale(1); } 40% { transform: translate(60px,-40px) scale(1.1); } 80% { transform: translate(-30px,20px) scale(0.93); } 100% { transform: translate(0,0) scale(1); } }
 
-        .bg-orb {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(80px);
-            opacity: var(--orb-opacity);
-            animation: orbFloat linear infinite;
-            will-change: transform;
-        }
-
-        .bg-orb-1 {
-            width: 420px; height: 420px;
-            background: var(--primary, #3b82f6);
-            top: -100px; left: -100px;
-            animation-duration: 22s;
-            animation-name: orbFloat1;
-        }
-        .bg-orb-2 {
-            width: 320px; height: 320px;
-            background: var(--accent-purple);
-            top: 30%; right: -80px;
-            animation-duration: 28s;
-            animation-name: orbFloat2;
-        }
-        .bg-orb-3 {
-            width: 260px; height: 260px;
-            background: var(--accent-green);
-            bottom: 15%; left: 20%;
-            animation-duration: 18s;
-            animation-name: orbFloat3;
-        }
-        .bg-orb-4 {
-            width: 180px; height: 180px;
-            background: var(--primary, #3b82f6);
-            bottom: 30%; right: 15%;
-            animation-duration: 32s;
-            animation-name: orbFloat1;
-            animation-delay: -10s;
-        }
-
-
-
-        @keyframes orbFloat1 {
-            0%   { transform: translate(0px, 0px) scale(1); }
-            25%  { transform: translate(40px, 30px) scale(1.05); }
-            50%  { transform: translate(20px, 60px) scale(0.97); }
-            75%  { transform: translate(-20px, 30px) scale(1.03); }
-            100% { transform: translate(0px, 0px) scale(1); }
-        }
-        @keyframes orbFloat2 {
-            0%   { transform: translate(0px, 0px) scale(1); }
-            33%  { transform: translate(-50px, 40px) scale(1.08); }
-            66%  { transform: translate(30px, -30px) scale(0.95); }
-            100% { transform: translate(0px, 0px) scale(1); }
-        }
-        @keyframes orbFloat3 {
-            0%   { transform: translate(0px, 0px) scale(1); }
-            40%  { transform: translate(60px, -40px) scale(1.1); }
-            80%  { transform: translate(-30px, 20px) scale(0.93); }
-            100% { transform: translate(0px, 0px) scale(1); }
-        }
-
-        /* =============================================
-           LAYOUT
-        ============================================= */
         .container { max-width: 600px; margin: 0 auto; padding: 20px; position: relative; z-index: 1; }
-
         .page { display: none; animation: fadeIn 0.35s ease; }
         .page.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* =============================================
-           HEADER + ЛОГОТИП
-        ============================================= */
+        /* Header */
         header { text-align: center; margin-bottom: 24px; position: relative; padding-top: 10px; }
-
-        .header-logo-row {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 6px;
-        }
-
-        .site-logo {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            object-fit: cover;
-            border: 2px solid var(--border);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            flex-shrink: 0;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .site-logo:hover {
-            transform: scale(1.08) rotate(3deg);
-            box-shadow: 0 4px 16px rgba(59,130,246,0.35);
-        }
-
-        header h1 { 
-            font-size: 26px; 
-            font-weight: 800; 
-            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.4));
-            transition: filter 0.3s ease;
-        }
-        [data-theme="light"] header h1 {
-            filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.25));
-        }
+        .header-logo-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px; }
+        .site-logo { width: 36px; height: 36px; border-radius: 10px; object-fit: cover; border: 2px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.2); flex-shrink: 0; transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .site-logo:hover { transform: scale(1.08) rotate(3deg); box-shadow: 0 4px 16px rgba(59,130,246,0.35); }
+        header h1 { font-size: 26px; font-weight: 800; background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 0 12px rgba(59,130,246,0.4)); }
         header p { color: var(--text-muted); font-size: 14px; text-transform: capitalize; font-weight: 500; }
-
         .settings-btn { position: absolute; top: 5px; right: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 50%; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-main); box-shadow: var(--shadow); transition: all 0.25s ease; }
         .settings-btn:hover { transform: rotate(45deg); color: var(--primary); border-color: var(--primary); }
         .settings-btn svg { width: 22px; height: 22px; fill: currentColor; }
 
-        /* =============================================
-           CONTROLS
-        ============================================= */
+        /* Controls */
         .controls { display: flex; margin-bottom: 16px; }
         .select-wrapper { flex: 1; position: relative; }
         .select-wrapper select { width: 100%; appearance: none; background-color: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 14px 18px; border-radius: 14px; font-size: 15px; font-weight: 600; outline: none; cursor: pointer; transition: all 0.2s ease; box-shadow: var(--shadow); }
-        .select-wrapper select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
+        .select-wrapper select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
         .select-wrapper::after { content: "▼"; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text-muted); pointer-events: none; }
 
-        /* =============================================
-           DAYS NAV (sticky)
-        ============================================= */
-        .days-nav { 
-            display: flex; 
-            gap: 8px; 
-            overflow-x: auto; 
-            padding: 10px 4px 12px 4px; 
-            margin-bottom: 8px; 
-            scrollbar-width: none; 
-            position: sticky; 
-            top: 0; 
-            /* Скляний ефект замість суцільного фону */
-            background: transparent;
-            z-index: 50; 
-            transition: background-color 0.3s ease;
-        }
+        /* Days nav */
+        .days-nav { display: flex; gap: 8px; overflow-x: auto; padding: 10px 4px 12px 4px; margin-bottom: 8px; scrollbar-width: none; position: sticky; top: 0; background: transparent; z-index: 50; }
         .days-nav::-webkit-scrollbar { display: none; }
+        .day-btn { background: rgba(255,255,255,0.06); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        [data-theme="light"] .day-btn { background: rgba(255,255,255,0.55); border-color: rgba(0,0,0,0.08); }
+        .day-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.18); color: var(--text-main); }
+        .day-btn.active { background-color: var(--primary); border-color: var(--primary); color: #fff; box-shadow: 0 4px 14px rgba(59,130,246,0.45); backdrop-filter: none; }
 
-        /* Кнопки — напівпрозорі, скляні */
-        .day-btn { 
-            background: rgba(255, 255, 255, 0.06);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1); 
-            color: var(--text-muted); 
-            padding: 10px 18px; 
-            border-radius: 20px; 
-            font-size: 14px; 
-            font-weight: 600; 
-            cursor: pointer; 
-            white-space: nowrap; 
-            transition: all 0.2s ease; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        }
-        [data-theme="light"] .day-btn {
-            background: rgba(255, 255, 255, 0.55);
-            border-color: rgba(0, 0, 0, 0.08);
-        }
-        .day-btn:hover {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: rgba(255, 255, 255, 0.18);
-            color: var(--text-main);
-        }
-        .day-btn.active { 
-            background-color: var(--primary); 
-            border-color: var(--primary); 
-            color: #fff; 
-            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.45);
-            backdrop-filter: none;
-        }
-
-        /* =============================================
-           SCHEDULE LIST
-        ============================================= */
+        /* Schedule */
         .schedule-list { display: flex; flex-direction: column; gap: 14px; }
         .day-header { display: flex; justify-content: space-between; align-items: flex-end; margin: 10px 0 8px 0; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
         .day-header .day-title { font-size: var(--fs-day-title); font-weight: 700; color: var(--text-main); }
         .day-header .week-badge { font-size: 12px; font-weight: 600; color: var(--text-muted); background: var(--bg-card); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border); }
 
-        /* =============================================
-           LESSON CARD — з анімацією появи
-        ============================================= */
-        .lesson-card { 
-            background-color: var(--bg-card); 
-            border: 1px solid var(--border); 
-            border-radius: 16px; 
-            padding: 16px; 
-            display: flex; 
-            gap: 16px; 
-            transition: all 0.3s ease; 
-            box-shadow: var(--shadow); 
-            position: relative; 
-            overflow: hidden;
-            animation: cardSlideIn 0.4s ease both;
-        }
-
-        /* Стагерований вхід карток */
-        .schedule-list .lesson-card:nth-child(1)  { animation-delay: 0.04s; }
-        .schedule-list .lesson-card:nth-child(2)  { animation-delay: 0.09s; }
-        .schedule-list .lesson-card:nth-child(3)  { animation-delay: 0.14s; }
-        .schedule-list .lesson-card:nth-child(4)  { animation-delay: 0.19s; }
-        .schedule-list .lesson-card:nth-child(5)  { animation-delay: 0.24s; }
-        .schedule-list .lesson-card:nth-child(6)  { animation-delay: 0.29s; }
-
-        @keyframes cardSlideIn {
-            from { opacity: 0; transform: translateY(14px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Тонкий shimmer-ефект поверх картки при наведенні */
-        .lesson-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%;
-            width: 60%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
-            transform: skewX(-15deg);
-            transition: left 0.5s ease;
-            pointer-events: none;
-        }
+        /* Lesson card */
+        .lesson-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; display: flex; gap: 16px; transition: all 0.3s ease; box-shadow: var(--shadow); position: relative; overflow: hidden; animation: cardSlideIn 0.4s ease both; }
+        .schedule-list .lesson-card:nth-child(1) { animation-delay: 0.04s; }
+        .schedule-list .lesson-card:nth-child(2) { animation-delay: 0.09s; }
+        .schedule-list .lesson-card:nth-child(3) { animation-delay: 0.14s; }
+        .schedule-list .lesson-card:nth-child(4) { animation-delay: 0.19s; }
+        .schedule-list .lesson-card:nth-child(5) { animation-delay: 0.24s; }
+        .schedule-list .lesson-card:nth-child(6) { animation-delay: 0.29s; }
+        @keyframes cardSlideIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        .lesson-card::before { content: ''; position: absolute; top: 0; left: -100%; width: 60%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent); transform: skewX(-15deg); transition: left 0.5s ease; pointer-events: none; }
         .lesson-card:hover::before { left: 160%; }
         .lesson-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
-        
-        .lesson-card.current-lesson { border-color: var(--accent-green); border-width: 2px; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.15); padding-bottom: 24px; }
+        .lesson-card.current-lesson { border-color: var(--accent-green); border-width: 2px; box-shadow: 0 8px 20px rgba(16,185,129,0.15); padding-bottom: 24px; }
         .current-badge { position: absolute; top: -1px; right: 16px; background: var(--accent-green); color: #fff; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 0 0 8px 8px; text-transform: uppercase; letter-spacing: 0.5px; z-index: 10; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-
         .lesson-card.next-lesson { border-color: var(--primary); border-width: 2px; }
         .next-badge { position: absolute; top: -1px; right: 16px; background: var(--primary); color: #fff; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 0 0 8px 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-
         .time-block { min-width: 60px; text-align: center; border-right: 2px dashed var(--border); padding-right: 12px; display: flex; flex-direction: column; justify-content: center; z-index: 2; }
         .time-start { font-size: var(--fs-time); font-weight: 800; color: var(--text-main); letter-spacing: -0.5px; }
         .time-end { font-size: var(--fs-time-end); font-weight: 500; color: var(--text-muted); margin-top: 4px; }
-
         .info-block { flex: 1; z-index: 2; }
         .lesson-title { font-size: var(--fs-title); font-weight: 700; margin-bottom: 8px; line-height: 1.3; color: var(--text-main); }
         .lesson-meta { display: flex; align-items: center; gap: 8px; font-size: var(--fs-meta); font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
         .lesson-meta svg { width: 14px; height: 14px; fill: currentColor; opacity: 0.8; }
-
-        /* BADGES */
         .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
         .badge { font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
         .badge-group { background-color: var(--bg-green); color: var(--accent-green); }
         .badge-type { background-color: var(--bg-purple); color: var(--accent-purple); }
         .badge-potik { background-color: var(--bg-blue); color: var(--primary); }
-
-        /* LIVE TIMER */
         .live-timer-wrapper { position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: var(--border); z-index: 1; }
         .live-timer-progress { height: 100%; background: var(--accent-green); width: 0%; transition: width 1s linear; }
         .live-timer-text { font-size: 12px; font-weight: 700; color: var(--accent-green); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
         .live-timer-text svg { width: 14px; height: 14px; animation: spin 2s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        /* ALL DONE */
         .all-done-message { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: flex; align-items: center; gap: 16px; margin-top: 8px; box-shadow: var(--shadow); flex-wrap: wrap; animation: slideUp 0.5s ease; position: relative; overflow: hidden; }
         .all-done-message::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--accent-green); border-radius: 16px 0 0 16px; }
         .all-done-icon { font-size: 24px; background: var(--bg-green); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
         .all-done-text { flex: 1; min-width: 150px; }
         .all-done-text h4 { font-size: 16px; font-weight: 800; color: var(--text-main); margin-bottom: 2px; }
         .all-done-text p { font-size: 13px; color: var(--text-muted); font-weight: 500; }
-        .go-tomorrow-btn { background: var(--primary); color: #fff; border: none; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); display: flex; align-items: center; gap: 6px; margin-left: auto; }
+        .go-tomorrow-btn { background: var(--primary); color: #fff; border: none; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(59,130,246,0.3); display: flex; align-items: center; gap: 6px; margin-left: auto; }
         .go-tomorrow-btn:hover { transform: translateY(-2px); }
         @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
         .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); background: var(--bg-card); border-radius: 16px; border: 2px dashed var(--border); }
         .empty-state span { font-size: 40px; display: block; margin-bottom: 12px; }
 
-        /* =============================================
-           USEFUL PAGE
-        ============================================= */
+        /* ── ANNOUNCEMENT BOARD ───────────────────────── */
+        .announcement-wrap { margin-bottom: 20px; }
+
+        /* Велика двійна плашка */
+        .announcement-board {
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+            position: relative;
+            cursor: default;
+        }
+
+        /* Верхня смуга — градієнт */
+        .ann-stripe-top {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+            padding: 14px 18px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .ann-stripe-top-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .ann-icon-wrap {
+            width: 36px; height: 36px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .ann-label {
+            font-size: 11px;
+            font-weight: 800;
+            color: rgba(255,255,255,0.8);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .ann-title-text {
+            font-size: 16px;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1.1;
+        }
+
+        /* Кнопка редагування в смузі */
+        .ann-edit-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.35);
+            color: #fff;
+            padding: 7px 13px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-shrink: 0;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        .ann-edit-btn:hover { background: rgba(255,255,255,0.32); }
+        .ann-edit-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+        /* Нижня смуга — тіло повідомлення */
+        .ann-stripe-bottom {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-top: none;
+            padding: 18px;
+            min-height: 80px;
+            border-radius: 0 0 20px 20px;
+        }
+        .ann-body-text {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-main);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .ann-empty-hint {
+            color: var(--text-muted);
+            font-size: 14px;
+            font-style: italic;
+        }
+        .ann-updated {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Collapse/expand */
+        .ann-body-text {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .ann-body-text.expanded {
+            display: block;
+            overflow: visible;
+        }
+        .ann-expand-btn {
+            margin-top: 10px;
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0;
+            display: none;
+            align-items: center;
+            gap: 4px;
+        }
+        .ann-expand-btn.visible { display: flex; }
+        .ann-expand-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.5; transition: transform 0.3s ease; }
+        .ann-expand-btn.expanded svg { transform: rotate(180deg); }
+
+        /* Панель редагування */
+        .ann-editor {
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            padding: 18px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 20px 20px;
+        }
+        .ann-editor.open { display: flex; }
+        .ann-editor textarea {
+            width: 100%;
+            min-height: 120px;
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 15px;
+            font-family: inherit;
+            padding: 14px;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.2s;
+            line-height: 1.6;
+        }
+        .ann-editor textarea:focus { border-color: var(--primary); }
+        .ann-editor-pass {
+            width: 100%;
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 14px;
+            font-family: inherit;
+            padding: 12px 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .ann-editor-pass:focus { border-color: var(--primary); }
+        .ann-editor-pass.error { border-color: #ef4444; animation: shake 0.3s ease; }
+        @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+        .ann-editor-pass-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: -6px;
+        }
+        .ann-editor-row {
+            display: flex;
+            gap: 10px;
+        }
+        .ann-save-btn {
+            flex: 1;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 13px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ann-save-btn:hover { opacity: 0.88; }
+        .ann-cancel-btn {
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 13px 18px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ann-cancel-btn:hover { border-color: var(--text-muted); color: var(--text-main); }
+        .ann-clear-btn {
+            background: rgba(239,68,68,0.1);
+            border: 1px solid rgba(239,68,68,0.25);
+            color: #ef4444;
+            padding: 13px 14px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .ann-clear-btn:hover { background: rgba(239,68,68,0.18); }
+        /* ─────────────────────────────────────────────── */
+
+        /* Useful page */
         .useful-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding-top: 10px; }
         @media (max-width: 380px) { .useful-grid { grid-template-columns: 1fr; } }
         .useful-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px; text-decoration: none; transition: 0.2s; box-shadow: var(--shadow); cursor: pointer; text-align: left; }
@@ -384,57 +399,94 @@
         .useful-card h3 { font-size: 17px; font-weight: 700; color: var(--text-main); margin: 0; line-height: 1.2; }
         .useful-card p { font-size: 13px; color: var(--text-muted); font-weight: 500; margin: 0; line-height: 1.4; }
 
-        /* =============================================
-           BOTTOM NAV
-        ============================================= */
+        /* Bottom nav */
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 600px; background: var(--bg-card); border-top: 1px solid var(--border); display: flex; z-index: 90; padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -4px 20px rgba(0,0,0,0.05); }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 14px 0; background: none; border: none; color: var(--text-muted); font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px; }
         .nav-item svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: 0.2s; }
         .nav-item.active { color: var(--primary); }
         .nav-item.active svg { transform: translateY(-2px); stroke-width: 2.5; }
 
-        /* =============================================
-           MODALS
-        ============================================= */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; display: flex; align-items: flex-end; justify-content: center; }
+        /* ── MODALS — ВИПРАВЛЕНІ ──────────────────────── */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
         .modal-overlay.active { opacity: 1; pointer-events: all; }
-        .modal-content { background: var(--modal-bg); width: 100%; max-width: 600px; border-radius: 24px 24px 0 0; padding: 24px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-top: 1px solid var(--border); box-shadow: 0 -10px 40px rgba(0,0,0,0.2); }
+
+        .modal-content {
+            background: var(--modal-bg);
+            width: 100%;
+            max-width: 600px;
+            border-radius: 24px 24px 0 0;
+            /* Ключове виправлення: обмеження висоти + скрол */
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border-top: 1px solid var(--border);
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
+        }
         .modal-overlay.active .modal-content { transform: translateY(0); }
-        
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+
+        /* Прилипаючий заголовок модалки */
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px 16px;
+            position: sticky;
+            top: 0;
+            background: var(--modal-bg);
+            border-radius: 24px 24px 0 0;
+            border-bottom: 1px solid var(--border);
+            z-index: 5;
+            flex-shrink: 0;
+        }
         .modal-header h2 { font-size: 20px; font-weight: 800; }
-        .close-btn { background: var(--border); border: none; width: 32px; height: 32px; border-radius: 50%; color: var(--text-main); font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: 0.2s; }
+
+        /* Скрол тіла модалки */
+        .modal-body {
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 20px 24px 32px;
+            flex: 1;
+        }
+
+        .close-btn { background: var(--border); border: none; width: 36px; height: 36px; border-radius: 50%; color: var(--text-main); font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: 0.2s; flex-shrink: 0; }
         .close-btn:hover { background: var(--primary); color: #fff; }
 
         .moodle-btn { display: flex; flex-direction: column; align-items: flex-start; background: var(--bg-body); border: 1px solid var(--border); padding: 18px; border-radius: 16px; text-decoration: none; color: var(--text-main); transition: 0.2s; margin-bottom: 14px; position: relative; overflow: hidden; }
         .moodle-btn:hover { border-color: var(--primary); box-shadow: var(--shadow); transform: translateX(4px); }
         .moodle-btn span { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
         .moodle-btn small { font-size: 12px; font-weight: 500; color: var(--text-muted); }
-        
-        /* SETTINGS */
+
+        /* Settings */
         .setting-group { margin-bottom: 20px; }
         .setting-group label { display: block; font-size: 14px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-        
         .color-picker { display: flex; gap: 12px; margin-top: 8px; }
         .color-circle { width: 36px; height: 36px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: 0.2s; position: relative; }
         .color-circle.active { border-color: var(--text-main); transform: scale(1.1); }
         .color-circle::after { content: "✓"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 14px; opacity: 0; font-weight: bold; }
         .color-circle.active::after { opacity: 1; }
-
         .theme-switch { display: flex; background: var(--bg-body); border-radius: 12px; padding: 4px; border: 1px solid var(--border); gap: 4px; }
         .theme-btn { flex: 1; padding: 10px 4px; border: none; background: transparent; color: var(--text-muted); font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .theme-btn.active { background: var(--bg-card); color: var(--text-main); box-shadow: var(--shadow); }
         .theme-btn svg { width: 14px; height: 14px; fill: currentColor; stroke: none; }
-
-        /* Розмір тексту */
         .size-switch { display: flex; background: var(--bg-body); border-radius: 12px; padding: 4px; border: 1px solid var(--border); gap: 4px; }
         .size-btn { flex: 1; padding: 10px 4px; border: none; background: transparent; color: var(--text-muted); font-weight: 700; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         .size-btn.active { background: var(--bg-card); color: var(--text-main); box-shadow: var(--shadow); }
-        .size-btn:nth-child(1) { font-size: 11px; }
-        .size-btn:nth-child(2) { font-size: 14px; }
-        .size-btn:nth-child(3) { font-size: 17px; }
-
-        /* Toggle switch */
+        .size-btn:nth-child(1) { font-size: 11px; } .size-btn:nth-child(2) { font-size: 14px; } .size-btn:nth-child(3) { font-size: 17px; }
         .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; }
         .toggle-row:last-child { margin-bottom: 0; }
         .toggle-label { display: flex; flex-direction: column; gap: 2px; }
@@ -447,7 +499,7 @@
         .toggle input:checked + .toggle-slider { background: var(--primary); }
         .toggle input:checked + .toggle-slider::before { transform: translateX(18px); }
 
-        /* Compact mode */
+        /* Compact/glass/simple */
         body.compact .lesson-card { padding: 10px 12px; }
         body.compact .lesson-card.current-lesson { padding-bottom: 20px; }
         body.compact .time-start { font-size: 15px; }
@@ -455,109 +507,48 @@
         body.compact .lesson-meta { font-size: 12px; margin-bottom: 3px; }
         body.compact .badges { margin-bottom: 4px; gap: 4px; }
         body.compact .schedule-list { gap: 8px; }
-
-        /* Glass cards */
-        body.glass-cards .lesson-card {
-            background: rgba(255,255,255,0.05);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-color: rgba(255,255,255,0.1);
-        }
-        [data-theme="light"] body.glass-cards .lesson-card {
-            background: rgba(255,255,255,0.6);
-            border-color: rgba(255,255,255,0.7);
-        }
-
-        /* Hide meta rows */
+        body.glass-cards .lesson-card { background: rgba(255,255,255,0.05); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-color: rgba(255,255,255,0.1); }
+        [data-theme="light"] body.glass-cards .lesson-card { background: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.7); }
         body.hide-teacher .lesson-meta-teacher { display: none; }
         body.hide-room .lesson-meta-room { display: none; }
-
-        /* =============================================
-           ПРОСТИЙ РЕЖИМ — для слабких телефонів
-        ============================================= */
         body.simple-mode .bg-canvas { display: none; }
-
-        body.simple-mode .lesson-card {
-            backdrop-filter: none !important;
-            -webkit-backdrop-filter: none !important;
-            animation: none !important;
-            transition: none !important;
-            box-shadow: none !important;
-        }
+        body.simple-mode .lesson-card { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; animation: none !important; transition: none !important; box-shadow: none !important; }
         body.simple-mode .lesson-card::before { display: none; }
         body.simple-mode .lesson-card:hover { transform: none !important; }
-
-        body.simple-mode .day-btn {
-            backdrop-filter: none !important;
-            -webkit-backdrop-filter: none !important;
-            transition: none !important;
-        }
-
-        body.simple-mode .days-nav {
-            position: static;
-            background: var(--bg-body) !important;
-        }
-
-        body.simple-mode * {
-            animation-duration: 0.001s !important;
-            transition-duration: 0.001s !important;
-        }
-        body.simple-mode .current-badge {
-            animation: none !important;
-            opacity: 1 !important;
-        }
-        body.simple-mode .live-timer-text svg {
-            animation: none !important;
-        }
-        body.simple-mode .modal-content {
-            transition: none !important;
-            transform: translateY(0) !important;
-        }
-        body.simple-mode .modal-overlay {
-            backdrop-filter: none !important;
-        }
-        body.simple-mode .site-logo:hover {
-            transform: none !important;
-        }
-        body.simple-mode .settings-btn:hover {
-            transform: none !important;
-        }
+        body.simple-mode .day-btn { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; transition: none !important; }
+        body.simple-mode .days-nav { position: static; background: var(--bg-body) !important; }
+        body.simple-mode * { animation-duration: 0.001s !important; transition-duration: 0.001s !important; }
+        body.simple-mode .current-badge { animation: none !important; opacity: 1 !important; }
+        body.simple-mode .live-timer-text svg { animation: none !important; }
+        body.simple-mode .modal-content { transition: none !important; transform: translateY(0) !important; }
+        body.simple-mode .modal-overlay { backdrop-filter: none !important; }
+        body.simple-mode .site-logo:hover { transform: none !important; }
+        body.simple-mode .settings-btn:hover { transform: none !important; }
     </style>
 </head>
 <body>
 
-<!-- =============================================
-     АНІМОВАНИЙ ФОН
-============================================= -->
 <div class="bg-canvas" aria-hidden="true">
     <div class="bg-orb bg-orb-1"></div>
     <div class="bg-orb bg-orb-2"></div>
     <div class="bg-orb bg-orb-3"></div>
     <div class="bg-orb bg-orb-4"></div>
-
 </div>
 
 <div class="app-wrapper">
+    <!-- РОЗКЛАД -->
     <div id="page-schedule" class="page active">
         <div class="container">
             <header>
-                <!-- ЛОГОТИП + ЗАГОЛОВОК -->
                 <div class="header-logo-row">
-                    <img 
-                        src="https://image2url.com/r2/default/images/1771500451851-446b2df9-c4de-4696-bfaf-194abf93ad71.jpg"
-                        alt="ФЕП-13 логотип"
-                        class="site-logo"
-                        loading="lazy"
-                        onerror="this.style.display='none'"
-                    />
+                    <img src="https://image2url.com/r2/default/images/1771500451851-446b2df9-c4de-4696-bfaf-194abf93ad71.jpg" alt="ФЕП-13 логотип" class="site-logo" loading="lazy" onerror="this.style.display='none'"/>
                     <h1>Розклад ФЕП-13</h1>
                 </div>
                 <p id="current-date-display">Завантаження...</p>
                 <button id="open-settings" class="settings-btn" aria-label="Налаштування">
-                    <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+                    <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
                 </button>
             </header>
-
             <div class="controls">
                 <div class="select-wrapper">
                     <select id="group-select">
@@ -567,33 +558,71 @@
                     </select>
                 </div>
             </div>
-
             <nav class="days-nav" id="days-nav">
                 <button class="day-btn" data-tab="today">Сьогодні</button>
                 <button class="day-btn" data-tab="tomorrow">Завтра</button>
                 <button class="day-btn" data-tab="this_week">Цей тиждень</button>
                 <button class="day-btn" data-tab="next_week">Наст. тиждень</button>
             </nav>
-
             <main class="schedule-list" id="schedule-container"></main>
         </div>
     </div>
 
+    <!-- КОРИСНЕ -->
     <div id="page-useful" class="page">
         <div class="container">
             <header>
                 <div class="header-logo-row">
-                    <img 
-                        src="https://image2url.com/r2/default/images/1771500451851-446b2df9-c4de-4696-bfaf-194abf93ad71.jpg"
-                        alt="ФЕП-13 логотип"
-                        class="site-logo"
-                        loading="lazy"
-                        onerror="this.style.display='none'"
-                    />
-                    <h1>Корисне</h1>
+                    <img src="https://image2url.com/r2/default/images/1771500451851-446b2df9-c4de-4696-bfaf-194abf93ad71.jpg" alt="ФЕП-13 логотип" class="site-logo" loading="lazy" onerror="this.style.display='none'"/>
+                    <h1 id="useful-secret-trigger" style="cursor:default;user-select:none;">Корисне</h1>
                 </div>
                 <p>Важливі посилання та сервіси</p>
             </header>
+
+            <!-- ── ОГОЛОШЕННЯ ───────────────────── -->
+            <div class="announcement-wrap" id="announcement-wrap">
+                <div class="announcement-board">
+                    <!-- Верхня смуга -->
+                    <div class="ann-stripe-top">
+                        <div class="ann-stripe-top-left">
+                            <div class="ann-icon-wrap">📢</div>
+                            <div>
+                                <div class="ann-label">Оголошення</div>
+                                <div class="ann-title-text">Для групи ФЕП-13</div>
+                            </div>
+                        </div>
+                        <!-- кнопка схована, відкривається через заголовок -->
+                    </div>
+
+                    <!-- Нижня смуга — тіло -->
+                    <div class="ann-stripe-bottom" id="ann-body-wrap">
+                        <div id="ann-display">
+                            <p class="ann-body-text" id="ann-text-display"></p>
+                            <button class="ann-expand-btn" id="ann-expand-btn">
+                                <span id="ann-expand-label">Читати більше</span>
+                                <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                            <p class="ann-updated" id="ann-updated-at" style="display:none">
+                                <svg style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                <span></span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Панель редагування -->
+                    <div class="ann-editor" id="ann-editor">
+                        <textarea id="ann-textarea" placeholder="Введіть текст оголошення для всієї групи…" maxlength="1000"></textarea>
+                        <input type="password" class="ann-editor-pass" id="ann-pass" placeholder="🔑 Пароль адміна" autocomplete="off"/>
+                        <p class="ann-editor-pass-hint">Тільки адмін може змінювати оголошення</p>
+                        <div class="ann-editor-row">
+                            <button class="ann-cancel-btn" id="ann-cancel-btn">Скасувати</button>
+                            <button class="ann-clear-btn" id="ann-clear-btn">Очистити</button>
+                            <button class="ann-save-btn" id="ann-save-btn">Зберегти</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- ──────────────────────────────────── -->
 
             <div class="useful-grid">
                 <a href="https://dekanat.lnu.edu.ua" target="_blank" class="useful-card">
@@ -605,7 +634,6 @@
                         <p>Оцінки, документи та важливі оповіщення</p>
                     </div>
                 </a>
-                
                 <div class="useful-card" id="open-moodle">
                     <div class="useful-icon">
                         <svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
@@ -631,14 +659,14 @@
     </nav>
 </div>
 
-<!-- MODALS (без змін) -->
+<!-- МОДАЛКИ -->
 <div class="modal-overlay" id="moodle-modal">
     <div class="modal-content">
         <div class="modal-header">
             <h2>Виберіть платформу</h2>
             <button class="close-btn" id="close-moodle">×</button>
         </div>
-        <div style="display: flex; flex-direction: column;">
+        <div class="modal-body">
             <a href="https://e-learning.lnu.edu.ua/auth/oidc/?source=loginpage" target="_blank" class="moodle-btn">
                 <span>Головний</span>
                 <small>e-learning.lnu.edu.ua</small>
@@ -657,144 +685,241 @@
             <h2>Налаштування</h2>
             <button class="close-btn" id="close-settings">×</button>
         </div>
-        
-        <div class="setting-group">
-            <label>Колір додатку</label>
-            <div class="color-picker" id="color-picker"></div>
-        </div>
-
-        <div class="setting-group">
-            <label>Тема оформлення</label>
-            <div class="theme-switch">
-                <button class="theme-btn" data-theme-val="light">
-                    <svg viewBox="0 0 24 24"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Світла
-                </button>
-                <button class="theme-btn" data-theme-val="dark">
-                    <svg viewBox="0 0 24 24"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Темна
-                </button>
-                <button class="theme-btn" data-theme-val="black">
-                    <svg viewBox="0 0 24 24"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" fill="currentColor"/></svg> Black
-                </button>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <label>Розмір тексту</label>
-            <div class="size-switch" id="size-switch">
-                <button class="size-btn" data-size="small">Аа</button>
-                <button class="size-btn" data-size="normal">Аа</button>
-                <button class="size-btn" data-size="large">Аа</button>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <label>Вигляд карток</label>
-            <div class="toggle-row">
-                <div class="toggle-label">
-                    <span>⚡ Простий інтерфейс</span>
-                    <small>Вимикає анімації та розмиття. Для слабких телефонів</small>
+        <div class="modal-body">
+            <div class="setting-group">
+                <label>Ваш викладач Англійської</label>
+                <div class="select-wrapper">
+                    <select id="eng-select">
+                        <option value="all">Усі викладачі</option>
+                        <option value="Брона">доц. Брона О.А.</option>
+                        <option value="Думашівський">доц. Думашівський Я.Є.</option>
+                        <option value="Шандра">доц. Шандра Н.А.</option>
+                        <option value="Довбенко">ас. Довбенко Л.В.</option>
+                        <option value="Шумська">ас. Шумська О.А.</option>
+                    </select>
                 </div>
-                <label class="toggle">
-                    <input type="checkbox" id="toggle-simple">
-                    <span class="toggle-slider"></span>
-                </label>
             </div>
-            <div class="toggle-row">
-                <div class="toggle-label">
-                    <span>Скляні картки</span>
-                    <small>Напівпрозорий стиль з розмиттям</small>
+            <div class="setting-group">
+                <label>Колір додатку</label>
+                <div class="color-picker" id="color-picker"></div>
+            </div>
+            <div class="setting-group">
+                <label>Тема оформлення</label>
+                <div class="theme-switch">
+                    <button class="theme-btn" data-theme-val="light">
+                        <svg viewBox="0 0 24 24"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Світла
+                    </button>
+                    <button class="theme-btn" data-theme-val="dark">
+                        <svg viewBox="0 0 24 24"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Темна
+                    </button>
+                    <button class="theme-btn" data-theme-val="black">
+                        <svg viewBox="0 0 24 24"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" fill="currentColor"/></svg> Black
+                    </button>
                 </div>
-                <label class="toggle">
-                    <input type="checkbox" id="toggle-glass">
-                    <span class="toggle-slider"></span>
-                </label>
             </div>
-            <div class="toggle-row">
-                <div class="toggle-label">
-                    <span>Компактний режим</span>
-                    <small>Менші відступи, більше пар на екрані</small>
+            <div class="setting-group">
+                <label>Розмір тексту</label>
+                <div class="size-switch" id="size-switch">
+                    <button class="size-btn" data-size="small">Аа</button>
+                    <button class="size-btn" data-size="normal">Аа</button>
+                    <button class="size-btn" data-size="large">Аа</button>
                 </div>
-                <label class="toggle">
-                    <input type="checkbox" id="toggle-compact">
-                    <span class="toggle-slider"></span>
-                </label>
             </div>
-        </div>
-
-        <div class="setting-group">
-            <label>Відображення інформації</label>
-            <div class="toggle-row">
-                <div class="toggle-label">
-                    <span>Показувати викладача</span>
-                    <small>Ім'я викладача на картці пари</small>
+            <div class="setting-group">
+                <label>Вигляд карток</label>
+                <div class="toggle-row">
+                    <div class="toggle-label">
+                        <span>⚡ Простий інтерфейс</span>
+                        <small>Вимикає анімації та розмиття. Для слабких телефонів</small>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="toggle-simple"><span class="toggle-slider"></span></label>
                 </div>
-                <label class="toggle">
-                    <input type="checkbox" id="toggle-teacher" checked>
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
-            <div class="toggle-row">
-                <div class="toggle-label">
-                    <span>Показувати аудиторію</span>
-                    <small>Номер кімнати на картці пари</small>
+                <div class="toggle-row">
+                    <div class="toggle-label">
+                        <span>Скляні картки</span>
+                        <small>Напівпрозорий стиль з розмиттям</small>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="toggle-glass"><span class="toggle-slider"></span></label>
                 </div>
-                <label class="toggle">
-                    <input type="checkbox" id="toggle-room" checked>
-                    <span class="toggle-slider"></span>
-                </label>
+                <div class="toggle-row">
+                    <div class="toggle-label">
+                        <span>Компактний режим</span>
+                        <small>Менші відступи, більше пар на екрані</small>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="toggle-compact"><span class="toggle-slider"></span></label>
+                </div>
             </div>
-        </div>
-
-        <div class="setting-group">
-            <label>Ваш викладач Англійської</label>
-            <div class="select-wrapper">
-                <select id="eng-select">
-                    <option value="all">Усі викладачі</option>
-                    <option value="Брона">доц. Брона О.А.</option>
-                    <option value="Думашівський">доц. Думашівський Я.Є.</option>
-                    <option value="Шандра">доц. Шандра Н.А.</option>
-                    <option value="Довбенко">ас. Довбенко Л.В.</option>
-                    <option value="Шумська">ас. Шумська О.А.</option>
-                </select>
+            <div class="setting-group">
+                <label>Відображення інформації</label>
+                <div class="toggle-row">
+                    <div class="toggle-label">
+                        <span>Показувати викладача</span>
+                        <small>Ім'я викладача на картці пари</small>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="toggle-teacher" checked><span class="toggle-slider"></span></label>
+                </div>
+                <div class="toggle-row">
+                    <div class="toggle-label">
+                        <span>Показувати аудиторію</span>
+                        <small>Номер кімнати на картці пари</small>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="toggle-room" checked><span class="toggle-slider"></span></label>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-// =============================================
-// ВСЯ ЛОГІКА — БЕЗ ЗМІН
-// =============================================
-
+// ── STORAGE ────────────────────────────────────────
 const storage = {
     get: (key, def) => { try { return localStorage.getItem(key) || def; } catch(e) { return def; } },
     set: (key, val) => { try { localStorage.setItem(key, val); } catch(e) {} }
 };
 
+// ── ОГОЛОШЕННЯ: Пароль ─────────────────────────────
+// Змініть цей рядок на свій пароль!
+const ADMIN_PASS = 'revalonexgod';
+
+// ── ANNOUNCEMENT LOGIC ─────────────────────────────
+function initAnnouncement() {
+    const editor     = document.getElementById('ann-editor');
+    const textarea   = document.getElementById('ann-textarea');
+    const passInput  = document.getElementById('ann-pass');
+    const saveBtn    = document.getElementById('ann-save-btn');
+    const cancelBtn  = document.getElementById('ann-cancel-btn');
+    const clearBtn   = document.getElementById('ann-clear-btn');
+    const textDisplay= document.getElementById('ann-text-display');
+    const updatedEl  = document.getElementById('ann-updated-at');
+    const secretTrig = document.getElementById('useful-secret-trigger');
+
+    // ── Секретний тригер: 5 швидких торкань заголовку «Корисне» ──
+    let tapCount = 0, tapTimer = null;
+    secretTrig.addEventListener('click', () => {
+        tapCount++;
+        clearTimeout(tapTimer);
+        // Легке візуальне «мигання» при кожному торканні
+        secretTrig.style.opacity = '0.5';
+        setTimeout(() => { secretTrig.style.opacity = ''; }, 80);
+
+        if (tapCount >= 5) {
+            tapCount = 0;
+            if (editor.classList.contains('open')) { closeEditor(); }
+            else { openEditor(); }
+        } else {
+            tapTimer = setTimeout(() => { tapCount = 0; }, 1500);
+        }
+    });
+
+    function loadAnnouncement() {
+        const saved = storage.get('fep13_announcement', '');
+        const ts    = storage.get('fep13_announcement_ts', '');
+        const expandBtn   = document.getElementById('ann-expand-btn');
+        const expandLabel = document.getElementById('ann-expand-label');
+
+        if (saved && saved.trim()) {
+            textDisplay.textContent = saved;
+            textDisplay.className = 'ann-body-text';
+
+            // Показати кнопку «Читати більше» тільки якщо текст обрізається
+            setTimeout(() => {
+                if (textDisplay.scrollHeight > textDisplay.clientHeight + 2) {
+                    expandBtn.classList.add('visible');
+                    expandBtn.classList.remove('expanded');
+                    expandLabel.textContent = 'Читати більше';
+                } else {
+                    expandBtn.classList.remove('visible');
+                }
+            }, 50);
+
+            if (ts) {
+                const d = new Date(parseInt(ts));
+                updatedEl.style.display = 'flex';
+                updatedEl.querySelector('span').textContent =
+                    'Оновлено: ' + d.toLocaleDateString('uk-UA', { day:'numeric', month:'long' }) +
+                    ' о ' + d.toLocaleTimeString('uk-UA', { hour:'2-digit', minute:'2-digit' });
+            }
+        } else {
+            textDisplay.innerHTML = '<span class="ann-empty-hint">Оголошень поки немає.</span>';
+            textDisplay.className = '';
+            expandBtn.classList.remove('visible');
+            updatedEl.style.display = 'none';
+        }
+    }
+
+    // Логіка розкриття
+    document.getElementById('ann-expand-btn').addEventListener('click', () => {
+        const expandBtn   = document.getElementById('ann-expand-btn');
+        const expandLabel = document.getElementById('ann-expand-label');
+        const isExpanded  = textDisplay.classList.contains('expanded');
+        textDisplay.classList.toggle('expanded', !isExpanded);
+        expandBtn.classList.toggle('expanded', !isExpanded);
+        expandLabel.textContent = isExpanded ? 'Читати більше' : 'Згорнути';
+    });
+
+    function openEditor() {
+        const saved = storage.get('fep13_announcement', '');
+        textarea.value = saved;
+        passInput.value = '';
+        passInput.classList.remove('error');
+        editor.classList.add('open');
+        // Скролимо до редактора щоб він був видний
+        setTimeout(() => {
+            editor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            passInput.focus();
+        }, 120);
+    }
+
+    function closeEditor() {
+        editor.classList.remove('open');
+        passInput.value = '';
+        passInput.classList.remove('error');
+    }
+
+    function saveAnnouncement(clear) {
+        if (passInput.value !== ADMIN_PASS) {
+            passInput.classList.add('error');
+            setTimeout(() => passInput.classList.remove('error'), 600);
+            passInput.focus();
+            return;
+        }
+        const text = clear ? '' : textarea.value.trim();
+        storage.set('fep13_announcement', text);
+        storage.set('fep13_announcement_ts', clear ? '' : Date.now().toString());
+        loadAnnouncement();
+        closeEditor();
+    }
+
+    cancelBtn.addEventListener('click', closeEditor);
+    saveBtn.addEventListener('click', () => saveAnnouncement(false));
+    clearBtn.addEventListener('click', () => { textarea.value = ''; saveAnnouncement(true); });
+    passInput.addEventListener('keydown', e => { if(e.key==='Enter') saveAnnouncement(false); });
+
+    loadAnnouncement();
+}
+
+// ── СТАН ───────────────────────────────────────────
 const htmlEl = document.documentElement;
-
 const colors = {
-    blue:    { main: '#3b82f6', hover: '#2563eb', light: 'rgba(59, 130, 246, 0.15)' },
-    purple:  { main: '#8b5cf6', hover: '#7c3aed', light: 'rgba(139, 92, 246, 0.15)' },
-    emerald: { main: '#10b981', hover: '#059669', light: 'rgba(16, 185, 129, 0.15)' },
-    rose:    { main: '#f43f5e', hover: '#e11d48', light: 'rgba(244, 63, 94, 0.15)' },
-    amber:   { main: '#f59e0b', hover: '#d97706', light: 'rgba(245, 158, 11, 0.15)' }
+    blue:    { main: '#3b82f6', hover: '#2563eb', light: 'rgba(59,130,246,0.15)' },
+    purple:  { main: '#8b5cf6', hover: '#7c3aed', light: 'rgba(139,92,246,0.15)' },
+    emerald: { main: '#10b981', hover: '#059669', light: 'rgba(16,185,129,0.15)' },
+    rose:    { main: '#f43f5e', hover: '#e11d48', light: 'rgba(244,63,94,0.15)' },
+    amber:   { main: '#f59e0b', hover: '#d97706', light: 'rgba(245,158,11,0.15)' }
 };
-
 let state = {
     tab: 'today',
-    group: storage.get('fep13_saved_group', 'all'),
-    theme: storage.get('fep13_theme', 'dark'),
-    engTeacher: storage.get('fep13_eng_teacher', 'all'),
-    color: storage.get('fep13_color', 'blue'),
-    fontSize: storage.get('fep13_font_size', 'normal'),
-    glassCards: storage.get('fep13_glass_cards', 'false') === 'true',
-    compact: storage.get('fep13_compact', 'false') === 'true',
-    showTeacher: storage.get('fep13_show_teacher', 'true') === 'true',
-    showRoom: storage.get('fep13_show_room', 'true') === 'true',
-    simpleMode: storage.get('fep13_simple_mode', 'false') === 'true',
+    group: storage.get('fep13_saved_group','all'),
+    theme: storage.get('fep13_theme','dark'),
+    engTeacher: storage.get('fep13_eng_teacher','all'),
+    color: storage.get('fep13_color','blue'),
+    fontSize: storage.get('fep13_font_size','normal'),
+    glassCards: storage.get('fep13_glass_cards','false') === 'true',
+    compact: storage.get('fep13_compact','false') === 'true',
+    showTeacher: storage.get('fep13_show_teacher','true') === 'true',
+    showRoom: storage.get('fep13_show_room','true') === 'true',
+    simpleMode: storage.get('fep13_simple_mode','false') === 'true',
 };
-
 htmlEl.setAttribute('data-theme', state.theme);
 applyColor(state.color);
 applyFontSize(state.fontSize);
@@ -802,97 +927,86 @@ applyBodyClasses();
 
 let els = {};
 
-const BASE_MONDAY_UTC = Date.UTC(2026, 1, 9);
+const BASE_MONDAY_UTC = Date.UTC(2026,1,9);
 const BASE_WEEK_TYPE = 'numerator';
-const monthNames = ['січ.', 'лют.', 'бер.', 'квіт.', 'трав.', 'черв.', 'лип.', 'серп.', 'вер.', 'жовт.', 'лист.', 'груд.'];
-const uaDays = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', 'Пʼятниця', 'Субота'];
-const jsDaysMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+const monthNames = ['січ.','лют.','бер.','квіт.','трав.','черв.','лип.','серп.','вер.','жовт.','лист.','груд.'];
+const uaDays = ['Неділя','Понеділок','Вівторок','Середа','Четвер','Пʼятниця','Субота'];
+const jsDaysMap = ['sun','mon','tue','wed','thu','fri','sat'];
 
-function getKyivDate() { 
-    try { return new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Kyiv"})); }
+function getKyivDate() {
+    try { return new Date(new Date().toLocaleString("en-US",{timeZone:"Europe/Kyiv"})); }
     catch(e) { return new Date(); }
 }
-
-function timeToSeconds(timeStr) { 
-    if(!timeStr) return 0;
-    const [h, m] = timeStr.split(':').map(Number); 
-    return h * 3600 + m * 60; 
-}
-
-function formatTimeLeft(seconds) {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return `${h > 0 ? h + ':' : ''}${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-}
+function timeToSeconds(t) { if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*3600+m*60; }
+function formatTimeLeft(s) { const h=Math.floor(s/3600); const m=Math.floor((s%3600)/60); const sc=s%60; return `${h>0?h+':':''}${m.toString().padStart(2,'0')}:${sc.toString().padStart(2,'0')}`; }
 
 const getEngLessons = (roomShumska) => [
-    { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "доц. Брона О.А.", room: "5/Б", isEng: true },
-    { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "доц. Думашівський Я.Є.", room: "123/Т", isEng: true },
-    { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "доц. Шандра Н.А.", room: "406/Т", isEng: true },
-    { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "ас. Довбенко Л.В.", room: "129а/Т", isEng: true },
-    { start: "08:30", end: "09:50", title: "Іноземна мова (ПрС)", teacher: "ас. Шумська О.А.", room: roomShumska, isEng: true }
+    { start:"08:30",end:"09:50",title:"Іноземна мова (ПрС)",teacher:"доц. Брона О.А.",room:"5/Б",isEng:true },
+    { start:"08:30",end:"09:50",title:"Іноземна мова (ПрС)",teacher:"доц. Думашівський Я.Є.",room:"123/Т",isEng:true },
+    { start:"08:30",end:"09:50",title:"Іноземна мова (ПрС)",teacher:"доц. Шандра Н.А.",room:"406/Т",isEng:true },
+    { start:"08:30",end:"09:50",title:"Іноземна мова (ПрС)",teacher:"ас. Довбенко Л.В.",room:"129а/Т",isEng:true },
+    { start:"08:30",end:"09:50",title:"Іноземна мова (ПрС)",teacher:"ас. Шумська О.А.",room:roomShumska,isEng:true }
 ];
 
 const SCHEDULE = {
   numerator: {
     mon: [
-      { start: "08:30", end: "09:50", title: "Операційні системи, системне програмування (Лаб)", teacher: "доц. Бойко Я.В.", room: "N10/Б", group: 1 },
-      { start: "08:30", end: "09:50", title: "Веб-технології та програмування (ч.1) (Лаб)", teacher: "доц. Анохін В.Є.", room: "№5/Б", group: 2 },
-      { start: "10:10", end: "11:30", title: "Веб-технології та програмування (ч.1) (Лаб)", teacher: "доц. Анохін В.Є.", room: "№5/Б", group: 1 },
-      { start: "10:10", end: "11:30", title: "Операційні системи, системне програмування (Лаб)", teacher: "доц. Бойко Я.В.", room: "N10/Б", group: 2 },
-      { start: "11:50", end: "13:10", title: "Українська мова (за проф. спрямуванням) (ПрС)", teacher: "доц. Збір І.М.", room: "129а/Т" },
+      {start:"08:30",end:"09:50",title:"Операційні системи, системне програмування (Лаб)",teacher:"доц. Бойко Я.В.",room:"N10/Б",group:1},
+      {start:"08:30",end:"09:50",title:"Веб-технології та програмування (ч.1) (Лаб)",teacher:"доц. Анохін В.Є.",room:"№5/Б",group:2},
+      {start:"10:10",end:"11:30",title:"Веб-технології та програмування (ч.1) (Лаб)",teacher:"доц. Анохін В.Є.",room:"№5/Б",group:1},
+      {start:"10:10",end:"11:30",title:"Операційні системи, системне програмування (Лаб)",teacher:"доц. Бойко Я.В.",room:"N10/Б",group:2},
+      {start:"11:50",end:"13:10",title:"Українська мова (за проф. спрямуванням) (ПрС)",teacher:"доц. Збір І.М.",room:"129а/Т"},
     ],
     tue: [
       ...getEngLessons("3/Б"),
-      { start: "10:10", end: "11:30", title: "Об'єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "N12/Т", group: 1 },
-      { start: "10:10", end: "11:30", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х.І.", room: "324/Т", group: 2 },
-      { start: "11:50", end: "13:10", title: "Вища математика (Л)", teacher: "доц. Жумік О.В. (Потік)", room: "130/Т" },
-      { start: "13:30", end: "14:50", title: "Об'єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "№6/Т", group: 2 },
+      {start:"10:10",end:"11:30",title:"Об'єктно-орієнтоване програмування (Лаб)",teacher:"ас. Левуш П.Н.",room:"N12/Т",group:1},
+      {start:"10:10",end:"11:30",title:"Дискретна математика (Лаб)",teacher:"доц. Середницька Х.І.",room:"324/Т",group:2},
+      {start:"11:50",end:"13:10",title:"Вища математика (Л)",teacher:"доц. Жумік О.В. (Потік)",room:"130/Т"},
+      {start:"13:30",end:"14:50",title:"Об'єктно-орієнтоване програмування (Лаб)",teacher:"ас. Левуш П.Н.",room:"№6/Т",group:2},
     ],
     wed: [
-      { start: "10:10", end: "11:30", title: "Філософія (Л)", teacher: "доц. Лосік О.М. (Потік)", room: "2/Б" },
-      { start: "11:50", end: "13:10", title: "Веб-технології та програмування (ч.1) (Л)", teacher: "ас. Чмихало О.С. (Потік)", room: "1/Б" },
-      { start: "13:30", end: "14:50", title: "Операційні системи, системне програмування (Л)", teacher: "доц. Бойко Я.В. (Потік)", room: "2/Б" },
+      {start:"10:10",end:"11:30",title:"Філософія (Л)",teacher:"доц. Лосік О.М. (Потік)",room:"2/Б"},
+      {start:"11:50",end:"13:10",title:"Веб-технології та програмування (ч.1) (Л)",teacher:"ас. Чмихало О.С. (Потік)",room:"1/Б"},
+      {start:"13:30",end:"14:50",title:"Операційні системи, системне програмування (Л)",teacher:"доц. Бойко Я.В. (Потік)",room:"2/Б"},
     ],
     thu: [
       ...getEngLessons("204/Б"),
-      { start: "10:10", end: "11:30", title: "Вища математика (ПрС)", teacher: "доц. Жумік О.В.", room: "407/Т" },
+      {start:"10:10",end:"11:30",title:"Вища математика (ПрС)",teacher:"доц. Жумік О.В.",room:"407/Т"},
     ],
     fri: [
-      { start: "10:10", end: "11:30", title: "Об'єктно-орієнтоване програмування (Л)", teacher: "доц. Кушнір О.О. (Потік)", room: "130/Т" },
-      { start: "11:50", end: "13:10", title: "Дискретна математика (Л)", teacher: "доц. Середницька Х.І. (Потік)", room: "130/Т" },
-      { start: "13:30", end: "14:50", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х.І.", room: "№6/Т", group: 1 },
+      {start:"10:10",end:"11:30",title:"Об'єктно-орієнтоване програмування (Л)",teacher:"доц. Кушнір О.О. (Потік)",room:"130/Т"},
+      {start:"11:50",end:"13:10",title:"Дискретна математика (Л)",teacher:"доц. Середницька Х.І. (Потік)",room:"130/Т"},
+      {start:"13:30",end:"14:50",title:"Дискретна математика (Лаб)",teacher:"доц. Середницька Х.І.",room:"№6/Т",group:1},
     ],
   },
   denominator: {
     mon: [
-      { start: "08:30", end: "09:50", title: "Операційні системи, системне програмування (Лаб)", teacher: "доц. Бойко Я.В.", room: "N10/Б", group: 1 },
-      { start: "08:30", end: "09:50", title: "Веб-технології та програмування (ч.1) (Лаб)", teacher: "доц. Анохін В.Є.", room: "№5/Б", group: 2 },
-      { start: "10:10", end: "11:30", title: "Веб-технології та програмування (ч.1) (Лаб)", teacher: "доц. Анохін В.Є.", room: "№5/Б", group: 1 },
-      { start: "10:10", end: "11:30", title: "Операційні системи, системне програмування (Лаб)", teacher: "доц. Бойко Я.В.", room: "N10/Б", group: 2 },
-      { start: "11:50", end: "13:10", title: "Українська мова (за проф. спрямуванням) (Л)", teacher: "доц. Фарина Н.Г. (Потік)", room: "2/Б" },
-      { start: "13:30", end: "14:50", title: "Філософія (ПрС)", teacher: "доц. Бартусяк П.М.", room: "204/Б" },
+      {start:"08:30",end:"09:50",title:"Операційні системи, системне програмування (Лаб)",teacher:"доц. Бойко Я.В.",room:"N10/Б",group:1},
+      {start:"08:30",end:"09:50",title:"Веб-технології та програмування (ч.1) (Лаб)",teacher:"доц. Анохін В.Є.",room:"№5/Б",group:2},
+      {start:"10:10",end:"11:30",title:"Веб-технології та програмування (ч.1) (Лаб)",teacher:"доц. Анохін В.Є.",room:"№5/Б",group:1},
+      {start:"10:10",end:"11:30",title:"Операційні системи, системне програмування (Лаб)",teacher:"доц. Бойко Я.В.",room:"N10/Б",group:2},
+      {start:"11:50",end:"13:10",title:"Українська мова (за проф. спрямуванням) (Л)",teacher:"доц. Фарина Н.Г. (Потік)",room:"2/Б"},
+      {start:"13:30",end:"14:50",title:"Філософія (ПрС)",teacher:"доц. Бартусяк П.М.",room:"204/Б"},
     ],
     tue: [
       ...getEngLessons("3/Б"),
-      { start: "10:10", end: "11:30", title: "Об'єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "N12/Т", group: 1 },
-      { start: "10:10", end: "11:30", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х.І.", room: "324/Т", group: 2 },
-      { start: "11:50", end: "13:10", title: "Вища математика (Л)", teacher: "доц. Жумік О.В. (Потік)", room: "130/Т" },
-      { start: "13:30", end: "14:50", title: "Об'єктно-орієнтоване програмування (Лаб)", teacher: "ас. Левуш П.Н.", room: "№6/Т", group: 2 },
+      {start:"10:10",end:"11:30",title:"Об'єктно-орієнтоване програмування (Лаб)",teacher:"ас. Левуш П.Н.",room:"N12/Т",group:1},
+      {start:"10:10",end:"11:30",title:"Дискретна математика (Лаб)",teacher:"доц. Середницька Х.І.",room:"324/Т",group:2},
+      {start:"11:50",end:"13:10",title:"Вища математика (Л)",teacher:"доц. Жумік О.В. (Потік)",room:"130/Т"},
+      {start:"13:30",end:"14:50",title:"Об'єктно-орієнтоване програмування (Лаб)",teacher:"ас. Левуш П.Н.",room:"№6/Т",group:2},
     ],
     wed: [
-      { start: "11:50", end: "13:10", title: "Веб-технології та програмування (ч.1) (Л)", teacher: "ас. Чмихало О.С. (Потік)", room: "1/Б" },
-      { start: "13:30", end: "14:50", title: "Операційні системи, системне програмування (Л)", teacher: "доц. Бойко Я.В. (Потік)", room: "2/Б" },
+      {start:"11:50",end:"13:10",title:"Веб-технології та програмування (ч.1) (Л)",teacher:"ас. Чмихало О.С. (Потік)",room:"1/Б"},
+      {start:"13:30",end:"14:50",title:"Операційні системи, системне програмування (Л)",teacher:"доц. Бойко Я.В. (Потік)",room:"2/Б"},
     ],
     thu: [
       ...getEngLessons("204/Б"),
-      { start: "10:10", end: "11:30", title: "Вища математика (ПрС)", teacher: "доц. Жумік О.В.", room: "407/Т" },
+      {start:"10:10",end:"11:30",title:"Вища математика (ПрС)",teacher:"доц. Жумік О.В.",room:"407/Т"},
     ],
     fri: [
-      { start: "10:10", end: "11:30", title: "Об'єктно-орієнтоване програмування (Л)", teacher: "доц. Кушнір О.О. (Потік)", room: "130/Т" },
-      { start: "11:50", end: "13:10", title: "Дискретна математика (Л)", teacher: "доц. Середницька Х.І. (Потік)", room: "130/Т" },
-      { start: "13:30", end: "14:50", title: "Дискретна математика (Лаб)", teacher: "доц. Середницька Х.І.", room: "№6/Т", group: 1 },
+      {start:"10:10",end:"11:30",title:"Об'єктно-орієнтоване програмування (Л)",teacher:"доц. Кушнір О.О. (Потік)",room:"130/Т"},
+      {start:"11:50",end:"13:10",title:"Дискретна математика (Л)",teacher:"доц. Середницька Х.І. (Потік)",room:"130/Т"},
+      {start:"13:30",end:"14:50",title:"Дискретна математика (Лаб)",teacher:"доц. Середницька Х.І.",room:"№6/Т",group:1},
     ],
   }
 };
@@ -902,27 +1016,25 @@ const ICONS = {
     teacher: `<svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`
 };
 
-function applyColor(colorKey) {
-    const c = colors[colorKey] || colors['blue'];
+function applyColor(k) {
+    const c = colors[k] || colors['blue'];
     htmlEl.style.setProperty('--primary', c.main);
     htmlEl.style.setProperty('--primary-hover', c.hover);
     htmlEl.style.setProperty('--bg-blue', c.light);
 }
-
 function applyFontSize(size) {
     const map = {
-        small:  { title: '13px', meta: '11px', time: '15px', timeEnd: '11px', dayTitle: '16px' },
-        normal: { title: '15px', meta: '13px', time: '18px', timeEnd: '13px', dayTitle: '18px' },
-        large:  { title: '18px', meta: '15px', time: '22px', timeEnd: '15px', dayTitle: '21px' },
+        small:  {title:'13px',meta:'11px',time:'15px',timeEnd:'11px',dayTitle:'16px'},
+        normal: {title:'15px',meta:'13px',time:'18px',timeEnd:'13px',dayTitle:'18px'},
+        large:  {title:'18px',meta:'15px',time:'22px',timeEnd:'15px',dayTitle:'21px'},
     };
     const s = map[size] || map['normal'];
-    htmlEl.style.setProperty('--fs-title',    s.title);
-    htmlEl.style.setProperty('--fs-meta',     s.meta);
-    htmlEl.style.setProperty('--fs-time',     s.time);
-    htmlEl.style.setProperty('--fs-time-end', s.timeEnd);
+    htmlEl.style.setProperty('--fs-title',s.title);
+    htmlEl.style.setProperty('--fs-meta',s.meta);
+    htmlEl.style.setProperty('--fs-time',s.time);
+    htmlEl.style.setProperty('--fs-time-end',s.timeEnd);
     htmlEl.style.setProperty('--fs-day-title',s.dayTitle);
 }
-
 function applyBodyClasses() {
     document.body.classList.toggle('glass-cards', state.glassCards);
     document.body.classList.toggle('compact', state.compact);
@@ -930,16 +1042,14 @@ function applyBodyClasses() {
     document.body.classList.toggle('hide-room', !state.showRoom);
     document.body.classList.toggle('simple-mode', state.simpleMode);
 }
-
 function renderColorPicker() {
     const picker = document.getElementById('color-picker');
-    picker.innerHTML = Object.keys(colors).map(key => 
-        `<div class="color-circle ${state.color === key ? 'active' : ''}" style="background-color: ${colors[key].main}" data-color="${key}"></div>`
+    picker.innerHTML = Object.keys(colors).map(key =>
+        `<div class="color-circle ${state.color===key?'active':''}" style="background-color:${colors[key].main}" data-color="${key}"></div>`
     ).join('');
-    
-    picker.querySelectorAll('.color-circle').forEach(circle => {
-        circle.addEventListener('click', () => {
-            state.color = circle.dataset.color;
+    picker.querySelectorAll('.color-circle').forEach(c => {
+        c.addEventListener('click', () => {
+            state.color = c.dataset.color;
             storage.set('fep13_color', state.color);
             applyColor(state.color);
             renderColorPicker();
@@ -964,43 +1074,36 @@ function init() {
     };
 
     const todayKyiv = getKyivDate();
-    els.dateDisplay.textContent = todayKyiv.toLocaleDateString('uk-UA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    els.dateDisplay.textContent = todayKyiv.toLocaleDateString('uk-UA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
     els.groupSelect.value = state.group;
     els.engSelect.value = state.engTeacher;
     updateThemeUI();
     renderColorPicker();
     initNewSettings();
+    initAnnouncement();
 
-    els.groupSelect.addEventListener('change', (e) => { state.group = e.target.value; storage.set('fep13_saved_group', state.group); render(); });
-    els.engSelect.addEventListener('change', (e) => { state.engTeacher = e.target.value; storage.set('fep13_eng_teacher', state.engTeacher); render(); });
-    
-    els.daysNav.addEventListener('click', (e) => { 
-        if(e.target.classList.contains('day-btn')) { 
-            state.tab = e.target.dataset.tab; 
-            render(); 
-        }
-    });
-    
+    els.groupSelect.addEventListener('change', e => { state.group=e.target.value; storage.set('fep13_saved_group',state.group); render(); });
+    els.engSelect.addEventListener('change', e => { state.engTeacher=e.target.value; storage.set('fep13_eng_teacher',state.engTeacher); render(); });
+    els.daysNav.addEventListener('click', e => { if(e.target.classList.contains('day-btn')) { state.tab=e.target.dataset.tab; render(); } });
+
     document.querySelectorAll('.nav-item').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            const target = e.currentTarget;
-            target.classList.add('active');
-            document.getElementById(`page-${target.dataset.page}`).classList.add('active');
+        btn.addEventListener('click', e => {
+            document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+            document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+            const t = e.currentTarget;
+            t.classList.add('active');
+            document.getElementById(`page-${t.dataset.page}`).classList.add('active');
         });
     });
 
     els.settingsBtn.addEventListener('click', () => els.settingsModal.classList.add('active'));
     els.closeSettingsBtn.addEventListener('click', () => els.settingsModal.classList.remove('active'));
-    els.settingsModal.addEventListener('click', (e) => { if(e.target === els.settingsModal) els.settingsModal.classList.remove('active'); });
-
+    els.settingsModal.addEventListener('click', e => { if(e.target===els.settingsModal) els.settingsModal.classList.remove('active'); });
     if(els.moodleBtn) {
         els.moodleBtn.addEventListener('click', () => els.moodleModal.classList.add('active'));
         els.closeMoodleBtn.addEventListener('click', () => els.moodleModal.classList.remove('active'));
-        els.moodleModal.addEventListener('click', (e) => { if(e.target === els.moodleModal) els.moodleModal.classList.remove('active'); });
+        els.moodleModal.addEventListener('click', e => { if(e.target===els.moodleModal) els.moodleModal.classList.remove('active'); });
     }
-
     els.themeBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             state.theme = btn.dataset.themeVal;
@@ -1015,292 +1118,151 @@ function init() {
 }
 
 function initNewSettings() {
-    // Simple mode
     const simpleToggle = document.getElementById('toggle-simple');
-    if (simpleToggle) {
-        simpleToggle.checked = state.simpleMode;
-        simpleToggle.addEventListener('change', () => {
-            state.simpleMode = simpleToggle.checked;
-            storage.set('fep13_simple_mode', state.simpleMode);
-            applyBodyClasses();
-        });
-    }
-
-    // Font size
+    if(simpleToggle) { simpleToggle.checked=state.simpleMode; simpleToggle.addEventListener('change', ()=>{ state.simpleMode=simpleToggle.checked; storage.set('fep13_simple_mode',state.simpleMode); applyBodyClasses(); }); }
     const sizeBtns = document.querySelectorAll('.size-btn');
     sizeBtns.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.size === state.fontSize);
-        btn.addEventListener('click', () => {
-            state.fontSize = btn.dataset.size;
-            storage.set('fep13_font_size', state.fontSize);
-            applyFontSize(state.fontSize);
-            sizeBtns.forEach(b => b.classList.toggle('active', b.dataset.size === state.fontSize));
-        });
+        btn.classList.toggle('active', btn.dataset.size===state.fontSize);
+        btn.addEventListener('click', ()=>{ state.fontSize=btn.dataset.size; storage.set('fep13_font_size',state.fontSize); applyFontSize(state.fontSize); sizeBtns.forEach(b=>b.classList.toggle('active',b.dataset.size===state.fontSize)); });
     });
-
-    // Glass cards
-    const glassToggle = document.getElementById('toggle-glass');
-    if (glassToggle) {
-        glassToggle.checked = state.glassCards;
-        glassToggle.addEventListener('change', () => {
-            state.glassCards = glassToggle.checked;
-            storage.set('fep13_glass_cards', state.glassCards);
-            applyBodyClasses();
-        });
-    }
-
-    // Compact
-    const compactToggle = document.getElementById('toggle-compact');
-    if (compactToggle) {
-        compactToggle.checked = state.compact;
-        compactToggle.addEventListener('change', () => {
-            state.compact = compactToggle.checked;
-            storage.set('fep13_compact', state.compact);
-            applyBodyClasses();
-        });
-    }
-
-    // Show teacher
-    const teacherToggle = document.getElementById('toggle-teacher');
-    if (teacherToggle) {
-        teacherToggle.checked = state.showTeacher;
-        teacherToggle.addEventListener('change', () => {
-            state.showTeacher = teacherToggle.checked;
-            storage.set('fep13_show_teacher', state.showTeacher);
-            applyBodyClasses();
-        });
-    }
-
-    // Show room
-    const roomToggle = document.getElementById('toggle-room');
-    if (roomToggle) {
-        roomToggle.checked = state.showRoom;
-        roomToggle.addEventListener('change', () => {
-            state.showRoom = roomToggle.checked;
-            storage.set('fep13_show_room', state.showRoom);
-            applyBodyClasses();
-        });
-    }
+    const glassToggle=document.getElementById('toggle-glass');
+    if(glassToggle){glassToggle.checked=state.glassCards;glassToggle.addEventListener('change',()=>{state.glassCards=glassToggle.checked;storage.set('fep13_glass_cards',state.glassCards);applyBodyClasses();});}
+    const compactToggle=document.getElementById('toggle-compact');
+    if(compactToggle){compactToggle.checked=state.compact;compactToggle.addEventListener('change',()=>{state.compact=compactToggle.checked;storage.set('fep13_compact',state.compact);applyBodyClasses();});}
+    const teacherToggle=document.getElementById('toggle-teacher');
+    if(teacherToggle){teacherToggle.checked=state.showTeacher;teacherToggle.addEventListener('change',()=>{state.showTeacher=teacherToggle.checked;storage.set('fep13_show_teacher',state.showTeacher);applyBodyClasses();});}
+    const roomToggle=document.getElementById('toggle-room');
+    if(roomToggle){roomToggle.checked=state.showRoom;roomToggle.addEventListener('change',()=>{state.showRoom=roomToggle.checked;storage.set('fep13_show_room',state.showRoom);applyBodyClasses();});}
 }
 
 function updateThemeUI() {
-    els.themeBtns.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.themeVal === state.theme);
-    });
+    els.themeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.themeVal===state.theme));
 }
 
 function getLocalMonday(d) {
-    const dInfo = new Date(d);
-    const day = dInfo.getDay() === 0 ? 7 : dInfo.getDay();
-    dInfo.setDate(dInfo.getDate() - day + 1);
-    dInfo.setHours(0, 0, 0, 0);
-    return dInfo;
+    const di = new Date(d);
+    const day = di.getDay()===0?7:di.getDay();
+    di.setDate(di.getDate()-day+1);
+    di.setHours(0,0,0,0);
+    return di;
 }
-
 function getWeekType(dateObj) {
-    const localMonday = getLocalMonday(dateObj);
-    const utcCurrent = Date.UTC(localMonday.getFullYear(), localMonday.getMonth(), localMonday.getDate());
-    const diffDays = Math.floor((utcCurrent - BASE_MONDAY_UTC) / (1000 * 60 * 60 * 24));
-    const diffWeeks = Math.floor(diffDays / 7);
-    return (diffWeeks % 2 === 0) ? BASE_WEEK_TYPE : (BASE_WEEK_TYPE === 'numerator' ? 'denominator' : 'numerator');
+    const lm = getLocalMonday(dateObj);
+    const utcC = Date.UTC(lm.getFullYear(),lm.getMonth(),lm.getDate());
+    const diffW = Math.floor(Math.floor((utcC-BASE_MONDAY_UTC)/(1000*60*60*24))/7);
+    return (diffW%2===0)?BASE_WEEK_TYPE:(BASE_WEEK_TYPE==='numerator'?'denominator':'numerator');
 }
-
-function parseTitle(rawTitle) {
-    let cleanTitle = rawTitle.replace(/\s*\(Потік\)/g, "").trim();
+function parseTitle(raw) {
+    let t = raw.replace(/\s*\(Потік\)/g,"").trim();
     let type = "";
-    if(cleanTitle.includes('(Л)')) { type = "Лекція"; cleanTitle = cleanTitle.replace('(Л)', ''); }
-    else if(cleanTitle.includes('(Лаб)')) { type = "Лабораторна"; cleanTitle = cleanTitle.replace('(Лаб)', ''); }
-    else if(cleanTitle.includes('(ПрС)')) { type = "Практична"; cleanTitle = cleanTitle.replace('(ПрС)', ''); }
-    return { title: cleanTitle.trim(), type, isPotik: rawTitle.includes('(Потік)') };
+    if(t.includes('(Л)')){type="Лекція";t=t.replace('(Л)','');}
+    else if(t.includes('(Лаб)')){type="Лабораторна";t=t.replace('(Лаб)','');}
+    else if(t.includes('(ПрС)')){type="Практична";t=t.replace('(ПрС)','');}
+    return {title:t.trim(),type,isPotik:raw.includes('(Потік)')};
 }
 
-function renderDayBlock(targetDate, showHeader = true) {
+function renderDayBlock(targetDate, showHeader=true) {
     const dayIndex = targetDate.getDay();
     const dayKey = jsDaysMap[dayIndex];
     const weekType = getWeekType(targetDate);
     const kyivNow = getKyivDate();
-    
-    const isTodayKyiv = targetDate.getDate() === kyivNow.getDate() && targetDate.getMonth() === kyivNow.getMonth() && targetDate.getFullYear() === kyivNow.getFullYear();
-    const nowSecs = kyivNow.getHours() * 3600 + kyivNow.getMinutes() * 60 + kyivNow.getSeconds();
-
+    const isTodayKyiv = targetDate.getDate()===kyivNow.getDate() && targetDate.getMonth()===kyivNow.getMonth() && targetDate.getFullYear()===kyivNow.getFullYear();
+    const nowSecs = kyivNow.getHours()*3600+kyivNow.getMinutes()*60+kyivNow.getSeconds();
     let html = '';
-
-    if (showHeader) {
+    if(showHeader) {
         const dateStr = `${targetDate.getDate()} ${monthNames[targetDate.getMonth()]}`;
-        const wTypeName = weekType === 'numerator' ? '🔁 Чисельник' : '🔁 Знаменник';
+        const wTypeName = weekType==='numerator'?'🔁 Чисельник':'🔁 Знаменник';
         html += `<div class="day-header"><span class="day-title">${uaDays[dayIndex]}, ${dateStr}</span><span class="week-badge">${wTypeName}</span></div>`;
     }
-
-    if (dayIndex === 0 || dayIndex === 6) {
-        let out = html + `<div class="empty-state"><span>🎉</span><p>Ура, вихідний!</p>`;
-        if (isTodayKyiv) {
-            out += `<button class="go-tomorrow-btn" style="margin: 16px auto 0; width: fit-content;" onclick="document.querySelector('[data-tab=&quot;next_week&quot;]').click()">Наст. тиждень <svg style="width:16px; height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button>`;
-        }
-        out += `</div>`;
-        return out;
+    if(dayIndex===0||dayIndex===6) {
+        let out = html+`<div class="empty-state"><span>🎉</span><p>Ура, вихідний!</p>`;
+        if(isTodayKyiv) out+=`<button class="go-tomorrow-btn" style="margin:16px auto 0;width:fit-content;" onclick="document.querySelector('[data-tab=&quot;next_week&quot;]').click()">Наст. тиждень <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button>`;
+        return out+'</div>';
     }
-
-    let dayLessons = SCHEDULE[weekType][dayKey] || [];
-    let filtered = dayLessons.filter(lesson => {
-        if (state.group !== 'all' && lesson.group && lesson.group.toString() !== state.group) return false;
-        if (lesson.isEng && state.engTeacher !== 'all' && !lesson.teacher.includes(state.engTeacher)) return false;
+    let dayLessons = SCHEDULE[weekType][dayKey]||[];
+    let filtered = dayLessons.filter(l => {
+        if(state.group!=='all'&&l.group&&l.group.toString()!==state.group) return false;
+        if(l.isEng&&state.engTeacher!=='all'&&!l.teacher.includes(state.engTeacher)) return false;
         return true;
     });
-
-    if (filtered.length === 0) {
-        let out = html + `<div class="empty-state"><span>🙌</span><p>На цей день пар немає</p>`;
-        if (isTodayKyiv) {
-            const isFriday = dayIndex === 5;
-            const btnTab = isFriday ? 'next_week' : 'tomorrow';
-            const btnText = isFriday ? 'Наст. тиждень' : 'На завтра';
-            out += `<button class="go-tomorrow-btn" style="margin: 16px auto 0; width: fit-content;" onclick="document.querySelector('[data-tab=&quot;${btnTab}&quot;]').click()">${btnText} <svg style="width:16px; height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button>`;
-        }
-        out += `</div>`;
-        return out;
+    if(filtered.length===0) {
+        let out = html+`<div class="empty-state"><span>🙌</span><p>На цей день пар немає</p>`;
+        if(isTodayKyiv) { const isFri=dayIndex===5; const t=isFri?'next_week':'tomorrow'; const tx=isFri?'Наст. тиждень':'На завтра'; out+=`<button class="go-tomorrow-btn" style="margin:16px auto 0;width:fit-content;" onclick="document.querySelector('[data-tab=&quot;${t}&quot;]').click()">${tx} <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button>`; }
+        return out+'</div>';
     }
-
-    let currentLessonId = null;
-    let nextLessonId = null;
-
-    if (isTodayKyiv) {
-        for (let i = 0; i < filtered.length; i++) {
-            const l = filtered[i];
-            const startS = timeToSeconds(l.start);
-            const endS = timeToSeconds(l.end);
-            
-            if (nowSecs >= startS && nowSecs <= endS) {
-                currentLessonId = i; break;
-            } else if (nowSecs < startS && nextLessonId === null) {
-                nextLessonId = i;
-            }
+    let currentLessonId=null, nextLessonId=null;
+    if(isTodayKyiv) {
+        for(let i=0;i<filtered.length;i++) {
+            const l=filtered[i];
+            const startS=timeToSeconds(l.start), endS=timeToSeconds(l.end);
+            if(nowSecs>=startS&&nowSecs<=endS){currentLessonId=i;break;}
+            else if(nowSecs<startS&&nextLessonId===null){nextLessonId=i;}
         }
     }
-
-    html += filtered.map((lesson, idx) => {
-        const { title, type, isPotik } = parseTitle(lesson.title);
-        const cleanTeacher = lesson.teacher.replace(/\s*\(Потік\)/g, "").trim();
-        
-        let badges = '';
-        if(type) badges += `<span class="badge badge-type">${type}</span>`;
-        if(lesson.group) badges += `<span class="badge badge-group">Підгрупа ${lesson.group}</span>`;
-        if(isPotik || lesson.teacher.includes('(Потік)')) badges += `<span class="badge badge-potik">Потік</span>`;
-        if(lesson.isEng && state.engTeacher === 'all') badges += `<span class="badge badge-group">Збірна група</span>`;
-
-        let extraHTML = '';
-        let cardClasses = "lesson-card";
-        let timerData = '';
-
-        if (idx === currentLessonId) {
-            cardClasses += " current-lesson";
-            extraHTML = `
-                <div class="current-badge">Триває зараз</div>
-                <div class="live-timer-text">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                    До кінця: <span id="live-time-val">--:--</span>
-                </div>
-                <div class="live-timer-wrapper"><div class="live-timer-progress" id="live-progress-bar"></div></div>
-            `;
-            timerData = `data-start="${timeToSeconds(lesson.start)}" data-end="${timeToSeconds(lesson.end)}" id="tracked-current"`;
-        } else if (idx === nextLessonId) {
-            cardClasses += " next-lesson";
-            extraHTML = `<div class="next-badge" id="tracked-next" data-start="${timeToSeconds(lesson.start)}">Почнеться через --:--</div>`;
+    html += filtered.map((lesson,idx)=>{
+        const {title,type,isPotik}=parseTitle(lesson.title);
+        const cleanTeacher=lesson.teacher.replace(/\s*\(Потік\)/g,"").trim();
+        let badges='';
+        if(type) badges+=`<span class="badge badge-type">${type}</span>`;
+        if(lesson.group) badges+=`<span class="badge badge-group">Підгрупа ${lesson.group}</span>`;
+        if(isPotik||lesson.teacher.includes('(Потік)')) badges+=`<span class="badge badge-potik">Потік</span>`;
+        if(lesson.isEng&&state.engTeacher==='all') badges+=`<span class="badge badge-group">Збірна група</span>`;
+        let cardClasses="lesson-card";
+        let topBadge='', bottomExtras='', timerData='';
+        if(idx===currentLessonId) {
+            cardClasses+=" current-lesson";
+            topBadge=`<div class="current-badge">Триває зараз</div>`;
+            bottomExtras=`<div class="live-timer-text"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>До кінця: <span id="live-time-val">--:--</span></div><div class="live-timer-wrapper"><div class="live-timer-progress" id="live-progress-bar"></div></div>`;
+            timerData=`data-start="${timeToSeconds(lesson.start)}" data-end="${timeToSeconds(lesson.end)}" id="tracked-current"`;
+        } else if(idx===nextLessonId) {
+            cardClasses+=" next-lesson";
+            topBadge=`<div class="next-badge" id="tracked-next" data-start="${timeToSeconds(lesson.start)}">Почнеться через --:--</div>`;
         }
-
-        return `
-            <div class="${cardClasses}" ${timerData}>
-                ${extraHTML.includes('current-badge') ? '<div class="current-badge">Триває зараз</div>' : ''}
-                ${extraHTML.includes('next-badge') ? extraHTML : ''}
-                <div style="display: flex; width: 100%; gap: 16px;">
-                    <div class="time-block">
-                        <span class="time-start">${lesson.start}</span>
-                        <span class="time-end">${lesson.end}</span>
-                    </div>
-                    <div class="info-block">
-                        ${badges ? `<div class="badges">${badges}</div>` : ''}
-                        <h3 class="lesson-title">${title}</h3>
-                        ${lesson.room ? `<div class="lesson-meta lesson-meta-room">${ICONS.room} <span>${lesson.room}</span></div>` : ''}
-                        ${cleanTeacher ? `<div class="lesson-meta lesson-meta-teacher">${ICONS.teacher} <span>${cleanTeacher}</span></div>` : ''}
-                        ${extraHTML.includes('live-timer-text') ? '<div class="live-timer-text"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> До кінця: <span id="live-time-val">--:--</span></div>' : ''}
-                    </div>
-                </div>
-                ${extraHTML.includes('live-timer-wrapper') ? '<div class="live-timer-wrapper"><div class="live-timer-progress" id="live-progress-bar"></div></div>' : ''}
-            </div>
-        `;
+        return `<div class="${cardClasses}" ${timerData}>${topBadge}<div style="display:flex;width:100%;gap:16px;"><div class="time-block"><span class="time-start">${lesson.start}</span><span class="time-end">${lesson.end}</span></div><div class="info-block">${badges?`<div class="badges">${badges}</div>`:''}<h3 class="lesson-title">${title}</h3>${lesson.room?`<div class="lesson-meta lesson-meta-room">${ICONS.room}<span>${lesson.room}</span></div>`:''} ${cleanTeacher?`<div class="lesson-meta lesson-meta-teacher">${ICONS.teacher}<span>${cleanTeacher}</span></div>`:''}</div></div>${bottomExtras}</div>`;
     }).join('');
 
-    if (isTodayKyiv) {
-        const lastLesson = filtered[filtered.length - 1];
-        const lastEndS = timeToSeconds(lastLesson.end);
-        
-        if (nowSecs > lastEndS) {
-            const isFriday = dayIndex === 5;
-            const targetTab = isFriday ? 'next_week' : 'tomorrow';
-            const targetText = isFriday ? 'Наст. тиждень' : 'На завтра';
-
-            html += `
-                <div class="all-done-message">
-                    <div class="all-done-icon">🎉</div>
-                    <div class="all-done-text">
-                        <h4>На сьогодні все!</h4>
-                        <p>Всі пари успішно завершено. Можна відпочивати.</p>
-                    </div>
-                    <button class="go-tomorrow-btn" onclick="document.querySelector('[data-tab=&quot;${targetTab}&quot;]').click()">
-                        ${targetText} <svg style="width:16px; height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                    </button>
-                </div>
-            `;
+    if(isTodayKyiv) {
+        const lastEndS=timeToSeconds(filtered[filtered.length-1].end);
+        if(nowSecs>lastEndS) {
+            const isFri=dayIndex===5;
+            const tt=isFri?'next_week':'tomorrow'; const tx=isFri?'Наст. тиждень':'На завтра';
+            html+=`<div class="all-done-message"><div class="all-done-icon">🎉</div><div class="all-done-text"><h4>На сьогодні все!</h4><p>Всі пари успішно завершено. Можна відпочивати.</p></div><button class="go-tomorrow-btn" onclick="document.querySelector('[data-tab=&quot;${tt}&quot;]').click()">${tx} <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button></div>`;
         }
     }
-
     return html;
 }
 
 function render() {
-    document.querySelectorAll('.day-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === state.tab));
-
-    let contentHTML = '';
-    const nowKyiv = getKyivDate();
-
-    if (state.tab === 'today') contentHTML = renderDayBlock(nowKyiv, true);
-    else if (state.tab === 'tomorrow') { const t = new Date(nowKyiv); t.setDate(t.getDate() + 1); contentHTML = renderDayBlock(t, true); }
-    else if (state.tab === 'this_week') { const m = getLocalMonday(nowKyiv); for(let i=0; i<5; i++) { const d = new Date(m); d.setDate(d.getDate() + i); contentHTML += renderDayBlock(d, true); } }
-    else if (state.tab === 'next_week') { const nm = getLocalMonday(nowKyiv); nm.setDate(nm.getDate() + 7); for(let i=0; i<5; i++) { const d = new Date(nm); d.setDate(d.getDate() + i); contentHTML += renderDayBlock(d, true); } }
-
-    els.scheduleContainer.innerHTML = contentHTML;
-    updateLiveTimers(); 
+    document.querySelectorAll('.day-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.tab===state.tab));
+    let html='';
+    const nowKyiv=getKyivDate();
+    if(state.tab==='today') html=renderDayBlock(nowKyiv,true);
+    else if(state.tab==='tomorrow'){const t=new Date(nowKyiv);t.setDate(t.getDate()+1);html=renderDayBlock(t,true);}
+    else if(state.tab==='this_week'){const m=getLocalMonday(nowKyiv);for(let i=0;i<5;i++){const d=new Date(m);d.setDate(d.getDate()+i);html+=renderDayBlock(d,true);}}
+    else if(state.tab==='next_week'){const nm=getLocalMonday(nowKyiv);nm.setDate(nm.getDate()+7);for(let i=0;i<5;i++){const d=new Date(nm);d.setDate(d.getDate()+i);html+=renderDayBlock(d,true);}}
+    els.scheduleContainer.innerHTML=html;
+    updateLiveTimers();
 }
 
 function updateLiveTimers() {
-    if (state.tab !== 'today') return;
-
-    const now = getKyivDate();
-    const nowSecs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-
-    const currentCard = document.getElementById('tracked-current');
-    if (currentCard) {
-        const start = parseInt(currentCard.dataset.start);
-        const end = parseInt(currentCard.dataset.end);
-        
-        if (nowSecs > end) { render(); return; }
-
-        const totalDuration = end - start;
-        const elapsed = nowSecs - start;
-        const remaining = end - nowSecs;
-        const progressPercent = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
-        
-        const timeValEl = document.getElementById('live-time-val');
-        const progressBarEl = document.getElementById('live-progress-bar');
-        
-        if (timeValEl) timeValEl.textContent = formatTimeLeft(remaining);
-        if (progressBarEl) progressBarEl.style.width = `${progressPercent}%`;
+    if(state.tab!=='today') return;
+    const now=getKyivDate();
+    const nowSecs=now.getHours()*3600+now.getMinutes()*60+now.getSeconds();
+    const cc=document.getElementById('tracked-current');
+    if(cc){
+        const start=parseInt(cc.dataset.start),end=parseInt(cc.dataset.end);
+        if(nowSecs>end){render();return;}
+        const elapsed=nowSecs-start,remaining=end-nowSecs;
+        const pct=Math.min(100,Math.max(0,(elapsed/(end-start))*100));
+        const tv=document.getElementById('live-time-val'),pb=document.getElementById('live-progress-bar');
+        if(tv) tv.textContent=formatTimeLeft(remaining);
+        if(pb) pb.style.width=`${pct}%`;
     }
-
-    const nextBadge = document.getElementById('tracked-next');
-    if (nextBadge) {
-        const start = parseInt(nextBadge.dataset.start);
-        if (nowSecs >= start) { render(); return; }
-        const remaining = start - nowSecs;
-        nextBadge.textContent = `Почнеться через ${formatTimeLeft(remaining)}`;
+    const nb=document.getElementById('tracked-next');
+    if(nb){
+        const start=parseInt(nb.dataset.start);
+        if(nowSecs>=start){render();return;}
+        nb.textContent=`Почнеться через ${formatTimeLeft(start-nowSecs)}`;
     }
 }
 
