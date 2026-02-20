@@ -509,39 +509,6 @@ function init() {
         }
     });
     
-    // Логіка СВАЙПІВ (тільки для сторінки розкладу)
-    let touchstartX = 0;
-    let touchendX = 0;
-    const schedulePage = document.getElementById('page-schedule');
-    
-    schedulePage.addEventListener('touchstart', e => {
-        touchstartX = e.changedTouches[0].screenX;
-    }, {passive: true});
-    
-    schedulePage.addEventListener('touchend', e => {
-        touchendX = e.changedTouches[0].screenX;
-        handleSwipe();
-    }, {passive: true});
-
-    function handleSwipe() {
-        if (Math.abs(touchendX - touchstartX) < 60) return; // Ігноруємо короткі свайпи
-        
-        let currIdx = tabsOrder.indexOf(state.tab);
-        if (touchendX < touchstartX) {
-            // Свайп вліво (Наступна вкладка)
-            if(currIdx < tabsOrder.length - 1) { 
-                state.tab = tabsOrder[currIdx + 1]; 
-                render(); 
-            }
-        } else {
-            // Свайп вправо (Попередня вкладка)
-            if(currIdx > 0) { 
-                state.tab = tabsOrder[currIdx - 1]; 
-                render(); 
-            }
-        }
-    }
-
     // Навігація між "Розклад" та "Корисне"
     document.querySelectorAll('.nav-item').forEach(btn => {
         btn.addEventListener('click', (e) => {
