@@ -9,6 +9,34 @@
     <link rel="manifest" href="manifest.json">
     <title>Розклад ФЕП-13</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        const firebaseConfig = {
+            apiKey: "AIzaSyBH8JKNOBWTjxSIiHNVI8LiwK8u9sPyVTo",
+            authDomain: "telegram-xmice.firebaseapp.com",
+            projectId: "telegram-xmice",
+            storageBucket: "telegram-xmice.firebasestorage.app",
+            messagingSenderId: "553560381893",
+            appId: "1:553560381893:web:827226c033a1f19b8893ac"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db  = getFirestore(app);
+        window.fbGetAnnouncement = async () => {
+            try {
+                const snap = await getDoc(doc(db, "fep13", "announcement"));
+                return snap.exists() ? snap.data() : null;
+            } catch(e) { console.error("Firebase read:", e); return null; }
+        };
+        window.fbSetAnnouncement = async (text) => {
+            try {
+                await setDoc(doc(db, "fep13", "announcement"), { text: text, updatedAt: Date.now() });
+                return true;
+            } catch(e) { console.error("Firebase write:", e); return false; }
+        };
+        window.firebaseReady = true;
+        window.dispatchEvent(new Event("firebase-ready"));
+    </script>
     <style>
         :root {
             --fs-title: 15px;
@@ -783,45 +811,45 @@ const ADMIN_PASS = 'revalonexgod';
 
 // ── ANNOUNCEMENT LOGIC ─────────────────────────────
 function initAnnouncement() {
-    const editor     = document.getElementById('ann-editor');
-    const textarea   = document.getElementById('ann-textarea');
-    const passInput  = document.getElementById('ann-pass');
-    const saveBtn    = document.getElementById('ann-save-btn');
-    const cancelBtn  = document.getElementById('ann-cancel-btn');
-    const clearBtn   = document.getElementById('ann-clear-btn');
-    const textDisplay= document.getElementById('ann-text-display');
-    const updatedEl  = document.getElementById('ann-updated-at');
-    const secretTrig = document.getElementById('useful-secret-trigger');
+    const editor      = document.getElementById('ann-editor');
+    const textarea    = document.getElementById('ann-textarea');
+    const passInput   = document.getElementById('ann-pass');
+    const saveBtn     = document.getElementById('ann-save-btn');
+    const cancelBtn   = document.getElementById('ann-cancel-btn');
+    const clearBtn    = document.getElementById('ann-clear-btn');
+    const textDisplay = document.getElementById('ann-text-display');
+    const updatedEl   = document.getElementById('ann-updated-at');
+    const secretTrig  = document.getElementById('useful-secret-trigger');
+    const expandBtn   = document.getElementById('ann-expand-btn');
+    const expandLabel = document.getElementById('ann-expand-label');
 
-    // ── Секретний тригер: 5 швидких торкань заголовку «Корисне» ──
+    // ── Секретний тригер: 5 швидких торкань ──
     let tapCount = 0, tapTimer = null;
     secretTrig.addEventListener('click', () => {
         tapCount++;
         clearTimeout(tapTimer);
-        // Легке візуальне «мигання» при кожному торканні
         secretTrig.style.opacity = '0.5';
         setTimeout(() => { secretTrig.style.opacity = ''; }, 80);
-
         if (tapCount >= 5) {
             tapCount = 0;
-            if (editor.classList.contains('open')) { closeEditor(); }
-            else { openEditor(); }
+            editor.classList.contains('open') ? closeEditor() : openEditor();
         } else {
             tapTimer = setTimeout(() => { tapCount = 0; }, 1500);
         }
     });
 
-    function loadAnnouncement() {
-        const saved = storage.get('fep13_announcement', '');
-        const ts    = storage.get('fep13_announcement_ts', '');
-        const expandBtn   = document.getElementById('ann-expand-btn');
-        const expandLabel = document.getElementById('ann-expand-label');
+    // ── Розкрити/згорнути текст ──
+    expandBtn.addEventListener('click', () => {
+        const isExp = textDisplay.classList.contains('expanded');
+        textDisplay.classList.toggle('expanded', !isExp);
+        expandBtn.classList.toggle('expanded', !isExp);
+        expandLabel.textContent = isExp ? 'Читати більше' : 'Згорнути';
+    });
 
-        if (saved && saved.trim()) {
-            textDisplay.textContent = saved;
+    function showText(text, ts) {
+        if (text && text.trim()) {
+            textDisplay.textContent = text;
             textDisplay.className = 'ann-body-text';
-
-            // Показати кнопку «Читати більше» тільки якщо текст обрізається
             setTimeout(() => {
                 if (textDisplay.scrollHeight > textDisplay.clientHeight + 2) {
                     expandBtn.classList.add('visible');
@@ -831,9 +859,8 @@ function initAnnouncement() {
                     expandBtn.classList.remove('visible');
                 }
             }, 50);
-
             if (ts) {
-                const d = new Date(parseInt(ts));
+                const d = new Date(typeof ts === 'number' ? ts : parseInt(ts));
                 updatedEl.style.display = 'flex';
                 updatedEl.querySelector('span').textContent =
                     'Оновлено: ' + d.toLocaleDateString('uk-UA', { day:'numeric', month:'long' }) +
@@ -847,23 +874,36 @@ function initAnnouncement() {
         }
     }
 
-    // Логіка розкриття
-    document.getElementById('ann-expand-btn').addEventListener('click', () => {
-        const expandBtn   = document.getElementById('ann-expand-btn');
-        const expandLabel = document.getElementById('ann-expand-label');
-        const isExpanded  = textDisplay.classList.contains('expanded');
-        textDisplay.classList.toggle('expanded', !isExpanded);
-        expandBtn.classList.toggle('expanded', !isExpanded);
-        expandLabel.textContent = isExpanded ? 'Читати більше' : 'Згорнути';
-    });
+    // ── Завантаження з Firebase ──
+    async function loadAnnouncement() {
+        // Показуємо локальний кеш поки грузиться Firebase
+        const cachedText = storage.get('fep13_ann_cache_text', '');
+        const cachedTs   = storage.get('fep13_ann_cache_ts', '');
+        showText(cachedText, cachedTs);
+
+        const waitForFirebase = () => new Promise(resolve => {
+            if (window.firebaseReady) resolve();
+            else window.addEventListener('firebase-ready', resolve, { once: true });
+        });
+        await waitForFirebase();
+
+        const data = await window.fbGetAnnouncement();
+        if (data) {
+            showText(data.text, data.updatedAt);
+            // Оновлюємо кеш
+            storage.set('fep13_ann_cache_text', data.text || '');
+            storage.set('fep13_ann_cache_ts', data.updatedAt ? data.updatedAt.toString() : '');
+        } else {
+            showText('', null);
+        }
+    }
 
     function openEditor() {
-        const saved = storage.get('fep13_announcement', '');
-        textarea.value = saved;
+        const cached = storage.get('fep13_ann_cache_text', '');
+        textarea.value = cached;
         passInput.value = '';
         passInput.classList.remove('error');
         editor.classList.add('open');
-        // Скролимо до редактора щоб він був видний
         setTimeout(() => {
             editor.scrollIntoView({ behavior: 'smooth', block: 'center' });
             passInput.focus();
@@ -876,7 +916,7 @@ function initAnnouncement() {
         passInput.classList.remove('error');
     }
 
-    function saveAnnouncement(clear) {
+    async function saveAnnouncement(clear) {
         if (passInput.value !== ADMIN_PASS) {
             passInput.classList.add('error');
             setTimeout(() => passInput.classList.remove('error'), 600);
@@ -884,16 +924,27 @@ function initAnnouncement() {
             return;
         }
         const text = clear ? '' : textarea.value.trim();
-        storage.set('fep13_announcement', text);
-        storage.set('fep13_announcement_ts', clear ? '' : Date.now().toString());
-        loadAnnouncement();
-        closeEditor();
+        saveBtn.textContent = 'Збереження...';
+        saveBtn.disabled = true;
+
+        const ok = await window.fbSetAnnouncement(text);
+        saveBtn.textContent = 'Зберегти';
+        saveBtn.disabled = false;
+
+        if (ok) {
+            storage.set('fep13_ann_cache_text', text);
+            storage.set('fep13_ann_cache_ts', Date.now().toString());
+            showText(text, Date.now());
+            closeEditor();
+        } else {
+            alert('Помилка збереження. Перевір інтернет.');
+        }
     }
 
     cancelBtn.addEventListener('click', closeEditor);
     saveBtn.addEventListener('click', () => saveAnnouncement(false));
     clearBtn.addEventListener('click', () => { textarea.value = ''; saveAnnouncement(true); });
-    passInput.addEventListener('keydown', e => { if(e.key==='Enter') saveAnnouncement(false); });
+    passInput.addEventListener('keydown', e => { if(e.key === 'Enter') saveAnnouncement(false); });
 
     loadAnnouncement();
 }
