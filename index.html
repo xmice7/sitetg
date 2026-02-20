@@ -131,22 +131,7 @@
             animation-delay: -10s;
         }
 
-        /* Решітка-сітка поверх орбів */
-        .bg-grid {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background-image:
-                linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
-            background-size: 40px 40px;
-        }
 
-        [data-theme="light"] .bg-grid {
-            background-image:
-                linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
-        }
 
         @keyframes orbFloat1 {
             0%   { transform: translate(0px, 0px) scale(1); }
@@ -205,7 +190,19 @@
             box-shadow: 0 4px 16px rgba(59,130,246,0.35);
         }
 
-        header h1 { font-size: 26px; font-weight: 800; color: var(--primary); transition: color 0.3s ease; }
+        header h1 { 
+            font-size: 26px; 
+            font-weight: 800; 
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.4));
+            transition: filter 0.3s ease;
+        }
+        [data-theme="light"] header h1 {
+            filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.25));
+        }
         header p { color: var(--text-muted); font-size: 14px; text-transform: capitalize; font-weight: 500; }
 
         .settings-btn { position: absolute; top: 5px; right: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 50%; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-main); box-shadow: var(--shadow); transition: all 0.25s ease; }
@@ -226,20 +223,52 @@
         ============================================= */
         .days-nav { 
             display: flex; 
-            gap: 10px; 
+            gap: 8px; 
             overflow-x: auto; 
-            padding: 10px 0 12px 0; 
+            padding: 10px 4px 12px 4px; 
             margin-bottom: 8px; 
             scrollbar-width: none; 
             position: sticky; 
             top: 0; 
-            background-color: var(--bg-body); 
+            /* Скляний ефект замість суцільного фону */
+            background: transparent;
             z-index: 50; 
             transition: background-color 0.3s ease;
         }
         .days-nav::-webkit-scrollbar { display: none; }
-        .day-btn { background-color: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.2s ease; box-shadow: var(--shadow); }
-        .day-btn.active { background-color: var(--primary); border-color: var(--primary); color: #fff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
+
+        /* Кнопки — напівпрозорі, скляні */
+        .day-btn { 
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            color: var(--text-muted); 
+            padding: 10px 18px; 
+            border-radius: 20px; 
+            font-size: 14px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            white-space: nowrap; 
+            transition: all 0.2s ease; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        [data-theme="light"] .day-btn {
+            background: rgba(255, 255, 255, 0.55);
+            border-color: rgba(0, 0, 0, 0.08);
+        }
+        .day-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.18);
+            color: var(--text-main);
+        }
+        .day-btn.active { 
+            background-color: var(--primary); 
+            border-color: var(--primary); 
+            color: #fff; 
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.45);
+            backdrop-filter: none;
+        }
 
         /* =============================================
            SCHEDULE LIST
@@ -391,6 +420,52 @@
         .theme-btn { flex: 1; padding: 10px 4px; border: none; background: transparent; color: var(--text-muted); font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .theme-btn.active { background: var(--bg-card); color: var(--text-main); box-shadow: var(--shadow); }
         .theme-btn svg { width: 14px; height: 14px; fill: currentColor; stroke: none; }
+
+        /* Розмір тексту */
+        .size-switch { display: flex; background: var(--bg-body); border-radius: 12px; padding: 4px; border: 1px solid var(--border); gap: 4px; }
+        .size-btn { flex: 1; padding: 10px 4px; border: none; background: transparent; color: var(--text-muted); font-weight: 700; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .size-btn.active { background: var(--bg-card); color: var(--text-main); box-shadow: var(--shadow); }
+        .size-btn:nth-child(1) { font-size: 11px; }
+        .size-btn:nth-child(2) { font-size: 14px; }
+        .size-btn:nth-child(3) { font-size: 17px; }
+
+        /* Toggle switch */
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; }
+        .toggle-row:last-child { margin-bottom: 0; }
+        .toggle-label { display: flex; flex-direction: column; gap: 2px; }
+        .toggle-label span { font-size: 15px; font-weight: 600; color: var(--text-main); }
+        .toggle-label small { font-size: 12px; color: var(--text-muted); }
+        .toggle { position: relative; width: 44px; height: 26px; flex-shrink: 0; }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--border); border-radius: 26px; transition: 0.25s; }
+        .toggle-slider::before { content: ''; position: absolute; width: 20px; height: 20px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.25s; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+        .toggle input:checked + .toggle-slider { background: var(--primary); }
+        .toggle input:checked + .toggle-slider::before { transform: translateX(18px); }
+
+        /* Compact mode */
+        body.compact .lesson-card { padding: 10px 12px; }
+        body.compact .lesson-card.current-lesson { padding-bottom: 20px; }
+        body.compact .time-start { font-size: 15px; }
+        body.compact .lesson-title { font-size: 13px; margin-bottom: 4px; }
+        body.compact .lesson-meta { font-size: 12px; margin-bottom: 3px; }
+        body.compact .badges { margin-bottom: 4px; gap: 4px; }
+        body.compact .schedule-list { gap: 8px; }
+
+        /* Glass cards */
+        body.glass-cards .lesson-card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-color: rgba(255,255,255,0.1);
+        }
+        [data-theme="light"] body.glass-cards .lesson-card {
+            background: rgba(255,255,255,0.6);
+            border-color: rgba(255,255,255,0.7);
+        }
+
+        /* Hide meta rows */
+        body.hide-teacher .lesson-meta-teacher { display: none; }
+        body.hide-room .lesson-meta-room { display: none; }
     </style>
 </head>
 <body>
@@ -403,7 +478,7 @@
     <div class="bg-orb bg-orb-2"></div>
     <div class="bg-orb bg-orb-3"></div>
     <div class="bg-orb bg-orb-4"></div>
-    <div class="bg-grid"></div>
+
 </div>
 
 <div class="app-wrapper">
@@ -548,6 +623,63 @@
         </div>
 
         <div class="setting-group">
+            <label>Розмір тексту</label>
+            <div class="size-switch" id="size-switch">
+                <button class="size-btn" data-size="small">Аа</button>
+                <button class="size-btn" data-size="normal">Аа</button>
+                <button class="size-btn" data-size="large">Аа</button>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label>Вигляд карток</label>
+            <div class="toggle-row">
+                <div class="toggle-label">
+                    <span>Скляні картки</span>
+                    <small>Напівпрозорий стиль з розмиттям</small>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" id="toggle-glass">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="toggle-row">
+                <div class="toggle-label">
+                    <span>Компактний режим</span>
+                    <small>Менші відступи, більше пар на екрані</small>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" id="toggle-compact">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label>Відображення інформації</label>
+            <div class="toggle-row">
+                <div class="toggle-label">
+                    <span>Показувати викладача</span>
+                    <small>Ім'я викладача на картці пари</small>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" id="toggle-teacher" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="toggle-row">
+                <div class="toggle-label">
+                    <span>Показувати аудиторію</span>
+                    <small>Номер кімнати на картці пари</small>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" id="toggle-room" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="setting-group">
             <label>Ваш викладач Англійської</label>
             <div class="select-wrapper">
                 <select id="eng-select">
@@ -588,11 +720,18 @@ let state = {
     group: storage.get('fep13_saved_group', 'all'),
     theme: storage.get('fep13_theme', 'dark'),
     engTeacher: storage.get('fep13_eng_teacher', 'all'),
-    color: storage.get('fep13_color', 'blue')
+    color: storage.get('fep13_color', 'blue'),
+    fontSize: storage.get('fep13_font_size', 'normal'),
+    glassCards: storage.get('fep13_glass_cards', 'false') === 'true',
+    compact: storage.get('fep13_compact', 'false') === 'true',
+    showTeacher: storage.get('fep13_show_teacher', 'true') === 'true',
+    showRoom: storage.get('fep13_show_room', 'true') === 'true',
 };
 
 htmlEl.setAttribute('data-theme', state.theme);
 applyColor(state.color);
+applyFontSize(state.fontSize);
+applyBodyClasses();
 
 let els = {};
 
@@ -703,6 +842,18 @@ function applyColor(colorKey) {
     htmlEl.style.setProperty('--bg-blue', c.light);
 }
 
+function applyFontSize(size) {
+    const sizes = { small: '13px', normal: '16px', large: '18px' };
+    document.body.style.fontSize = sizes[size] || '16px';
+}
+
+function applyBodyClasses() {
+    document.body.classList.toggle('glass-cards', state.glassCards);
+    document.body.classList.toggle('compact', state.compact);
+    document.body.classList.toggle('hide-teacher', !state.showTeacher);
+    document.body.classList.toggle('hide-room', !state.showRoom);
+}
+
 function renderColorPicker() {
     const picker = document.getElementById('color-picker');
     picker.innerHTML = Object.keys(colors).map(key => 
@@ -741,6 +892,7 @@ function init() {
     els.engSelect.value = state.engTeacher;
     updateThemeUI();
     renderColorPicker();
+    initNewSettings();
 
     els.groupSelect.addEventListener('change', (e) => { state.group = e.target.value; storage.set('fep13_saved_group', state.group); render(); });
     els.engSelect.addEventListener('change', (e) => { state.engTeacher = e.target.value; storage.set('fep13_eng_teacher', state.engTeacher); render(); });
@@ -783,6 +935,64 @@ function init() {
 
     render();
     setInterval(updateLiveTimers, 1000);
+}
+
+function initNewSettings() {
+    // Font size
+    const sizeBtns = document.querySelectorAll('.size-btn');
+    sizeBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.size === state.fontSize);
+        btn.addEventListener('click', () => {
+            state.fontSize = btn.dataset.size;
+            storage.set('fep13_font_size', state.fontSize);
+            applyFontSize(state.fontSize);
+            sizeBtns.forEach(b => b.classList.toggle('active', b.dataset.size === state.fontSize));
+        });
+    });
+
+    // Glass cards
+    const glassToggle = document.getElementById('toggle-glass');
+    if (glassToggle) {
+        glassToggle.checked = state.glassCards;
+        glassToggle.addEventListener('change', () => {
+            state.glassCards = glassToggle.checked;
+            storage.set('fep13_glass_cards', state.glassCards);
+            applyBodyClasses();
+        });
+    }
+
+    // Compact
+    const compactToggle = document.getElementById('toggle-compact');
+    if (compactToggle) {
+        compactToggle.checked = state.compact;
+        compactToggle.addEventListener('change', () => {
+            state.compact = compactToggle.checked;
+            storage.set('fep13_compact', state.compact);
+            applyBodyClasses();
+        });
+    }
+
+    // Show teacher
+    const teacherToggle = document.getElementById('toggle-teacher');
+    if (teacherToggle) {
+        teacherToggle.checked = state.showTeacher;
+        teacherToggle.addEventListener('change', () => {
+            state.showTeacher = teacherToggle.checked;
+            storage.set('fep13_show_teacher', state.showTeacher);
+            applyBodyClasses();
+        });
+    }
+
+    // Show room
+    const roomToggle = document.getElementById('toggle-room');
+    if (roomToggle) {
+        roomToggle.checked = state.showRoom;
+        roomToggle.addEventListener('change', () => {
+            state.showRoom = roomToggle.checked;
+            storage.set('fep13_show_room', state.showRoom);
+            applyBodyClasses();
+        });
+    }
 }
 
 function updateThemeUI() {
@@ -920,8 +1130,8 @@ function renderDayBlock(targetDate, showHeader = true) {
                     <div class="info-block">
                         ${badges ? `<div class="badges">${badges}</div>` : ''}
                         <h3 class="lesson-title">${title}</h3>
-                        ${lesson.room ? `<div class="lesson-meta">${ICONS.room} <span>${lesson.room}</span></div>` : ''}
-                        ${cleanTeacher ? `<div class="lesson-meta">${ICONS.teacher} <span>${cleanTeacher}</span></div>` : ''}
+                        ${lesson.room ? `<div class="lesson-meta lesson-meta-room">${ICONS.room} <span>${lesson.room}</span></div>` : ''}
+                        ${cleanTeacher ? `<div class="lesson-meta lesson-meta-teacher">${ICONS.teacher} <span>${cleanTeacher}</span></div>` : ''}
                         ${extraHTML.includes('live-timer-text') ? '<div class="live-timer-text"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> До кінця: <span id="live-time-val">--:--</span></div>' : ''}
                     </div>
                 </div>
