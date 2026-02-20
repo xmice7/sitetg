@@ -84,13 +84,13 @@
             display: flex; 
             gap: 10px; 
             overflow-x: auto; 
-            padding: 10px 0 12px 0; /* Додано верхній відступ для краси */
+            padding: 10px 0 12px 0; 
             margin-bottom: 8px; 
             scrollbar-width: none; 
-            position: sticky; /* Робить панель липкою */
-            top: 0; /* Прикріплює до верху екрану */
-            background-color: var(--bg-body); /* Фон такий самий, як у body, щоб перекривати розклад при скролі */
-            z-index: 50; /* Щоб кнопки завжди були над картками розкладу */
+            position: sticky; 
+            top: 0; 
+            background-color: var(--bg-body); 
+            z-index: 50; 
             transition: background-color 0.3s ease;
         }
         .days-nav::-webkit-scrollbar { display: none; }
@@ -261,9 +261,20 @@
                         <p>Навчальні матеріали і контроль ваших знань</p>
                     </div>
                 </div>
+
+                <a href="https://teams.cloud.microsoft" target="_blank" class="useful-card">
+                    <div class="useful-icon">
+                        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    </div>
+                    <div>
+                        <h3>Microsoft Teams</h3>
+                        <p>Онлайн-пари, лекції та комунікація</p>
+                    </div>
+                </a>
             </div>
         </div>
     </div>
+
 
     <nav class="bottom-nav">
         <button class="nav-item active" data-page="schedule">
