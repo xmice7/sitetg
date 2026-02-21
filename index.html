@@ -1997,7 +1997,8 @@ function initAdminPanel() {
             document.getElementById('quicklink-name-input').value = cached.quicklinkName || '';
             document.getElementById('quicklink-url-input').value = cached.quicklinkUrl || '';
             const hm = cached.holidayMode || 'off';
-            const radio = document.getElementById('holiday-' + hm.replace('-','')) || document.getElementById('holiday-off');
+            const radioId = 'holiday-' + hm.replace('new-year', 'newyear');
+            const radio = document.getElementById(radioId) || document.getElementById('holiday-off');
             if (radio) radio.checked = true;
             updateRadioToggles();
         } catch(e) {}
@@ -2034,14 +2035,18 @@ function initAdminPanel() {
         });
         await waitForFirebase();
         try {
-            const snap = await window.fbGetAdmin();
-            const merged = Object.assign({}, snap || {}, updates);
+            // fbGetAdmin вже повертає data (об'єкт), а не snap
+            const current = await window.fbGetAdmin();
+            const merged = Object.assign({}, current || {}, updates);
             const ok = await window.fbSetAdmin(merged);
             if (ok) {
                 storage.set('fep13_admin_cache', JSON.stringify(merged));
             }
             return ok;
-        } catch(e) { return false; }
+        } catch(e) {
+            console.error('saveAdminField error:', e);
+            return false;
+        }
     }
 
     async function loadAdminStats() {
@@ -2091,7 +2096,12 @@ function initAdminPanel() {
     // Святковий режим
     document.getElementById('holiday-save-btn').addEventListener('click', async () => {
         const checked = document.querySelector('input[name="holiday"]:checked');
-        const mode = checked ? checked.id.replace('holiday-','').replace('newyear','new-year') : 'off';
+        let mode = 'off';
+        if (checked) {
+            // holiday-new-year → new-year, holiday-ua → ua, holiday-spring → spring, holiday-off → off
+            const rawId = checked.id.replace('holiday-', '');
+            mode = rawId === 'newyear' ? 'new-year' : rawId;
+        }
         const btn = document.getElementById('holiday-save-btn');
         btn.textContent = '…'; btn.disabled = true;
         const ok = await saveAdminField({ holidayMode: mode });
