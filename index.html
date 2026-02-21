@@ -46,7 +46,6 @@
                 const newTodayCount = isToday?(d.todayCount||0)+1:1;
                 const history = d.history||{};
                 history[today] = newTodayCount;
-                // Зберігаємо тільки останні 14 днів
                 const keys = Object.keys(history).sort();
                 if(keys.length>14) delete history[keys[0]];
                 await setDoc(ref,{ total:(d.total||0)+1, todayDate:today, todayCount:newTodayCount, history });
@@ -65,10 +64,34 @@
             try { await setDoc(doc(db,"fep13","stats"),{total:0,todayDate:'',todayCount:0,history:{}}); return true; }
             catch(e) { return false; }
         };
-        window.fbSetAnnouncement = async (text,imageUrl) => {
-            try { await setDoc(doc(db,"fep13","announcement"),{text,imageUrl:imageUrl||'',updatedAt:Date.now()}); return true; }
+        
+        // Оновлена функція з підтримкою теми та історії оголошень
+        window.fbSetAnnouncement = async (topic, text, imageUrl) => {
+            try { 
+                const docRef = doc(db,"fep13","announcement");
+                const snap = await getDoc(docRef);
+                let history = [];
+                if(snap.exists() && snap.data().history) {
+                    history = snap.data().history;
+                } else if (snap.exists() && (snap.data().text || snap.data().imageUrl || snap.data().topic)) {
+                    history.push({
+                        topic: snap.data().topic||'', 
+                        text: snap.data().text||'', 
+                        imageUrl: snap.data().imageUrl||'', 
+                        updatedAt: snap.data().updatedAt||Date.now()
+                    });
+                }
+                const now = Date.now();
+                if (text || imageUrl || topic) {
+                    history.unshift({topic: topic||'', text, imageUrl: imageUrl||'', updatedAt: now});
+                    if(history.length > 50) history.length = 50;
+                }
+                await setDoc(docRef,{topic:topic||'', text, imageUrl:imageUrl||'', updatedAt:now, history}); 
+                return true; 
+            }
             catch(e) { console.error("Firebase write:",e); return false; }
         };
+        
         // Оголошення на предмети
         window.fbGetLessonAnnouncements = async () => {
             try { const snap = await getDoc(doc(db,"fep13","lessonAnn")); return snap.exists()?snap.data():{items:[]}; }
@@ -219,10 +242,10 @@
         /* ANNOUNCEMENT */
         .announcement-wrap { margin-bottom: 20px; }
         .announcement-board { border-radius: 20px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.18); position: relative; cursor: default; }
-        .ann-stripe-top { background: linear-gradient(135deg,var(--primary) 0%,var(--accent-purple) 100%); background-size:cover; background-position:center; padding:14px 18px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; overflow:hidden; min-height:72px; }
+        .ann-stripe-top { background: linear-gradient(135deg,var(--primary) 0%,var(--accent-purple) 100%); background-size:cover; background-position:center; padding:14px 18px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; overflow:hidden; min-height:160px; /* збільшена висота фото */ }
         .ann-stripe-top.has-image::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(0,0,0,0.52) 0%,rgba(0,0,0,0.32) 100%); z-index:0; }
         .ann-stripe-top.has-image .ann-stripe-top-left,.ann-stripe-top.has-image .ann-edit-image-btn { position:relative; z-index:1; }
-        .ann-stripe-top-left { display:flex; align-items:center; gap:10px; }
+        .ann-stripe-top-left { display:flex; align-items:center; gap:10px; align-self: flex-end; /* опустити текст вниз, якщо фото велике */ }
         .ann-icon-wrap { width:36px; height:36px; background:rgba(255,255,255,0.2); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
         .ann-label { font-size:11px; font-weight:800; color:rgba(255,255,255,0.8); text-transform:uppercase; letter-spacing:1px; }
         .ann-title-text { font-size:16px; font-weight:800; color:#fff; line-height:1.1; }
@@ -230,7 +253,7 @@
         .ann-edit-btn:hover { background: rgba(255,255,255,0.32); }
         .ann-stripe-bottom { background:var(--bg-card); border:1px solid var(--border); border-top:none; padding:18px; min-height:80px; border-radius:0 0 20px 20px; }
         .ann-body-text { font-size:15px; font-weight:500; color:var(--text-main); line-height:1.6; white-space:pre-wrap; word-break:break-word; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; transition:max-height 0.3s ease; }
-        .ann-body-text.expanded { display:block; overflow:visible; }
+        .ann-body-text.expanded { display:block; overflow:visible; -webkit-line-clamp:unset; } /* повне відкриття тексту */
         .ann-empty-hint { color:var(--text-muted); font-size:14px; font-style:italic; }
         .ann-updated { font-size:11px; color:var(--text-muted); margin-top:10px; display:flex; align-items:center; gap:5px; }
         .ann-expand-btn { margin-top:10px; background:none; border:none; color:var(--primary); font-size:13px; font-weight:700; cursor:pointer; padding:0; display:none; align-items:center; gap:4px; }
@@ -251,6 +274,13 @@
         .ann-save-btn:hover { opacity: 0.88; }
         .ann-cancel-btn { background:var(--bg-body); border:1px solid var(--border); color:var(--text-muted); padding:13px 18px; border-radius:12px; font-size:15px; font-weight:600; cursor:pointer; transition:all 0.2s; }
         .ann-clear-btn { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25); color:#ef4444; padding:13px 14px; border-radius:12px; font-size:13px; font-weight:700; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+        
+        /* Стилі для елементів Історії оголошень */
+        .history-item { background:var(--bg-body); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:12px; }
+        .history-item-topic { font-weight:800; font-size:16px; color:var(--text-main); margin-bottom:6px; }
+        .history-item-date { font-size:11px; color:var(--text-muted); margin-bottom:10px; }
+        .history-item-img { width:100%; border-radius:8px; margin-bottom:10px; max-height:250px; object-fit:cover; display:block; }
+        .history-item-text { font-size:14px; color:var(--text-main); line-height:1.5; white-space:pre-wrap; word-break:break-word; }
 
         /* Лічильник непрочитаних */
         .nav-badge { position:absolute; top:8px; right:calc(50% - 20px); background:#ef4444; color:#fff; font-size:9px; font-weight:800; width:16px; height:16px; border-radius:50%; display:none; align-items:center; justify-content:center; line-height:1; }
@@ -421,7 +451,6 @@
 </div>
 
 <div class="app-wrapper">
-    <!-- РОЗКЛАД -->
     <div id="page-schedule" class="page active">
         <div class="container">
             <header>
@@ -435,7 +464,6 @@
                 </button>
             </header>
 
-            <!-- Закріплене повідомлення -->
             <div id="pinned-msg" class="pinned-msg">
                 <div class="pinned-msg-icon">📌</div>
                 <div class="pinned-msg-body">
@@ -462,7 +490,6 @@
             <div id="schedule-banners"></div>
             <main class="schedule-list" id="schedule-container"></main>
 
-            <!-- Дедлайни -->
             <div class="deadline-section" id="deadline-section" style="display:none">
                 <div style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">⏰ Дедлайни</div>
                 <div id="deadline-list"></div>
@@ -470,7 +497,6 @@
         </div>
     </div>
 
-    <!-- КОРИСНЕ -->
     <div id="page-useful" class="page">
         <div class="container">
             <header>
@@ -481,7 +507,6 @@
                 <p>Важливі посилання та сервіси</p>
             </header>
 
-            <!-- ОГОЛОШЕННЯ -->
             <div class="announcement-wrap" id="announcement-wrap">
                 <div class="announcement-board">
                     <div class="ann-stripe-top">
@@ -489,7 +514,7 @@
                             <div class="ann-icon-wrap">📢</div>
                             <div>
                                 <div class="ann-label">Оголошення</div>
-                                <div class="ann-title-text">Для групи ФЕП-13</div>
+                                <div class="ann-title-text" id="ann-topic-display">Для групи ФЕП-13</div>
                             </div>
                         </div>
                         <button class="ann-edit-image-btn" id="ann-edit-image-btn" style="display:none">
@@ -507,6 +532,7 @@
                                 <svg style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                                 <span></span>
                             </p>
+                            <button id="ann-history-btn" style="width:100%; background:var(--bg-body); border:1px solid var(--border); color:var(--text-main); padding:10px; border-radius:12px; font-size:13px; font-weight:600; cursor:pointer; margin-top:14px; transition:0.2s;">🕒 Історія оголошень</button>
                         </div>
                     </div>
                     <div class="ann-editor" id="ann-editor">
@@ -522,6 +548,7 @@
                             </button>
                             <input type="hidden" id="ann-image-url" value=""/>
                         </div>
+                        <input type="text" class="ann-editor-pass" id="ann-topic-input" placeholder="Тема оголошення:" style="margin-bottom:12px;font-weight:bold;" maxlength="60"/>
                         <textarea id="ann-textarea" placeholder="Введіть текст оголошення для всієї групи…" maxlength="1000"></textarea>
                         <input type="password" class="ann-editor-pass" id="ann-pass" placeholder="🔑 Пароль адміна" autocomplete="off"/>
                         <p class="ann-editor-pass-hint">Тільки адмін може змінювати оголошення</p>
@@ -547,7 +574,6 @@
         </div>
     </div>
 
-    <!-- Попередження, швидке посилання, святковий індикатор -->
     <div id="warning-banner" class="warning-banner">
         <div class="warning-banner-title">⚠️ <span id="warning-banner-title-text">Увага!</span></div>
         <div class="warning-banner-text" id="warning-banner-text"></div>
@@ -559,7 +585,6 @@
     </a>
     <div class="holiday-indicator" id="holiday-indicator">🎉 Активовано святковий режим</div>
 
-    <!-- АДМІН-ПАНЕЛЬ -->
     <div class="admin-modal-overlay" id="admin-modal-overlay">
         <div class="admin-modal">
             <div class="admin-modal-header">
@@ -571,7 +596,6 @@
             </div>
             <div class="admin-modal-body">
 
-                <!-- Статистика -->
                 <div class="admin-section">
                     <div class="admin-section-header">
                         <div class="admin-section-icon" style="background:var(--bg-blue)">📊</div>
@@ -588,7 +612,6 @@
                     <button class="admin-btn admin-btn-danger" id="reset-stats-btn" style="font-size:12px;padding:10px">Скинути статистику</button>
                 </div>
 
-                <!-- Закріплене повідомлення -->
                 <div class="admin-section">
                     <div class="admin-section-header">
                         <div class="admin-section-icon" style="background:var(--bg-blue)">📌</div>
@@ -601,7 +624,6 @@
                     </div>
                 </div>
 
-                <!-- Модифікації розкладу -->
                 <div class="admin-section">
                     <div class="admin-section-header">
                         <div class="admin-section-icon" style="background:rgba(245,158,11,0.15)">📅</div>
@@ -622,7 +644,6 @@
                     <div class="mod-list" id="mod-list"></div>
                 </div>
 
-                <!-- Оголошення на предмет -->
                 <div class="admin-section">
                     <div class="admin-section-header">
                         <div class="admin-section-icon" style="background:var(--bg-purple)">📝</div>
@@ -634,7 +655,6 @@
                     <div class="lesson-ann-list" id="lann-list"></div>
                 </div>
 
-                <!-- Дедлайни -->
                 <div class="admin-section">
                     <div class="admin-section-header">
                         <div class="admin-section-icon" style="background:rgba(239,68,68,0.12)">⏰</div>
@@ -647,7 +667,6 @@
                     <div class="mod-list" id="dl-list"></div>
                 </div>
 
-                <!-- Попередження -->
                 <div class="admin-section">
                     <div class="admin-section-header">
                         <div class="admin-section-icon" style="background:rgba(239,68,68,0.12)">🚨</div>
@@ -661,7 +680,6 @@
                     </div>
                 </div>
 
-                <!-- Швидке посилання -->
                 <div class="admin-section">
                     <div class="admin-section-header">
                         <div class="admin-section-icon" style="background:var(--bg-purple)">🔗</div>
@@ -675,7 +693,6 @@
                     </div>
                 </div>
 
-                <!-- Святковий режим -->
                 <div class="admin-section">
                     <div class="admin-section-header">
                         <div class="admin-section-icon" style="background:rgba(245,158,11,0.15)">🎉</div>
@@ -719,7 +736,14 @@
     </nav>
 </div>
 
-<!-- МОДАЛКИ -->
+<div class="modal-overlay" id="ann-history-modal">
+    <div class="modal-content">
+        <div class="modal-header"><h2>Історія оголошень</h2><button class="close-btn" id="close-ann-history">×</button></div>
+        <div class="modal-body" id="ann-history-list">
+            </div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="moodle-modal">
     <div class="modal-content">
         <div class="modal-header"><h2>Виберіть платформу</h2><button class="close-btn" id="close-moodle">×</button></div>
@@ -795,6 +819,8 @@ let gDeadlines = [];
 // ── ANNOUNCEMENT ──────────────────────────────────
 function initAnnouncement() {
     const editor = document.getElementById('ann-editor');
+    const topicInput = document.getElementById('ann-topic-input');
+    const topicDisplay = document.getElementById('ann-topic-display');
     const textarea = document.getElementById('ann-textarea');
     const passInput = document.getElementById('ann-pass');
     const saveBtn = document.getElementById('ann-save-btn');
@@ -806,6 +832,12 @@ function initAnnouncement() {
     const expandBtn = document.getElementById('ann-expand-btn');
     const expandLabel = document.getElementById('ann-expand-label');
     const annStripeTop = document.querySelector('.ann-stripe-top');
+    
+    // Історія оголошень
+    const historyBtn = document.getElementById('ann-history-btn');
+    const historyModal = document.getElementById('ann-history-modal');
+    const closeHistoryBtn = document.getElementById('close-ann-history');
+    const historyList = document.getElementById('ann-history-list');
 
     let tapCount = 0, tapTimer = null;
     secretTrig.addEventListener('click', () => {
@@ -834,8 +866,9 @@ function initAnnouncement() {
         }
     }
 
-    function showText(text, ts, imageUrl) {
+    function showText(topic, text, ts, imageUrl) {
         applyBanner(imageUrl);
+        topicDisplay.textContent = topic || 'Для групи ФЕП-13';
         // Лічильник непрочитаних
         const lastSeen = storage.get('fep13_ann_last_seen', '');
         const currentTs = ts ? ts.toString() : '';
@@ -882,22 +915,26 @@ function initAnnouncement() {
     });
 
     async function loadAnnouncement() {
+        const cachedTopic = storage.get('fep13_ann_cache_topic', '');
         const cachedText = storage.get('fep13_ann_cache_text', '');
         const cachedTs = storage.get('fep13_ann_cache_ts', '');
         const cachedImage = storage.get('fep13_ann_cache_image', '');
-        showText(cachedText, cachedTs, cachedImage);
+        showText(cachedTopic, cachedText, cachedTs, cachedImage);
+        
         const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
         await waitForFirebase();
         const data = await window.fbGetAnnouncement();
         if (data) {
-            showText(data.text, data.updatedAt, data.imageUrl);
+            showText(data.topic, data.text, data.updatedAt, data.imageUrl);
+            storage.set('fep13_ann_cache_topic', data.topic || '');
             storage.set('fep13_ann_cache_text', data.text || '');
             storage.set('fep13_ann_cache_ts', data.updatedAt ? data.updatedAt.toString() : '');
             storage.set('fep13_ann_cache_image', data.imageUrl || '');
-        } else { showText('', null, ''); }
+        } else { showText('', '', null, ''); }
     }
 
     function openEditor() {
+        topicInput.value = storage.get('fep13_ann_cache_topic', '');
         textarea.value = storage.get('fep13_ann_cache_text', '');
         const cachedImg = storage.get('fep13_ann_cache_image', '');
         document.getElementById('ann-image-url').value = cachedImg;
@@ -907,7 +944,7 @@ function initAnnouncement() {
         passInput.classList.remove('error');
         editor.classList.add('open');
         document.getElementById('ann-edit-image-btn').style.display = 'flex';
-        setTimeout(() => { editor.scrollIntoView({behavior:'smooth',block:'center'}); passInput.focus(); }, 120);
+        setTimeout(() => { editor.scrollIntoView({behavior:'smooth',block:'center'}); topicInput.focus(); }, 120);
     }
 
     function closeEditor() {
@@ -916,6 +953,30 @@ function initAnnouncement() {
         passInput.classList.remove('error');
         document.getElementById('ann-edit-image-btn').style.display = 'none';
     }
+
+    // Відкриття Історії Оголошень
+    historyBtn.addEventListener('click', async () => {
+        historyModal.classList.add('active');
+        historyList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Завантаження історії...</div>';
+        
+        const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
+        await waitForFirebase();
+        
+        const data = await window.fbGetAnnouncement();
+        if(data && data.history && data.history.length > 0) {
+            historyList.innerHTML = data.history.map(h => {
+                const d = new Date(h.updatedAt);
+                const dateStr = d.toLocaleDateString('uk-UA', {day:'numeric',month:'long',year:'numeric'}) + ' о ' + d.toLocaleTimeString('uk-UA', {hour:'2-digit',minute:'2-digit'});
+                const imgHtml = h.imageUrl ? `<img src="${h.imageUrl}" class="history-item-img"/>` : '';
+                return `<div class="history-item"><div class="history-item-topic">${h.topic||'Оголошення'}</div><div class="history-item-date">${dateStr}</div>${imgHtml}<div class="history-item-text">${h.text}</div></div>`;
+            }).join('');
+        } else {
+            historyList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Історія порожня</div>';
+        }
+    });
+    
+    closeHistoryBtn.addEventListener('click', () => historyModal.classList.remove('active'));
+    historyModal.addEventListener('click', e => { if(e.target === historyModal) historyModal.classList.remove('active'); });
 
     const IMGBB_KEY = '6311636c1f646d2a42df314a0275efb8';
     const fileInput = document.getElementById('ann-image-file');
@@ -952,41 +1013,39 @@ function initAnnouncement() {
     async function saveAnnouncement(clear) {
         const isValid = await checkPassword(passInput.value);
         if (!isValid) { passInput.classList.add('error'); setTimeout(()=>passInput.classList.remove('error'),600); passInput.focus(); return; }
+        const topic = clear ? '' : topicInput.value.trim();
         const text = clear ? '' : textarea.value.trim();
         const imageUrl = clear ? '' : imageUrlInput.value.trim();
         saveBtn.textContent = 'Збереження...'; saveBtn.disabled = true;
-        const ok = await window.fbSetAnnouncement(text, imageUrl);
+        const ok = await window.fbSetAnnouncement(topic, text, imageUrl);
         saveBtn.textContent = 'Зберегти'; saveBtn.disabled = false;
         if (ok) {
             const ts = Date.now();
+            storage.set('fep13_ann_cache_topic', topic);
             storage.set('fep13_ann_cache_text', text);
             storage.set('fep13_ann_cache_ts', ts.toString());
             storage.set('fep13_ann_cache_image', imageUrl);
             storage.set('fep13_ann_last_seen', ts.toString());
-            showText(text, ts, imageUrl);
+            showText(topic, text, ts, imageUrl);
             closeEditor();
         } else { alert('Помилка збереження. Перевір інтернет.'); }
     }
 
     cancelBtn.addEventListener('click', closeEditor);
     saveBtn.addEventListener('click', () => saveAnnouncement(false));
-    clearBtn.addEventListener('click', () => { textarea.value = ''; saveAnnouncement(true); });
+    clearBtn.addEventListener('click', () => { topicInput.value = ''; textarea.value = ''; saveAnnouncement(true); });
     passInput.addEventListener('keydown', e => { if(e.key==='Enter') saveAnnouncement(false); });
     loadAnnouncement();
 }
 
 // ── СТАН ─────────────────────────────────────────
 const htmlEl = document.documentElement;
-// badge-group = зелений, badge-type = фіолетовий, badge-potik = синій
-// тому всі кольори нижче навмисно НЕ зелені, НЕ фіолетові та НЕ сині
 const colors = {
-    // ── ОРИГІНАЛЬНІ ──
     blue:    { main:'#3b82f6', hover:'#2563eb', light:'rgba(59,130,246,0.12)', btnBg:'linear-gradient(135deg,#3b82f6,#2563eb)', btnShadow:'0 4px 14px rgba(59,130,246,0.5)' },
     amber:   { main:'#f59e0b', hover:'#d97706', light:'rgba(245,158,11,0.12)',  btnBg:'linear-gradient(135deg,#f59e0b,#d97706)', btnShadow:'0 4px 14px rgba(245,158,11,0.5)' },
     rose:    { main:'#f43f5e', hover:'#e11d48', light:'rgba(244,63,94,0.12)',   btnBg:'linear-gradient(135deg,#f43f5e,#e11d48)', btnShadow:'0 4px 14px rgba(244,63,94,0.5)'  },
     emerald: { main:'#10b981', hover:'#059669', light:'rgba(16,185,129,0.12)',  btnBg:'linear-gradient(135deg,#10b981,#059669)', btnShadow:'0 4px 14px rgba(16,185,129,0.5)' },
     purple:  { main:'#8b5cf6', hover:'#7c3aed', light:'rgba(139,92,246,0.12)', btnBg:'linear-gradient(135deg,#8b5cf6,#7c3aed)', btnShadow:'0 4px 14px rgba(139,92,246,0.5)' },
-    // ── НОВІ ──
     pink:    { main:'#ec4899', hover:'#db2777', light:'rgba(236,72,153,0.12)',  btnBg:'linear-gradient(135deg,#ec4899,#db2777)', btnShadow:'0 4px 14px rgba(236,72,153,0.5)' },
     cyan:    { main:'#06b6d4', hover:'#0891b2', light:'rgba(6,182,212,0.12)',   btnBg:'linear-gradient(135deg,#06b6d4,#0891b2)', btnShadow:'0 4px 14px rgba(6,182,212,0.5)'  },
     orange:  { main:'#f97316', hover:'#ea580c', light:'rgba(249,115,22,0.12)',  btnBg:'linear-gradient(135deg,#f97316,#ea580c)', btnShadow:'0 4px 14px rgba(249,115,22,0.5)' },
@@ -1103,7 +1162,6 @@ function applyColor(k) {
     htmlEl.style.setProperty('--primary', c.main);
     htmlEl.style.setProperty('--primary-hover', c.hover);
     htmlEl.style.setProperty('--bg-blue', c.light);
-    // Кнопки дня-навігації
     htmlEl.style.setProperty('--day-btn-active-bg', c.btnBg);
     htmlEl.style.setProperty('--day-btn-active-border', c.main);
     htmlEl.style.setProperty('--day-btn-active-shadow', c.btnShadow);
@@ -1217,11 +1275,9 @@ function parseTitle(raw) {
     return {title:t.trim(),type,isPotik:raw.includes('(Потік)')};
 }
 
-// Знайти модифікацію для пари
 function findMod(dateStr, lessonTitle) {
     return gScheduleMods.find(m => m.date === dateStr && lessonTitle.toLowerCase().includes(m.lesson.toLowerCase()));
 }
-// Знайти оголошення для пари
 function findLessonAnn(lessonTitle) {
     return gLessonAnns.filter(a => lessonTitle.toLowerCase().includes(a.subject.toLowerCase()));
 }
@@ -1273,7 +1329,6 @@ function renderDayBlock(targetDate, showHeader=true) {
         if(isPotik||lesson.teacher.includes('(Потік)')) badges+=`<span class="badge badge-potik">Потік</span>`;
         if(lesson.isEng&&state.engTeacher==='all') badges+=`<span class="badge badge-group">Збірна група</span>`;
 
-        // Перевірка модифікацій
         const mod = findMod(dateStr, lesson.title);
         let cardExtra = '';
         let cardClasses = 'lesson-card';
@@ -1304,7 +1359,6 @@ function renderDayBlock(targetDate, showHeader=true) {
             topBadge=`<div class="next-badge" id="tracked-next" data-start="${timeToSeconds(lesson.start)}">Почнеться через --:--</div>`;
         }
 
-        // Оголошення на предмет
         const anns = findLessonAnn(lesson.title);
         let annHtml = anns.map(a => `<div class="lesson-ann-note"><strong>📌 Оголошення</strong>${a.text}</div>`).join('');
 
@@ -1378,32 +1432,10 @@ function renderDeadlines() {
 }
 
 // ── АДМІН ────────────────────────────────────────
-// Кожна святкова тема має 4 РІЗНИХ кольори для 4 орбів
 const HOLIDAY_THEMES = {
-    // 🎄 Новорічний: класичні різдвяні — темно-червоний, золотий, смарагдово-зелений, льодяний блакитний
-    'new-year': {
-        orb1: '#cc0000',   // глибокий червоний
-        orb2: '#ffcc00',   // золото
-        orb3: '#006633',   // темно-зелений
-        orb4: '#99ddff',   // льодяний блакитний
-        indicator: '🎄 Новорічний режим'
-    },
-    // 💙💛 Патріотичний: синьо-жовтий з варіацією
-    'ua': {
-        orb1: '#005bbb',   // глибокий синій
-        orb2: '#ffd500',   // соковитий жовтий
-        orb3: '#0077dd',   // яскравий синій
-        orb4: '#ffaa00',   // темне золото
-        indicator: '💙💛 Патріотичний режим'
-    },
-    // 🌸 Весняний: рожевий, лавандовий, м'ятний, персиковий
-    'spring': {
-        orb1: '#ff69b4',   // рожевий
-        orb2: '#9b59b6',   // лавандовий
-        orb3: '#2ecc8e',   // м'ятний
-        orb4: '#ff8c69',   // персиковий
-        indicator: '🌸 Весняний режим'
-    },
+    'new-year': { orb1: '#cc0000', orb2: '#ffcc00', orb3: '#006633', orb4: '#99ddff', indicator: '🎄 Новорічний режим' },
+    'ua': { orb1: '#005bbb', orb2: '#ffd500', orb3: '#0077dd', orb4: '#ffaa00', indicator: '💙💛 Патріотичний режим' },
+    'spring': { orb1: '#ff69b4', orb2: '#9b59b6', orb3: '#2ecc8e', orb4: '#ff8c69', indicator: '🌸 Весняний режим' },
     'off': null
 };
 
@@ -1416,7 +1448,6 @@ function applyHolidayTheme(mode) {
         indicator.classList.remove('active');
     } else {
         const t=HOLIDAY_THEMES[mode];
-        // Кожен орб — свій унікальний колір з збільшеною непрозорістю
         if(orbs[0]){orbs[0].style.background=t.orb1;orbs[0].style.opacity='0.35';}
         if(orbs[1]){orbs[1].style.background=t.orb2;orbs[1].style.opacity='0.32';}
         if(orbs[2]){orbs[2].style.background=t.orb3;orbs[2].style.opacity='0.30';}
@@ -1455,7 +1486,6 @@ async function loadAdminData() {
     applyPinnedMsg(data.pinnedText);
     storage.set('fep13_admin_cache',JSON.stringify(data));
 
-    // Завантажуємо модифікації та оголошення на предмети
     const [modsData, lannData] = await Promise.all([window.fbGetScheduleMods(), window.fbGetLessonAnnouncements()]);
     gScheduleMods = (modsData.mods || []).filter(m => m.date >= new Date().toISOString().slice(0,10));
     gLessonAnns = lannData.items || [];
@@ -1590,7 +1620,6 @@ function initAdminPanel() {
         });
     }
 
-    // ── Закріплене повідомлення ──
     document.getElementById('pinned-save-btn').addEventListener('click', async () => {
         const text=document.getElementById('pinned-text-input').value.trim();
         const btn=document.getElementById('pinned-save-btn');
@@ -1606,7 +1635,6 @@ function initAdminPanel() {
         document.getElementById('pinned-text-input').value='';
     });
 
-    // ── Попередження ──
     document.getElementById('warning-save-btn').addEventListener('click', async () => {
         const title=document.getElementById('warning-title-input').value.trim();
         const text=document.getElementById('warning-text-input').value.trim();
@@ -1621,7 +1649,6 @@ function initAdminPanel() {
         document.getElementById('warning-title-input').value='';document.getElementById('warning-text-input').value='';
     });
 
-    // ── Швидке посилання ──
     document.getElementById('quicklink-save-btn').addEventListener('click', async () => {
         const name=document.getElementById('quicklink-name-input').value.trim();
         const url=document.getElementById('quicklink-url-input').value.trim();
@@ -1636,7 +1663,6 @@ function initAdminPanel() {
         document.getElementById('quicklink-name-input').value='';document.getElementById('quicklink-url-input').value='';
     });
 
-    // ── Святковий режим ──
     document.getElementById('holiday-save-btn').addEventListener('click', async () => {
         const checked=document.querySelector('input[name="holiday"]:checked');
         let mode='off';
@@ -1647,19 +1673,16 @@ function initAdminPanel() {
         if(result)applyHolidayTheme(mode);else alert('Помилка збереження');
     });
 
-    // ── Скидання статистики ──
     document.getElementById('reset-stats-btn').addEventListener('click', async () => {
         if(!confirm('Скинути всю статистику?'))return;
         await window.fbResetStats();
         loadAdminStats();
     });
 
-    // ── Модифікації розкладу ──
     const modTypeSelect=document.getElementById('mod-type-select');
     const modChangeFields=document.getElementById('mod-change-fields');
     modTypeSelect.addEventListener('change',()=>{modChangeFields.style.display=modTypeSelect.value==='change'?'block':'none';});
 
-    // Встановлюємо мінімальну дату = сьогодні
     const dateInput=document.getElementById('mod-date-input');
     dateInput.min=new Date().toISOString().slice(0,10);
     dateInput.value=new Date().toISOString().slice(0,10);
@@ -1705,7 +1728,6 @@ function initAdminPanel() {
         list.querySelectorAll('.mod-delete-btn').forEach(btn=>btn.addEventListener('click',()=>deleteMod(btn.dataset.id)));
     }
 
-    // ── Оголошення на предмет ──
     document.getElementById('lann-add-btn').addEventListener('click', async () => {
         const subject=document.getElementById('lann-subject-input').value.trim();
         const text=document.getElementById('lann-text-input').value.trim();
@@ -1737,7 +1759,6 @@ function initAdminPanel() {
         list.querySelectorAll('.mod-delete-btn').forEach(btn=>btn.addEventListener('click',()=>deleteLann(btn.dataset.id)));
     }
 
-    // ── Дедлайни ──
     document.getElementById('dl-add-btn').addEventListener('click', async () => {
         const title=document.getElementById('dl-title-input').value.trim();
         const subject=document.getElementById('dl-subject-input').value.trim();
