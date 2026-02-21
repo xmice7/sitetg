@@ -65,7 +65,7 @@
             catch(e) { return false; }
         };
         
-        // Оновлена функція з підтримкою теми та історії оголошень
+        // Оголошення з підтримкою теми та історії
         window.fbSetAnnouncement = async (topic, text, imageUrl) => {
             try { 
                 const docRef = doc(db,"fep13","announcement");
@@ -90,6 +90,20 @@
                 return true; 
             }
             catch(e) { console.error("Firebase write:",e); return false; }
+        };
+
+        // Видалення конкретного оголошення з історії (для адміна)
+        window.fbDeleteAnnHistoryItem = async (timestamp) => {
+            try {
+                const docRef = doc(db, "fep13", "announcement");
+                const snap = await getDoc(docRef);
+                if (snap.exists() && snap.data().history) {
+                    const newHistory = snap.data().history.filter(h => h.updatedAt !== timestamp);
+                    await setDoc(docRef, { history: newHistory }, { merge: true });
+                    return true;
+                }
+                return false;
+            } catch(e) { return false; }
         };
         
         // Оголошення на предмети
@@ -207,7 +221,6 @@
         .badge-group { background-color:var(--bg-green); color:var(--accent-green); }
         .badge-type { background-color:var(--bg-purple); color:var(--accent-purple); }
         .badge-potik { background-color:var(--bg-blue); color:var(--primary); }
-        /* Оголошення до предмету */
         .lesson-ann-note { margin-top: 10px; padding: 10px 12px; background: var(--bg-purple); border-radius: 10px; border-left: 3px solid var(--accent-purple); font-size: 13px; color: var(--text-main); line-height: 1.4; }
         .lesson-ann-note strong { color: var(--accent-purple); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 3px; }
         .live-timer-wrapper { position:absolute; bottom:0; left:0; width:100%; height:4px; background:var(--border); z-index:1; }
@@ -227,7 +240,6 @@
         .empty-state { text-align:center; padding:40px 20px; color:var(--text-muted); background:var(--bg-card); border-radius:16px; border:2px dashed var(--border); }
         .empty-state span { font-size:40px; display:block; margin-bottom:12px; }
 
-        /* Закріплене повідомлення на головній */
         .pinned-msg {
             display: none; background: linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.12));
             border: 1px solid var(--primary); border-radius: 14px; padding: 14px 18px;
@@ -242,10 +254,10 @@
         /* ANNOUNCEMENT */
         .announcement-wrap { margin-bottom: 20px; }
         .announcement-board { border-radius: 20px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.18); position: relative; cursor: default; }
-        .ann-stripe-top { background: linear-gradient(135deg,var(--primary) 0%,var(--accent-purple) 100%); background-size:cover; background-position:center; padding:14px 18px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; overflow:hidden; min-height:160px; /* збільшена висота фото */ }
+        .ann-stripe-top { background: linear-gradient(135deg,var(--primary) 0%,var(--accent-purple) 100%); background-size:cover; background-position:center; padding:14px 18px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; overflow:hidden; min-height:160px; }
         .ann-stripe-top.has-image::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(0,0,0,0.52) 0%,rgba(0,0,0,0.32) 100%); z-index:0; }
         .ann-stripe-top.has-image .ann-stripe-top-left,.ann-stripe-top.has-image .ann-edit-image-btn { position:relative; z-index:1; }
-        .ann-stripe-top-left { display:flex; align-items:center; gap:10px; align-self: flex-end; /* опустити текст вниз, якщо фото велике */ }
+        .ann-stripe-top-left { display:flex; align-items:center; gap:10px; align-self: flex-end; }
         .ann-icon-wrap { width:36px; height:36px; background:rgba(255,255,255,0.2); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
         .ann-label { font-size:11px; font-weight:800; color:rgba(255,255,255,0.8); text-transform:uppercase; letter-spacing:1px; }
         .ann-title-text { font-size:16px; font-weight:800; color:#fff; line-height:1.1; }
@@ -253,7 +265,7 @@
         .ann-edit-btn:hover { background: rgba(255,255,255,0.32); }
         .ann-stripe-bottom { background:var(--bg-card); border:1px solid var(--border); border-top:none; padding:18px; min-height:80px; border-radius:0 0 20px 20px; }
         .ann-body-text { font-size:15px; font-weight:500; color:var(--text-main); line-height:1.6; white-space:pre-wrap; word-break:break-word; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; transition:max-height 0.3s ease; }
-        .ann-body-text.expanded { display:block; overflow:visible; -webkit-line-clamp:unset; } /* повне відкриття тексту */
+        .ann-body-text.expanded { display:block; overflow:visible; -webkit-line-clamp:unset; } 
         .ann-empty-hint { color:var(--text-muted); font-size:14px; font-style:italic; }
         .ann-updated { font-size:11px; color:var(--text-muted); margin-top:10px; display:flex; align-items:center; gap:5px; }
         .ann-expand-btn { margin-top:10px; background:none; border:none; color:var(--primary); font-size:13px; font-weight:700; cursor:pointer; padding:0; display:none; align-items:center; gap:4px; }
@@ -282,7 +294,6 @@
         .history-item-img { width:100%; border-radius:8px; margin-bottom:10px; max-height:250px; object-fit:cover; display:block; }
         .history-item-text { font-size:14px; color:var(--text-main); line-height:1.5; white-space:pre-wrap; word-break:break-word; }
 
-        /* Лічильник непрочитаних */
         .nav-badge { position:absolute; top:8px; right:calc(50% - 20px); background:#ef4444; color:#fff; font-size:9px; font-weight:800; width:16px; height:16px; border-radius:50%; display:none; align-items:center; justify-content:center; line-height:1; }
         .nav-badge.visible { display: flex; }
         .nav-item { position: relative; }
@@ -387,7 +398,7 @@
         .admin-chart-wrap { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px; }
         .admin-chart-title { font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; }
 
-        /* Модифікації розкладу */
+        /* Списки модифікацій / оголошень */
         .mod-list { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
         .mod-item { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:10px; }
         .mod-item-info { flex:1; min-width:0; }
@@ -399,7 +410,6 @@
         .mod-delete-btn { background:none; border:none; color:var(--text-muted); cursor:pointer; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:8px; transition:0.2s; flex-shrink:0; }
         .mod-delete-btn:hover { background:rgba(239,68,68,0.1); color:#ef4444; }
 
-        /* Оголошення на предмет */
         .lesson-ann-list { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
         .lesson-ann-item { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:12px 14px; display:flex; gap:10px; align-items:flex-start; }
         .lesson-ann-item-body { flex:1; min-width:0; }
@@ -622,6 +632,14 @@
                         <button class="admin-btn admin-btn-danger" id="pinned-clear-btn">Прибрати</button>
                         <button class="admin-btn admin-btn-primary" id="pinned-save-btn">Закріпити</button>
                     </div>
+                </div>
+
+                <div class="admin-section">
+                    <div class="admin-section-header">
+                        <div class="admin-section-icon" style="background:var(--bg-blue)">📢</div>
+                        <div><div class="admin-section-title">Історія оголошень</div><div class="admin-section-desc">Видалення старих записів</div></div>
+                    </div>
+                    <div class="mod-list" id="admin-ann-history-list"></div>
                 </div>
 
                 <div class="admin-section">
@@ -954,7 +972,7 @@ function initAnnouncement() {
         document.getElementById('ann-edit-image-btn').style.display = 'none';
     }
 
-    // Відкриття Історії Оголошень
+    // Відкриття Історії Оголошень (для звичайних користувачів)
     historyBtn.addEventListener('click', async () => {
         historyModal.classList.add('active');
         historyList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Завантаження історії...</div>';
@@ -1516,8 +1534,9 @@ function initAdminPanel() {
     holdIndicator.innerHTML='<div style="width:16px;height:16px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--primary);animation:spin 1s linear infinite;"></div><span>Утримуй…</span>';
     document.body.appendChild(holdIndicator);
 
+    // Змінено таймер відкриття адмінки з 10000 (10с) на 5000 (5с)
     function startHold() {
-        holdTimer=setTimeout(async()=>{holdIndicator.style.opacity='0';await promptAdminPassword();},10000);
+        holdTimer=setTimeout(async()=>{holdIndicator.style.opacity='0';await promptAdminPassword();},5000);
         holdProgress=setTimeout(()=>{holdIndicator.style.opacity='1';},1000);
     }
     function cancelHold() { clearTimeout(holdTimer);clearTimeout(holdProgress);holdIndicator.style.opacity='0'; }
@@ -1568,6 +1587,41 @@ function initAdminPanel() {
         renderModList();
         renderLannList();
         renderDlList();
+        renderAdminAnnHistory(); // Завантажуємо історію оголошень в адмінці
+    }
+
+    // Рендер і логіка видалення оголошень в адмінці
+    async function renderAdminAnnHistory() {
+        const list = document.getElementById('admin-ann-history-list');
+        if (!list) return;
+        
+        list.innerHTML = '<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:10px;">Завантаження...</div>';
+        
+        const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
+        await waitForFirebase();
+        
+        const data = await window.fbGetAnnouncement();
+        if (!data || !data.history || data.history.length === 0) {
+            list.innerHTML = '<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:10px;">Історія порожня</div>';
+            return;
+        }
+        
+        list.innerHTML = data.history.map(h => {
+            const d = new Date(h.updatedAt);
+            const dateStr = d.toLocaleDateString('uk-UA', {day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('uk-UA', {hour:'2-digit',minute:'2-digit'});
+            return `<div class="mod-item"><div class="mod-item-info"><div class="mod-item-date">${dateStr}</div><div class="mod-item-title">${h.topic || 'Без теми'}</div></div><button class="mod-delete-btn" data-ts="${h.updatedAt}" title="Видалити">✕</button></div>`;
+        }).join('');
+        
+        list.querySelectorAll('.mod-delete-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const ts = parseInt(btn.dataset.ts);
+                if(confirm('Видалити це оголошення з історії назавжди?')) {
+                    const ok = await window.fbDeleteAnnHistoryItem(ts);
+                    if(ok) renderAdminAnnHistory();
+                    else alert('Помилка видалення');
+                }
+            });
+        });
     }
 
     function updateRadioToggles() {
