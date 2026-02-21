@@ -9,9 +9,10 @@
     <link rel="manifest" href="manifest.json">
     <title>Розклад ФЕП-13</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
         const firebaseConfig = {
             apiKey: "AIzaSyBH8JKNOBWTjxSIiHNVI8LiwK8u9sPyVTo",
             authDomain: "telegram-xmice.firebaseapp.com",
@@ -22,755 +23,392 @@
         };
         const app = initializeApp(firebaseConfig);
         const db  = getFirestore(app);
+
         window.fbGetAnnouncement = async () => {
-            try {
-                const snap = await getDoc(doc(db, "fep13", "announcement"));
-                return snap.exists() ? snap.data() : null;
-            } catch(e) { console.error("Firebase read:", e); return null; }
+            try { const snap = await getDoc(doc(db,"fep13","announcement")); return snap.exists()?snap.data():null; }
+            catch(e) { console.error("Firebase read:",e); return null; }
         };
         window.fbGetAdmin = async () => {
-            try {
-                const snap = await getDoc(doc(db, "fep13", "admin"));
-                return snap.exists() ? snap.data() : {};
-            } catch(e) { console.error("Firebase admin read:", e); return {}; }
+            try { const snap = await getDoc(doc(db,"fep13","admin")); return snap.exists()?snap.data():{}; }
+            catch(e) { console.error("Firebase admin read:",e); return {}; }
         };
         window.fbSetAdmin = async (data) => {
-            try {
-                await setDoc(doc(db, "fep13", "admin"), data);
-                return true;
-            } catch(e) { console.error("Firebase admin write:", e); return false; }
+            try { await setDoc(doc(db,"fep13","admin"),data); return true; }
+            catch(e) { console.error("Firebase admin write:",e); return false; }
         };
         window.fbIncrementView = async () => {
             try {
-                const { getDoc: gd, setDoc: sd, doc: dc, increment, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-                const ref = doc(db, "fep13", "stats");
+                const ref = doc(db,"fep13","stats");
                 const today = new Date().toISOString().slice(0,10);
                 const snap = await getDoc(ref);
-                const d = snap.exists() ? snap.data() : { total: 0, todayDate: '', todayCount: 0 };
+                const d = snap.exists()?snap.data():{total:0,todayDate:'',todayCount:0,history:{}};
                 const isToday = d.todayDate === today;
-                await setDoc(ref, {
-                    total: (d.total || 0) + 1,
-                    todayDate: today,
-                    todayCount: isToday ? (d.todayCount || 0) + 1 : 1
-                });
+                const newTodayCount = isToday?(d.todayCount||0)+1:1;
+                const history = d.history||{};
+                history[today] = newTodayCount;
+                // Зберігаємо тільки останні 14 днів
+                const keys = Object.keys(history).sort();
+                if(keys.length>14) delete history[keys[0]];
+                await setDoc(ref,{ total:(d.total||0)+1, todayDate:today, todayCount:newTodayCount, history });
             } catch(e) {}
         };
         window.fbGetStats = async () => {
             try {
-                const snap = await getDoc(doc(db, "fep13", "stats"));
-                if (!snap.exists()) return { total: 0, todayCount: 0 };
+                const snap = await getDoc(doc(db,"fep13","stats"));
+                if(!snap.exists()) return {total:0,todayCount:0,history:{}};
                 const d = snap.data();
                 const today = new Date().toISOString().slice(0,10);
-                return { total: d.total || 0, todayCount: d.todayDate === today ? d.todayCount || 0 : 0 };
-            } catch(e) { return { total: 0, todayCount: 0 }; }
+                return { total:d.total||0, todayCount:d.todayDate===today?d.todayCount||0:0, history:d.history||{} };
+            } catch(e) { return {total:0,todayCount:0,history:{}}; }
         };
         window.fbResetStats = async () => {
-            try { await setDoc(doc(db, "fep13", "stats"), { total: 0, todayDate: '', todayCount: 0 }); return true; }
+            try { await setDoc(doc(db,"fep13","stats"),{total:0,todayDate:'',todayCount:0,history:{}}); return true; }
             catch(e) { return false; }
         };
-        window.fbSetAnnouncement = async (text, imageUrl) => {
-            try {
-                await setDoc(doc(db, "fep13", "announcement"), { text: text, imageUrl: imageUrl || '', updatedAt: Date.now() });
-                return true;
-            } catch(e) { console.error("Firebase write:", e); return false; }
+        window.fbSetAnnouncement = async (text,imageUrl) => {
+            try { await setDoc(doc(db,"fep13","announcement"),{text,imageUrl:imageUrl||'',updatedAt:Date.now()}); return true; }
+            catch(e) { console.error("Firebase write:",e); return false; }
         };
+        // Оголошення на предмети
+        window.fbGetLessonAnnouncements = async () => {
+            try { const snap = await getDoc(doc(db,"fep13","lessonAnn")); return snap.exists()?snap.data():{items:[]}; }
+            catch(e) { return {items:[]}; }
+        };
+        window.fbSetLessonAnnouncements = async (data) => {
+            try { await setDoc(doc(db,"fep13","lessonAnn"),data); return true; }
+            catch(e) { return false; }
+        };
+        // Модифікації розкладу (скасування/заміна)
+        window.fbGetScheduleMods = async () => {
+            try { const snap = await getDoc(doc(db,"fep13","scheduleMods")); return snap.exists()?snap.data():{mods:[]}; }
+            catch(e) { return {mods:[]}; }
+        };
+        window.fbSetScheduleMods = async (data) => {
+            try { await setDoc(doc(db,"fep13","scheduleMods"),data); return true; }
+            catch(e) { return false; }
+        };
+
         window.firebaseReady = true;
         window.dispatchEvent(new Event("firebase-ready"));
     </script>
     <style>
         :root {
-            --fs-title: 15px;
-            --fs-meta: 13px;
-            --fs-time: 18px;
-            --fs-time-end: 13px;
-            --fs-day-title: 18px;
-            --bg-body: #f1f5f9;
-            --bg-card: #ffffff;
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --border: #e2e8f0;
-            --accent-green: #059669;
-            --bg-green: #d1fae5;
-            --accent-purple: #7c3aed;
-            --bg-purple: #ede9fe;
-            --bg-blue: #dbeafe;
-            --shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
-            --shadow-hover: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
-            --modal-bg: rgba(255,255,255,0.95);
-            --orb-opacity: 0.12;
+            --fs-title: 15px; --fs-meta: 13px; --fs-time: 18px; --fs-time-end: 13px; --fs-day-title: 18px;
+            --bg-body: #f1f5f9; --bg-card: #ffffff; --text-main: #0f172a; --text-muted: #64748b;
+            --border: #e2e8f0; --accent-green: #059669; --bg-green: #d1fae5; --accent-purple: #7c3aed;
+            --bg-purple: #ede9fe; --bg-blue: #dbeafe;
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.05),0 2px 4px -1px rgba(0,0,0,0.03);
+            --shadow-hover: 0 10px 15px -3px rgba(0,0,0,0.1),0 4px 6px -2px rgba(0,0,0,0.05);
+            --modal-bg: rgba(255,255,255,0.95); --orb-opacity: 0.12;
         }
         [data-theme="dark"] {
-            --bg-body: #0f172a;
-            --bg-card: #1e293b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --border: #334155;
-            --accent-green: #10b981;
-            --bg-green: rgba(16,185,129,0.15);
-            --accent-purple: #a78bfa;
-            --bg-purple: rgba(139,92,246,0.15);
-            --bg-blue: rgba(59,130,246,0.15);
-            --shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
-            --shadow-hover: 0 10px 15px -3px rgba(0,0,0,0.4);
-            --modal-bg: rgba(30,41,59,0.95);
-            --orb-opacity: 0.18;
+            --bg-body: #0f172a; --bg-card: #1e293b; --text-main: #f8fafc; --text-muted: #94a3b8;
+            --border: #334155; --accent-green: #10b981; --bg-green: rgba(16,185,129,0.15);
+            --accent-purple: #a78bfa; --bg-purple: rgba(139,92,246,0.15); --bg-blue: rgba(59,130,246,0.15);
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.3); --shadow-hover: 0 10px 15px -3px rgba(0,0,0,0.4);
+            --modal-bg: rgba(30,41,59,0.95); --orb-opacity: 0.18;
         }
         [data-theme="black"] {
-            --bg-body: #000000;
-            --bg-card: #121212;
-            --text-main: #ffffff;
-            --text-muted: #888888;
-            --border: #222222;
-            --accent-green: #00ff88;
-            --bg-green: rgba(0,255,136,0.1);
-            --accent-purple: #b388ff;
-            --bg-purple: rgba(179,136,255,0.1);
-            --bg-blue: rgba(59,130,246,0.1);
-            --shadow: none;
-            --shadow-hover: 0 0 15px rgba(255,255,255,0.05);
-            --modal-bg: rgba(15,15,15,0.98);
-            --orb-opacity: 0.12;
+            --bg-body: #000000; --bg-card: #121212; --text-main: #ffffff; --text-muted: #888888;
+            --border: #222222; --accent-green: #00ff88; --bg-green: rgba(0,255,136,0.1);
+            --accent-purple: #b388ff; --bg-purple: rgba(179,136,255,0.1); --bg-blue: rgba(59,130,246,0.1);
+            --shadow: none; --shadow-hover: 0 0 15px rgba(255,255,255,0.05);
+            --modal-bg: rgba(15,15,15,0.98); --orb-opacity: 0.12;
         }
-
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body {
-            background-color: var(--bg-body);
-            color: var(--text-main);
-            line-height: 1.5;
-            padding-bottom: calc(80px + env(safe-area-inset-bottom));
-            transition: background-color 0.3s ease, color 0.3s ease;
-            overflow-x: hidden;
-        }
-
-        /* BG orbs */
+        body { background-color: var(--bg-body); color: var(--text-main); line-height: 1.5; padding-bottom: calc(80px + env(safe-area-inset-bottom)); transition: background-color 0.3s ease,color 0.3s ease; overflow-x: hidden; }
         .bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
         .bg-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: var(--orb-opacity); will-change: transform; }
-        .bg-orb-1 { width: 420px; height: 420px; background: var(--primary, #3b82f6); top: -100px; left: -100px; animation: orbFloat1 22s linear infinite; }
+        .bg-orb-1 { width: 420px; height: 420px; background: var(--primary,#3b82f6); top: -100px; left: -100px; animation: orbFloat1 22s linear infinite; }
         .bg-orb-2 { width: 320px; height: 320px; background: var(--accent-purple); top: 30%; right: -80px; animation: orbFloat2 28s linear infinite; }
         .bg-orb-3 { width: 260px; height: 260px; background: var(--accent-green); bottom: 15%; left: 20%; animation: orbFloat3 18s linear infinite; }
-        .bg-orb-4 { width: 180px; height: 180px; background: var(--primary, #3b82f6); bottom: 30%; right: 15%; animation: orbFloat1 32s linear infinite; animation-delay: -10s; }
-        @keyframes orbFloat1 { 0% { transform: translate(0,0) scale(1); } 25% { transform: translate(40px,30px) scale(1.05); } 50% { transform: translate(20px,60px) scale(0.97); } 75% { transform: translate(-20px,30px) scale(1.03); } 100% { transform: translate(0,0) scale(1); } }
-        @keyframes orbFloat2 { 0% { transform: translate(0,0) scale(1); } 33% { transform: translate(-50px,40px) scale(1.08); } 66% { transform: translate(30px,-30px) scale(0.95); } 100% { transform: translate(0,0) scale(1); } }
-        @keyframes orbFloat3 { 0% { transform: translate(0,0) scale(1); } 40% { transform: translate(60px,-40px) scale(1.1); } 80% { transform: translate(-30px,20px) scale(0.93); } 100% { transform: translate(0,0) scale(1); } }
-
+        .bg-orb-4 { width: 180px; height: 180px; background: var(--primary,#3b82f6); bottom: 30%; right: 15%; animation: orbFloat1 32s linear infinite; animation-delay: -10s; }
+        @keyframes orbFloat1 { 0%{transform:translate(0,0) scale(1)} 25%{transform:translate(40px,30px) scale(1.05)} 50%{transform:translate(20px,60px) scale(0.97)} 75%{transform:translate(-20px,30px) scale(1.03)} 100%{transform:translate(0,0) scale(1)} }
+        @keyframes orbFloat2 { 0%{transform:translate(0,0) scale(1)} 33%{transform:translate(-50px,40px) scale(1.08)} 66%{transform:translate(30px,-30px) scale(0.95)} 100%{transform:translate(0,0) scale(1)} }
+        @keyframes orbFloat3 { 0%{transform:translate(0,0) scale(1)} 40%{transform:translate(60px,-40px) scale(1.1)} 80%{transform:translate(-30px,20px) scale(0.93)} 100%{transform:translate(0,0) scale(1)} }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; position: relative; z-index: 1; }
         .page { display: none; animation: fadeIn 0.35s ease; }
         .page.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Header */
+        @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
         header { text-align: center; margin-bottom: 24px; position: relative; padding-top: 10px; }
         .header-logo-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px; }
-        .site-logo { width: 36px; height: 36px; border-radius: 10px; object-fit: cover; border: 2px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.2); flex-shrink: 0; transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .site-logo { width: 36px; height: 36px; border-radius: 10px; object-fit: cover; border: 2px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.2); flex-shrink: 0; transition: transform 0.3s ease,box-shadow 0.3s ease; }
         .site-logo:hover { transform: scale(1.08) rotate(3deg); box-shadow: 0 4px 16px rgba(59,130,246,0.35); }
-        header h1 { font-size: 26px; font-weight: 800; background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 0 12px rgba(59,130,246,0.4)); }
+        header h1 { font-size: 26px; font-weight: 800; background: linear-gradient(135deg,var(--primary) 0%,var(--accent-purple) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 0 12px rgba(59,130,246,0.4)); }
         header p { color: var(--text-muted); font-size: 14px; text-transform: capitalize; font-weight: 500; }
         .settings-btn { position: absolute; top: 5px; right: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 50%; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-main); box-shadow: var(--shadow); transition: all 0.25s ease; }
         .settings-btn:hover { transform: rotate(45deg); color: var(--primary); border-color: var(--primary); }
         .settings-btn svg { width: 22px; height: 22px; fill: currentColor; }
-
-        /* Controls */
         .controls { display: flex; margin-bottom: 16px; }
         .select-wrapper { flex: 1; position: relative; }
         .select-wrapper select { width: 100%; appearance: none; background-color: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 14px 18px; border-radius: 14px; font-size: 15px; font-weight: 600; outline: none; cursor: pointer; transition: all 0.2s ease; box-shadow: var(--shadow); }
         .select-wrapper select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
         .select-wrapper::after { content: "▼"; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text-muted); pointer-events: none; }
-
-        /* Days nav */
         .days-nav { display: flex; gap: 8px; overflow-x: auto; padding: 10px 4px 12px 4px; margin-bottom: 8px; scrollbar-width: none; position: sticky; top: 0; background: transparent; z-index: 50; }
         .days-nav::-webkit-scrollbar { display: none; }
         .day-btn { background: rgba(255,255,255,0.06); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
         [data-theme="light"] .day-btn { background: rgba(255,255,255,0.55); border-color: rgba(0,0,0,0.08); }
         .day-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.18); color: var(--text-main); }
-        .day-btn.active { background-color: var(--primary); border-color: var(--primary); color: #fff; box-shadow: 0 4px 14px rgba(59,130,246,0.45); backdrop-filter: none; }
-
-        /* Schedule */
+        .day-btn.active { background: var(--day-btn-active-bg, var(--primary)); border-color: var(--day-btn-active-border, var(--primary)); color: #fff; box-shadow: var(--day-btn-active-shadow, 0 4px 14px rgba(59,130,246,0.45)); backdrop-filter: none; }
         .schedule-list { display: flex; flex-direction: column; gap: 14px; }
         .day-header { display: flex; justify-content: space-between; align-items: flex-end; margin: 10px 0 8px 0; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
         .day-header .day-title { font-size: var(--fs-day-title); font-weight: 700; color: var(--text-main); }
         .day-header .week-badge { font-size: 12px; font-weight: 600; color: var(--text-muted); background: var(--bg-card); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border); }
-
-        /* Lesson card */
-        .lesson-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; display: flex; gap: 16px; transition: all 0.3s ease; box-shadow: var(--shadow); position: relative; overflow: hidden; animation: cardSlideIn 0.4s ease both; }
-        .schedule-list .lesson-card:nth-child(1) { animation-delay: 0.04s; }
-        .schedule-list .lesson-card:nth-child(2) { animation-delay: 0.09s; }
-        .schedule-list .lesson-card:nth-child(3) { animation-delay: 0.14s; }
-        .schedule-list .lesson-card:nth-child(4) { animation-delay: 0.19s; }
-        .schedule-list .lesson-card:nth-child(5) { animation-delay: 0.24s; }
-        .schedule-list .lesson-card:nth-child(6) { animation-delay: 0.29s; }
-        @keyframes cardSlideIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
-        .lesson-card::before { content: ''; position: absolute; top: 0; left: -100%; width: 60%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent); transform: skewX(-15deg); transition: left 0.5s ease; pointer-events: none; }
+        .lesson-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 0; transition: all 0.3s ease; box-shadow: var(--shadow); position: relative; overflow: hidden; animation: cardSlideIn 0.4s ease both; }
+        .lesson-card-inner { display: flex; gap: 16px; width: 100%; }
+        .schedule-list .lesson-card:nth-child(1){animation-delay:0.04s} .schedule-list .lesson-card:nth-child(2){animation-delay:0.09s} .schedule-list .lesson-card:nth-child(3){animation-delay:0.14s} .schedule-list .lesson-card:nth-child(4){animation-delay:0.19s} .schedule-list .lesson-card:nth-child(5){animation-delay:0.24s} .schedule-list .lesson-card:nth-child(6){animation-delay:0.29s}
+        @keyframes cardSlideIn { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+        .lesson-card::before { content:''; position:absolute; top:0; left:-100%; width:60%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent); transform:skewX(-15deg); transition:left 0.5s ease; pointer-events:none; }
         .lesson-card:hover::before { left: 160%; }
         .lesson-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
-        .lesson-card.current-lesson { border-color: var(--accent-green); border-width: 2px; box-shadow: 0 8px 20px rgba(16,185,129,0.15); padding-bottom: 24px; }
-        .current-badge { position: absolute; top: -1px; right: 16px; background: var(--accent-green); color: #fff; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 0 0 8px 8px; text-transform: uppercase; letter-spacing: 0.5px; z-index: 10; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        .lesson-card.current-lesson { border-color: var(--accent-green); border-width: 2px; box-shadow: 0 8px 20px rgba(16,185,129,0.15); }
+        .lesson-card.cancelled { border-color: #ef4444 !important; border-width: 2px !important; opacity: 0.7; }
+        .lesson-card.cancelled .lesson-title { text-decoration: line-through; color: var(--text-muted); }
+        .lesson-card.modified { border-color: #f59e0b !important; border-width: 2px !important; }
+        .cancelled-badge { background: #ef4444; color: #fff; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px; }
+        .modified-badge { background: #f59e0b; color: #fff; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .mod-note { font-size: 12px; color: #f59e0b; font-weight: 600; margin-top: 6px; display: flex; align-items: center; gap: 5px; }
+        .current-badge { position:absolute; top:-1px; right:16px; background:var(--accent-green); color:#fff; font-size:10px; font-weight:800; padding:4px 10px; border-radius:0 0 8px 8px; text-transform:uppercase; letter-spacing:0.5px; z-index:10; animation:pulse 2s infinite; }
+        @keyframes pulse { 0%{opacity:1} 50%{opacity:0.7} 100%{opacity:1} }
         .lesson-card.next-lesson { border-color: var(--primary); border-width: 2px; }
-        .next-badge { position: absolute; top: -1px; right: 16px; background: var(--primary); color: #fff; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 0 0 8px 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .time-block { min-width: 60px; text-align: center; border-right: 2px dashed var(--border); padding-right: 12px; display: flex; flex-direction: column; justify-content: center; z-index: 2; }
-        .time-start { font-size: var(--fs-time); font-weight: 800; color: var(--text-main); letter-spacing: -0.5px; }
-        .time-end { font-size: var(--fs-time-end); font-weight: 500; color: var(--text-muted); margin-top: 4px; }
-        .info-block { flex: 1; z-index: 2; }
-        .lesson-title { font-size: var(--fs-title); font-weight: 700; margin-bottom: 8px; line-height: 1.3; color: var(--text-main); }
-        .lesson-meta { display: flex; align-items: center; gap: 8px; font-size: var(--fs-meta); font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
-        .lesson-meta svg { width: 14px; height: 14px; fill: currentColor; opacity: 0.8; }
-        .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-        .badge { font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .badge-group { background-color: var(--bg-green); color: var(--accent-green); }
-        .badge-type { background-color: var(--bg-purple); color: var(--accent-purple); }
-        .badge-potik { background-color: var(--bg-blue); color: var(--primary); }
-        .live-timer-wrapper { position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: var(--border); z-index: 1; }
-        .live-timer-progress { height: 100%; background: var(--accent-green); width: 0%; transition: width 1s linear; }
-        .live-timer-text { font-size: 12px; font-weight: 700; color: var(--accent-green); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
-        .live-timer-text svg { width: 14px; height: 14px; animation: spin 2s linear infinite; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-
-        .all-done-message { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: flex; align-items: center; gap: 16px; margin-top: 8px; box-shadow: var(--shadow); flex-wrap: wrap; animation: slideUp 0.5s ease; position: relative; overflow: hidden; }
-        .all-done-message::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--accent-green); border-radius: 16px 0 0 16px; }
-        .all-done-icon { font-size: 24px; background: var(--bg-green); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
-        .all-done-text { flex: 1; min-width: 150px; }
-        .all-done-text h4 { font-size: 16px; font-weight: 800; color: var(--text-main); margin-bottom: 2px; }
-        .all-done-text p { font-size: 13px; color: var(--text-muted); font-weight: 500; }
-        .go-tomorrow-btn { background: var(--primary); color: #fff; border: none; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(59,130,246,0.3); display: flex; align-items: center; gap: 6px; margin-left: auto; }
+        .next-badge { position:absolute; top:-1px; right:16px; background:var(--primary); color:#fff; font-size:10px; font-weight:800; padding:4px 10px; border-radius:0 0 8px 8px; text-transform:uppercase; letter-spacing:0.5px; }
+        .time-block { min-width:60px; text-align:center; border-right:2px dashed var(--border); padding-right:12px; display:flex; flex-direction:column; justify-content:center; z-index:2; }
+        .time-start { font-size:var(--fs-time); font-weight:800; color:var(--text-main); letter-spacing:-0.5px; }
+        .time-end { font-size:var(--fs-time-end); font-weight:500; color:var(--text-muted); margin-top:4px; }
+        .info-block { flex:1; z-index:2; }
+        .lesson-title { font-size:var(--fs-title); font-weight:700; margin-bottom:8px; line-height:1.3; color:var(--text-main); }
+        .lesson-meta { display:flex; align-items:center; gap:8px; font-size:var(--fs-meta); font-weight:500; color:var(--text-muted); margin-bottom:6px; }
+        .lesson-meta svg { width:14px; height:14px; fill:currentColor; opacity:0.8; }
+        .badges { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+        .badge { font-size:10px; font-weight:800; padding:4px 8px; border-radius:6px; text-transform:uppercase; letter-spacing:0.5px; }
+        .badge-group { background-color:var(--bg-green); color:var(--accent-green); }
+        .badge-type { background-color:var(--bg-purple); color:var(--accent-purple); }
+        .badge-potik { background-color:var(--bg-blue); color:var(--primary); }
+        /* Оголошення до предмету */
+        .lesson-ann-note { margin-top: 10px; padding: 10px 12px; background: var(--bg-purple); border-radius: 10px; border-left: 3px solid var(--accent-purple); font-size: 13px; color: var(--text-main); line-height: 1.4; }
+        .lesson-ann-note strong { color: var(--accent-purple); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 3px; }
+        .live-timer-wrapper { position:absolute; bottom:0; left:0; width:100%; height:4px; background:var(--border); z-index:1; }
+        .live-timer-progress { height:100%; background:var(--accent-green); width:0%; transition:width 1s linear; }
+        .live-timer-text { font-size:12px; font-weight:700; color:var(--accent-green); margin-top:8px; display:flex; align-items:center; gap:6px; }
+        .live-timer-text svg { width:14px; height:14px; animation:spin 2s linear infinite; }
+        @keyframes spin { 100%{transform:rotate(360deg)} }
+        .all-done-message { background-color:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:18px; display:flex; align-items:center; gap:16px; margin-top:8px; box-shadow:var(--shadow); flex-wrap:wrap; animation:slideUp 0.5s ease; position:relative; overflow:hidden; }
+        .all-done-message::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--accent-green); border-radius:16px 0 0 16px; }
+        .all-done-icon { font-size:24px; background:var(--bg-green); width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:50%; }
+        .all-done-text { flex:1; min-width:150px; }
+        .all-done-text h4 { font-size:16px; font-weight:800; color:var(--text-main); margin-bottom:2px; }
+        .all-done-text p { font-size:13px; color:var(--text-muted); font-weight:500; }
+        .go-tomorrow-btn { background:var(--primary); color:#fff; border:none; padding:10px 16px; border-radius:12px; font-size:13px; font-weight:700; cursor:pointer; transition:all 0.2s ease; box-shadow:0 4px 12px rgba(59,130,246,0.3); display:flex; align-items:center; gap:6px; margin-left:auto; }
         .go-tomorrow-btn:hover { transform: translateY(-2px); }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); background: var(--bg-card); border-radius: 16px; border: 2px dashed var(--border); }
-        .empty-state span { font-size: 40px; display: block; margin-bottom: 12px; }
+        @keyframes slideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+        .empty-state { text-align:center; padding:40px 20px; color:var(--text-muted); background:var(--bg-card); border-radius:16px; border:2px dashed var(--border); }
+        .empty-state span { font-size:40px; display:block; margin-bottom:12px; }
 
-        /* ── ANNOUNCEMENT BOARD ───────────────────────── */
+        /* Закріплене повідомлення на головній */
+        .pinned-msg {
+            display: none; background: linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.12));
+            border: 1px solid var(--primary); border-radius: 14px; padding: 14px 18px;
+            margin-bottom: 16px; animation: slideUp 0.4s ease;
+        }
+        .pinned-msg.active { display: flex; align-items: flex-start; gap: 12px; }
+        .pinned-msg-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+        .pinned-msg-body { flex: 1; }
+        .pinned-msg-label { font-size: 10px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
+        .pinned-msg-text { font-size: 14px; font-weight: 500; color: var(--text-main); line-height: 1.5; white-space: pre-wrap; }
+
+        /* ANNOUNCEMENT */
         .announcement-wrap { margin-bottom: 20px; }
-
-        /* Велика двійна плашка */
-        .announcement-board {
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-            position: relative;
-            cursor: default;
-        }
-
-        /* Верхня смуга — градієнт або банер */
-        .ann-stripe-top {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
-            background-size: cover;
-            background-position: center;
-            padding: 14px 18px 12px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            position: relative;
-            overflow: hidden;
-            min-height: 72px;
-        }
-        /* Темний оверлей поверх картинки для читабельності тексту */
-        .ann-stripe-top.has-image::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.32) 100%);
-            z-index: 0;
-        }
-        .ann-stripe-top.has-image .ann-stripe-top-left,
-        .ann-stripe-top.has-image .ann-edit-image-btn {
-            position: relative;
-            z-index: 1;
-        }
-        .ann-stripe-top-left {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .ann-icon-wrap {
-            width: 36px; height: 36px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 18px;
-            flex-shrink: 0;
-        }
-        .ann-label {
-            font-size: 11px;
-            font-weight: 800;
-            color: rgba(255,255,255,0.8);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .ann-title-text {
-            font-size: 16px;
-            font-weight: 800;
-            color: #fff;
-            line-height: 1.1;
-        }
-
-        /* Кнопка редагування в смузі */
-        .ann-edit-btn {
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.35);
-            color: #fff;
-            padding: 7px 13px;
-            border-radius: 10px;
-            font-size: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            flex-shrink: 0;
-            transition: background 0.2s;
-            white-space: nowrap;
-        }
+        .announcement-board { border-radius: 20px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.18); position: relative; cursor: default; }
+        .ann-stripe-top { background: linear-gradient(135deg,var(--primary) 0%,var(--accent-purple) 100%); background-size:cover; background-position:center; padding:14px 18px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; overflow:hidden; min-height:72px; }
+        .ann-stripe-top.has-image::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(0,0,0,0.52) 0%,rgba(0,0,0,0.32) 100%); z-index:0; }
+        .ann-stripe-top.has-image .ann-stripe-top-left,.ann-stripe-top.has-image .ann-edit-image-btn { position:relative; z-index:1; }
+        .ann-stripe-top-left { display:flex; align-items:center; gap:10px; }
+        .ann-icon-wrap { width:36px; height:36px; background:rgba(255,255,255,0.2); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+        .ann-label { font-size:11px; font-weight:800; color:rgba(255,255,255,0.8); text-transform:uppercase; letter-spacing:1px; }
+        .ann-title-text { font-size:16px; font-weight:800; color:#fff; line-height:1.1; }
+        .ann-edit-btn { background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.35); color:#fff; padding:7px 13px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px; flex-shrink:0; transition:background 0.2s; white-space:nowrap; }
         .ann-edit-btn:hover { background: rgba(255,255,255,0.32); }
-        .ann-edit-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
-        /* Нижня смуга — тіло повідомлення */
-        .ann-stripe-bottom {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-top: none;
-            padding: 18px;
-            min-height: 80px;
-            border-radius: 0 0 20px 20px;
-        }
-        .ann-body-text {
-            font-size: 15px;
-            font-weight: 500;
-            color: var(--text-main);
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-        .ann-empty-hint {
-            color: var(--text-muted);
-            font-size: 14px;
-            font-style: italic;
-        }
-        .ann-updated {
-            font-size: 11px;
-            color: var(--text-muted);
-            margin-top: 10px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        /* Collapse/expand */
-        .ann-body-text {
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-        .ann-body-text.expanded {
-            display: block;
-            overflow: visible;
-        }
-        .ann-expand-btn {
-            margin-top: 10px;
-            background: none;
-            border: none;
-            color: var(--primary);
-            font-size: 13px;
-            font-weight: 700;
-            cursor: pointer;
-            padding: 0;
-            display: none;
-            align-items: center;
-            gap: 4px;
-        }
+        .ann-stripe-bottom { background:var(--bg-card); border:1px solid var(--border); border-top:none; padding:18px; min-height:80px; border-radius:0 0 20px 20px; }
+        .ann-body-text { font-size:15px; font-weight:500; color:var(--text-main); line-height:1.6; white-space:pre-wrap; word-break:break-word; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; transition:max-height 0.3s ease; }
+        .ann-body-text.expanded { display:block; overflow:visible; }
+        .ann-empty-hint { color:var(--text-muted); font-size:14px; font-style:italic; }
+        .ann-updated { font-size:11px; color:var(--text-muted); margin-top:10px; display:flex; align-items:center; gap:5px; }
+        .ann-expand-btn { margin-top:10px; background:none; border:none; color:var(--primary); font-size:13px; font-weight:700; cursor:pointer; padding:0; display:none; align-items:center; gap:4px; }
         .ann-expand-btn.visible { display: flex; }
-        .ann-expand-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.5; transition: transform 0.3s ease; }
+        .ann-expand-btn svg { width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:2.5; transition:transform 0.3s ease; }
         .ann-expand-btn.expanded svg { transform: rotate(180deg); }
-
-        /* Панель редагування */
-        .ann-editor {
-            display: none;
-            flex-direction: column;
-            gap: 12px;
-            padding: 18px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-top: none;
-            border-radius: 0 0 20px 20px;
-        }
+        .ann-editor { display:none; flex-direction:column; gap:12px; padding:18px; background:var(--bg-card); border:1px solid var(--border); border-top:none; border-radius:0 0 20px 20px; }
         .ann-editor.open { display: flex; }
-        .ann-editor textarea {
-            width: 100%;
-            min-height: 120px;
-            background: var(--bg-body);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            color: var(--text-main);
-            font-size: 15px;
-            font-family: inherit;
-            padding: 14px;
-            resize: vertical;
-            outline: none;
-            transition: border-color 0.2s;
-            line-height: 1.6;
-        }
+        .ann-editor textarea { width:100%; min-height:120px; background:var(--bg-body); border:1px solid var(--border); border-radius:12px; color:var(--text-main); font-size:15px; font-family:inherit; padding:14px; resize:vertical; outline:none; transition:border-color 0.2s; line-height:1.6; }
         .ann-editor textarea:focus { border-color: var(--primary); }
-        .ann-editor-pass {
-            width: 100%;
-            background: var(--bg-body);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            color: var(--text-main);
-            font-size: 14px;
-            font-family: inherit;
-            padding: 12px 14px;
-            outline: none;
-            transition: border-color 0.2s;
-        }
+        .ann-editor-pass { width:100%; background:var(--bg-body); border:1px solid var(--border); border-radius:12px; color:var(--text-main); font-size:14px; font-family:inherit; padding:12px 14px; outline:none; transition:border-color 0.2s; }
         .ann-editor-pass:focus { border-color: var(--primary); }
-        .ann-editor-pass.error { border-color: #ef4444; animation: shake 0.3s ease; }
-        @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
-        .ann-editor-pass-hint {
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-top: -6px;
-        }
-        .ann-editor-row {
-            display: flex;
-            gap: 10px;
-        }
-        .ann-save-btn {
-            flex: 1;
-            background: var(--primary);
-            color: #fff;
-            border: none;
-            padding: 13px;
-            border-radius: 12px;
-            font-size: 15px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
+        .ann-editor-pass.error { border-color:#ef4444; animation:shake 0.3s ease; }
+        @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+        .ann-editor-pass-hint { font-size:12px; color:var(--text-muted); margin-top:-6px; }
+        .ann-editor-row { display:flex; gap:10px; }
+        .ann-save-btn { flex:1; background:var(--primary); color:#fff; border:none; padding:13px; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; transition:all 0.2s; }
         .ann-save-btn:hover { opacity: 0.88; }
-        .ann-cancel-btn {
-            background: var(--bg-body);
-            border: 1px solid var(--border);
-            color: var(--text-muted);
-            padding: 13px 18px;
-            border-radius: 12px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .ann-cancel-btn:hover { border-color: var(--text-muted); color: var(--text-main); }
-        .ann-clear-btn {
-            background: rgba(239,68,68,0.1);
-            border: 1px solid rgba(239,68,68,0.25);
-            color: #ef4444;
-            padding: 13px 14px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
-        .ann-clear-btn:hover { background: rgba(239,68,68,0.18); }
-        /* ─────────────────────────────────────────────── */
+        .ann-cancel-btn { background:var(--bg-body); border:1px solid var(--border); color:var(--text-muted); padding:13px 18px; border-radius:12px; font-size:15px; font-weight:600; cursor:pointer; transition:all 0.2s; }
+        .ann-clear-btn { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25); color:#ef4444; padding:13px 14px; border-radius:12px; font-size:13px; font-weight:700; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+
+        /* Лічильник непрочитаних */
+        .nav-badge { position:absolute; top:8px; right:calc(50% - 20px); background:#ef4444; color:#fff; font-size:9px; font-weight:800; width:16px; height:16px; border-radius:50%; display:none; align-items:center; justify-content:center; line-height:1; }
+        .nav-badge.visible { display: flex; }
+        .nav-item { position: relative; }
 
         /* Useful page */
-        .useful-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding-top: 10px; }
-        @media (max-width: 380px) { .useful-grid { grid-template-columns: 1fr; } }
-        .useful-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px; text-decoration: none; transition: 0.2s; box-shadow: var(--shadow); cursor: pointer; text-align: left; }
-        .useful-card:hover { border-color: var(--primary); transform: translateY(-3px); box-shadow: var(--shadow-hover); }
-        .useful-icon { width: 44px; height: 44px; background: var(--bg-body); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-main); }
-        .useful-icon svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-        .useful-card h3 { font-size: 17px; font-weight: 700; color: var(--text-main); margin: 0; line-height: 1.2; }
-        .useful-card p { font-size: 13px; color: var(--text-muted); font-weight: 500; margin: 0; line-height: 1.4; }
+        .useful-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding-top:10px; }
+        @media (max-width:380px) { .useful-grid { grid-template-columns:1fr; } }
+        .useful-card { background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:20px; display:flex; flex-direction:column; gap:14px; text-decoration:none; transition:0.2s; box-shadow:var(--shadow); cursor:pointer; text-align:left; }
+        .useful-card:hover { border-color:var(--primary); transform:translateY(-3px); box-shadow:var(--shadow-hover); }
+        .useful-icon { width:44px; height:44px; background:var(--bg-body); border-radius:12px; display:flex; align-items:center; justify-content:center; color:var(--text-main); }
+        .useful-icon svg { width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+        .useful-card h3 { font-size:17px; font-weight:700; color:var(--text-main); margin:0; line-height:1.2; }
+        .useful-card p { font-size:13px; color:var(--text-muted); font-weight:500; margin:0; line-height:1.4; }
 
         /* Bottom nav */
-        .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 600px; background: var(--bg-card); border-top: 1px solid var(--border); display: flex; z-index: 90; padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -4px 20px rgba(0,0,0,0.05); }
-        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 14px 0; background: none; border: none; color: var(--text-muted); font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px; }
-        .nav-item svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: 0.2s; }
+        .bottom-nav { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:600px; background:var(--bg-card); border-top:1px solid var(--border); display:flex; z-index:90; padding-bottom:env(safe-area-inset-bottom); box-shadow:0 -4px 20px rgba(0,0,0,0.05); }
+        .nav-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:14px 0; background:none; border:none; color:var(--text-muted); font-size:11px; font-weight:700; cursor:pointer; transition:0.2s; text-transform:uppercase; letter-spacing:0.5px; }
+        .nav-item svg { width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:0.2s; }
         .nav-item.active { color: var(--primary); }
-        .nav-item.active svg { transform: translateY(-2px); stroke-width: 2.5; }
+        .nav-item.active svg { transform:translateY(-2px); stroke-width:2.5; }
 
-        /* ── MODALS — ВИПРАВЛЕНІ ──────────────────────── */
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(4px);
-            z-index: 100;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-        }
-        .modal-overlay.active { opacity: 1; pointer-events: all; }
-
-        .modal-content {
-            background: var(--modal-bg);
-            width: 100%;
-            max-width: 600px;
-            border-radius: 24px 24px 0 0;
-            /* Ключове виправлення: обмеження висоти + скрол */
-            max-height: 88vh;
-            display: flex;
-            flex-direction: column;
-            transform: translateY(100%);
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            border-top: 1px solid var(--border);
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
-        }
+        /* Modals */
+        .modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); z-index:100; opacity:0; pointer-events:none; transition:opacity 0.3s ease; display:flex; align-items:flex-end; justify-content:center; }
+        .modal-overlay.active { opacity:1; pointer-events:all; }
+        .modal-content { background:var(--modal-bg); width:100%; max-width:600px; border-radius:24px 24px 0 0; max-height:88vh; display:flex; flex-direction:column; transform:translateY(100%); transition:transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275); border-top:1px solid var(--border); box-shadow:0 -10px 40px rgba(0,0,0,0.2); }
         .modal-overlay.active .modal-content { transform: translateY(0); }
-
-        /* Прилипаючий заголовок модалки */
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 24px 16px;
-            position: sticky;
-            top: 0;
-            background: var(--modal-bg);
-            border-radius: 24px 24px 0 0;
-            border-bottom: 1px solid var(--border);
-            z-index: 5;
-            flex-shrink: 0;
-        }
-        .modal-header h2 { font-size: 20px; font-weight: 800; }
-
-        /* Скрол тіла модалки */
-        .modal-body {
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            padding: 20px 24px 32px;
-            flex: 1;
-        }
-
-        .close-btn { background: var(--border); border: none; width: 36px; height: 36px; border-radius: 50%; color: var(--text-main); font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: 0.2s; flex-shrink: 0; }
-        .close-btn:hover { background: var(--primary); color: #fff; }
-
-        .moodle-btn { display: flex; flex-direction: column; align-items: flex-start; background: var(--bg-body); border: 1px solid var(--border); padding: 18px; border-radius: 16px; text-decoration: none; color: var(--text-main); transition: 0.2s; margin-bottom: 14px; position: relative; overflow: hidden; }
-        .moodle-btn:hover { border-color: var(--primary); box-shadow: var(--shadow); transform: translateX(4px); }
-        .moodle-btn span { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
-        .moodle-btn small { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+        .modal-header { display:flex; justify-content:space-between; align-items:center; padding:20px 24px 16px; position:sticky; top:0; background:var(--modal-bg); border-radius:24px 24px 0 0; border-bottom:1px solid var(--border); z-index:5; flex-shrink:0; }
+        .modal-header h2 { font-size:20px; font-weight:800; }
+        .modal-body { overflow-y:auto; -webkit-overflow-scrolling:touch; padding:20px 24px 32px; flex:1; }
+        .close-btn { background:var(--border); border:none; width:36px; height:36px; border-radius:50%; color:var(--text-main); font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:20px; transition:0.2s; flex-shrink:0; }
+        .close-btn:hover { background:var(--primary); color:#fff; }
+        .moodle-btn { display:flex; flex-direction:column; align-items:flex-start; background:var(--bg-body); border:1px solid var(--border); padding:18px; border-radius:16px; text-decoration:none; color:var(--text-main); transition:0.2s; margin-bottom:14px; position:relative; overflow:hidden; }
+        .moodle-btn:hover { border-color:var(--primary); box-shadow:var(--shadow); transform:translateX(4px); }
+        .moodle-btn span { font-size:16px; font-weight:800; margin-bottom:4px; }
+        .moodle-btn small { font-size:12px; font-weight:500; color:var(--text-muted); }
 
         /* Settings */
-        .setting-group { margin-bottom: 20px; }
-        .setting-group label { display: block; font-size: 14px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .color-picker { display: flex; gap: 12px; margin-top: 8px; }
-        .color-circle { width: 36px; height: 36px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: 0.2s; position: relative; }
-        .color-circle.active { border-color: var(--text-main); transform: scale(1.1); }
-        .color-circle::after { content: "✓"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 14px; opacity: 0; font-weight: bold; }
+        .setting-group { margin-bottom:20px; }
+        .setting-group label { display:block; font-size:14px; font-weight:700; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px; }
+        .color-picker { display:flex; gap:12px; margin-top:8px; }
+        .color-circle { width:36px; height:36px; border-radius:50%; border:2px solid transparent; cursor:pointer; transition:0.2s; position:relative; }
+        .color-circle.active { border-color:var(--text-main); transform:scale(1.1); }
+        .color-circle::after { content:"✓"; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:white; font-size:14px; opacity:0; font-weight:bold; }
         .color-circle.active::after { opacity: 1; }
-        .theme-switch { display: flex; background: var(--bg-body); border-radius: 12px; padding: 4px; border: 1px solid var(--border); gap: 4px; }
-        .theme-btn { flex: 1; padding: 10px 4px; border: none; background: transparent; color: var(--text-muted); font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .theme-btn.active { background: var(--bg-card); color: var(--text-main); box-shadow: var(--shadow); }
-        .theme-btn svg { width: 14px; height: 14px; fill: currentColor; stroke: none; }
-        .size-switch { display: flex; background: var(--bg-body); border-radius: 12px; padding: 4px; border: 1px solid var(--border); gap: 4px; }
-        .size-btn { flex: 1; padding: 10px 4px; border: none; background: transparent; color: var(--text-muted); font-weight: 700; border-radius: 8px; cursor: pointer; transition: 0.2s; }
-        .size-btn.active { background: var(--bg-card); color: var(--text-main); box-shadow: var(--shadow); }
-        .size-btn:nth-child(1) { font-size: 11px; } .size-btn:nth-child(2) { font-size: 14px; } .size-btn:nth-child(3) { font-size: 17px; }
-        .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; }
+        .theme-switch { display:flex; background:var(--bg-body); border-radius:12px; padding:4px; border:1px solid var(--border); gap:4px; }
+        .theme-btn { flex:1; padding:10px 4px; border:none; background:transparent; color:var(--text-muted); font-size:13px; font-weight:600; border-radius:8px; cursor:pointer; transition:0.2s; display:flex; align-items:center; justify-content:center; gap:6px; }
+        .theme-btn.active { background:var(--bg-card); color:var(--text-main); box-shadow:var(--shadow); }
+        .theme-btn svg { width:14px; height:14px; fill:currentColor; stroke:none; }
+        .size-switch { display:flex; background:var(--bg-body); border-radius:12px; padding:4px; border:1px solid var(--border); gap:4px; }
+        .size-btn { flex:1; padding:10px 4px; border:none; background:transparent; color:var(--text-muted); font-weight:700; border-radius:8px; cursor:pointer; transition:0.2s; }
+        .size-btn.active { background:var(--bg-card); color:var(--text-main); box-shadow:var(--shadow); }
+        .size-btn:nth-child(1){font-size:11px} .size-btn:nth-child(2){font-size:14px} .size-btn:nth-child(3){font-size:17px}
+        .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--bg-body); border:1px solid var(--border); border-radius:12px; margin-bottom:8px; }
         .toggle-row:last-child { margin-bottom: 0; }
-        .toggle-label { display: flex; flex-direction: column; gap: 2px; }
-        .toggle-label span { font-size: 15px; font-weight: 600; color: var(--text-main); }
-        .toggle-label small { font-size: 12px; color: var(--text-muted); }
-        .toggle { position: relative; width: 44px; height: 26px; flex-shrink: 0; }
-        .toggle input { opacity: 0; width: 0; height: 0; }
-        .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--border); border-radius: 26px; transition: 0.25s; }
-        .toggle-slider::before { content: ''; position: absolute; width: 20px; height: 20px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.25s; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+        .toggle-label { display:flex; flex-direction:column; gap:2px; }
+        .toggle-label span { font-size:15px; font-weight:600; color:var(--text-main); }
+        .toggle-label small { font-size:12px; color:var(--text-muted); }
+        .toggle { position:relative; width:44px; height:26px; flex-shrink:0; }
+        .toggle input { opacity:0; width:0; height:0; }
+        .toggle-slider { position:absolute; cursor:pointer; inset:0; background:var(--border); border-radius:26px; transition:0.25s; }
+        .toggle-slider::before { content:''; position:absolute; width:20px; height:20px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:0.25s; box-shadow:0 1px 4px rgba(0,0,0,0.2); }
         .toggle input:checked + .toggle-slider { background: var(--primary); }
         .toggle input:checked + .toggle-slider::before { transform: translateX(18px); }
+        body.compact .lesson-card{padding:10px 12px} body.compact .lesson-card.current-lesson{padding-bottom:20px} body.compact .time-start{font-size:15px} body.compact .lesson-title{font-size:13px;margin-bottom:4px} body.compact .lesson-meta{font-size:12px;margin-bottom:3px} body.compact .badges{margin-bottom:4px;gap:4px} body.compact .schedule-list{gap:8px}
+        body.glass-cards .lesson-card{background:rgba(255,255,255,0.05);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-color:rgba(255,255,255,0.1)}
+        [data-theme="light"] body.glass-cards .lesson-card{background:rgba(255,255,255,0.6);border-color:rgba(255,255,255,0.7)}
+        body.hide-teacher .lesson-meta-teacher{display:none} body.hide-room .lesson-meta-room{display:none}
+        body.simple-mode .bg-canvas{display:none} body.simple-mode .lesson-card{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;animation:none!important;transition:none!important;box-shadow:none!important} body.simple-mode .lesson-card::before{display:none} body.simple-mode .lesson-card:hover{transform:none!important} body.simple-mode .day-btn{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;transition:none!important} body.simple-mode .days-nav{position:static;background:var(--bg-body)!important} body.simple-mode *{animation-duration:0.001s!important;transition-duration:0.001s!important} body.simple-mode .current-badge{animation:none!important;opacity:1!important} body.simple-mode .live-timer-text svg{animation:none!important} body.simple-mode .modal-content{transition:none!important;transform:translateY(0)!important} body.simple-mode .modal-overlay{backdrop-filter:none!important}
 
-        /* Compact/glass/simple */
-        body.compact .lesson-card { padding: 10px 12px; }
-        body.compact .lesson-card.current-lesson { padding-bottom: 20px; }
-        body.compact .time-start { font-size: 15px; }
-        body.compact .lesson-title { font-size: 13px; margin-bottom: 4px; }
-        body.compact .lesson-meta { font-size: 12px; margin-bottom: 3px; }
-        body.compact .badges { margin-bottom: 4px; gap: 4px; }
-        body.compact .schedule-list { gap: 8px; }
-        body.glass-cards .lesson-card { background: rgba(255,255,255,0.05); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-color: rgba(255,255,255,0.1); }
-        [data-theme="light"] body.glass-cards .lesson-card { background: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.7); }
-        body.hide-teacher .lesson-meta-teacher { display: none; }
-        body.hide-room .lesson-meta-room { display: none; }
-        body.simple-mode .bg-canvas { display: none; }
-        body.simple-mode .lesson-card { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; animation: none !important; transition: none !important; box-shadow: none !important; }
-        body.simple-mode .lesson-card::before { display: none; }
-        body.simple-mode .lesson-card:hover { transform: none !important; }
-        body.simple-mode .day-btn { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; transition: none !important; }
-        body.simple-mode .days-nav { position: static; background: var(--bg-body) !important; }
-        body.simple-mode * { animation-duration: 0.001s !important; transition-duration: 0.001s !important; }
-        body.simple-mode .current-badge { animation: none !important; opacity: 1 !important; }
-        body.simple-mode .live-timer-text svg { animation: none !important; }
-        body.simple-mode .modal-content { transition: none !important; transform: translateY(0) !important; }
-        body.simple-mode .modal-overlay { backdrop-filter: none !important; }
-        body.simple-mode .site-logo:hover { transform: none !important; }
-        body.simple-mode .settings-btn:hover { transform: none !important; }
-
-        /* =============================================
-           АДМІН-ПАНЕЛЬ
-        ============================================= */
-        .admin-modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(6px);
-            z-index: 200;
-            opacity: 0; pointer-events: none;
-            transition: opacity 0.3s ease;
-            display: flex; align-items: flex-end; justify-content: center;
-        }
-        .admin-modal-overlay.active { opacity: 1; pointer-events: all; }
-        .admin-modal {
-            background: var(--modal-bg);
-            width: 100%; max-width: 600px;
-            border-radius: 24px 24px 0 0;
-            max-height: 92vh;
-            display: flex; flex-direction: column;
-            transform: translateY(100%);
-            transition: transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275);
-            border-top: 2px solid var(--primary);
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.3);
-        }
+        /* ── ADMIN PANEL ─────────────────────────────── */
+        .admin-modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); z-index:200; opacity:0; pointer-events:none; transition:opacity 0.3s ease; display:flex; align-items:flex-end; justify-content:center; }
+        .admin-modal-overlay.active { opacity:1; pointer-events:all; }
+        .admin-modal { background:var(--modal-bg); width:100%; max-width:600px; border-radius:24px 24px 0 0; max-height:92vh; display:flex; flex-direction:column; transform:translateY(100%); transition:transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275); border-top:2px solid var(--primary); box-shadow:0 -10px 40px rgba(0,0,0,0.3); }
         .admin-modal-overlay.active .admin-modal { transform: translateY(0); }
-        .admin-modal-header {
-            padding: 20px 24px 16px;
-            border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between;
-            flex-shrink: 0;
-            background: var(--modal-bg);
-            border-radius: 24px 24px 0 0;
-            position: sticky; top: 0; z-index: 5;
-        }
-        .admin-modal-header-left { display: flex; align-items: center; gap: 10px; }
-        .admin-badge {
-            background: linear-gradient(135deg, var(--primary), var(--accent-purple));
-            color: #fff; font-size: 10px; font-weight: 800;
-            padding: 4px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1px;
-        }
-        .admin-modal-header h2 { font-size: 20px; font-weight: 800; }
-        .admin-modal-body { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 20px 24px 40px; flex: 1; }
-
-        /* Секції адмін-панелі */
-        .admin-section {
-            background: var(--bg-body);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 18px;
-            margin-bottom: 16px;
-        }
-        .admin-section-header {
-            display: flex; align-items: center; gap: 10px;
-            margin-bottom: 14px;
-        }
-        .admin-section-icon {
-            width: 36px; height: 36px; border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 18px; flex-shrink: 0;
-        }
-        .admin-section-title { font-size: 16px; font-weight: 700; color: var(--text-main); }
-        .admin-section-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-
-        /* Поля вводу в адмін */
-        .admin-input {
-            width: 100%;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            color: var(--text-main);
-            font-size: 14px; font-family: inherit;
-            padding: 12px 14px;
-            outline: none;
-            transition: border-color 0.2s;
-            margin-bottom: 10px;
-        }
+        .admin-modal-header { padding:20px 24px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; background:var(--modal-bg); border-radius:24px 24px 0 0; position:sticky; top:0; z-index:5; }
+        .admin-modal-header-left { display:flex; align-items:center; gap:10px; }
+        .admin-badge { background:linear-gradient(135deg,var(--primary),var(--accent-purple)); color:#fff; font-size:10px; font-weight:800; padding:4px 10px; border-radius:20px; text-transform:uppercase; letter-spacing:1px; }
+        .admin-modal-header h2 { font-size:20px; font-weight:800; }
+        .admin-modal-body { overflow-y:auto; -webkit-overflow-scrolling:touch; padding:20px 24px 40px; flex:1; }
+        .admin-section { background:var(--bg-body); border:1px solid var(--border); border-radius:16px; padding:18px; margin-bottom:16px; }
+        .admin-section-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+        .admin-section-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+        .admin-section-title { font-size:16px; font-weight:700; color:var(--text-main); }
+        .admin-section-desc { font-size:12px; color:var(--text-muted); margin-top:2px; }
+        .admin-input { width:100%; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; color:var(--text-main); font-size:14px; font-family:inherit; padding:12px 14px; outline:none; transition:border-color 0.2s; margin-bottom:10px; }
         .admin-input:focus { border-color: var(--primary); }
-        .admin-input:last-child { margin-bottom: 0; }
-
-        .admin-btn {
-            width: 100%; padding: 13px;
-            border: none; border-radius: 12px;
-            font-size: 14px; font-weight: 700;
-            cursor: pointer; transition: all 0.2s;
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
-        .admin-btn-primary { background: var(--primary); color: #fff; }
+        .admin-btn { width:100%; padding:13px; border:none; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:8px; }
+        .admin-btn-primary { background:var(--primary); color:#fff; }
         .admin-btn-primary:hover { opacity: 0.88; }
-        .admin-btn-danger { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
+        .admin-btn-danger { background:rgba(239,68,68,0.12); color:#ef4444; border:1px solid rgba(239,68,68,0.25); }
         .admin-btn-danger:hover { background: rgba(239,68,68,0.2); }
-        .admin-btn-success { background: rgba(16,185,129,0.12); color: var(--accent-green); border: 1px solid rgba(16,185,129,0.25); }
+        .admin-btn-success { background:rgba(16,185,129,0.12); color:var(--accent-green); border:1px solid rgba(16,185,129,0.25); }
         .admin-btn-success:hover { background: rgba(16,185,129,0.2); }
+        .admin-btn-warning { background:rgba(245,158,11,0.12); color:#f59e0b; border:1px solid rgba(245,158,11,0.25); }
+        .admin-btn-warning:hover { background: rgba(245,158,11,0.2); }
+        .admin-row { display:flex; gap:8px; }
+        .admin-row .admin-btn { flex:1; }
+        .admin-stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+        .admin-stat-card { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:14px; text-align:center; }
+        .admin-stat-value { font-size:28px; font-weight:800; color:var(--primary); line-height:1; }
+        .admin-stat-label { font-size:11px; color:var(--text-muted); font-weight:600; margin-top:4px; text-transform:uppercase; letter-spacing:0.5px; }
+        .admin-chart-wrap { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px; }
+        .admin-chart-title { font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; }
 
-        .admin-row { display: flex; gap: 8px; }
-        .admin-row .admin-btn { flex: 1; }
+        /* Модифікації розкладу */
+        .mod-list { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+        .mod-item { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:10px; }
+        .mod-item-info { flex:1; min-width:0; }
+        .mod-item-date { font-size:11px; color:var(--text-muted); font-weight:600; }
+        .mod-item-title { font-size:13px; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .mod-item-type { font-size:10px; font-weight:800; padding:2px 7px; border-radius:5px; text-transform:uppercase; flex-shrink:0; }
+        .mod-type-cancel { background:rgba(239,68,68,0.15); color:#ef4444; }
+        .mod-type-change { background:rgba(245,158,11,0.15); color:#f59e0b; }
+        .mod-delete-btn { background:none; border:none; color:var(--text-muted); cursor:pointer; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:8px; transition:0.2s; flex-shrink:0; }
+        .mod-delete-btn:hover { background:rgba(239,68,68,0.1); color:#ef4444; }
 
-        /* Статистика */
-        .admin-stats-grid {
-            display: grid; grid-template-columns: 1fr 1fr;
-            gap: 10px; margin-bottom: 12px;
-        }
-        .admin-stat-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px; padding: 14px;
-            text-align: center;
-        }
-        .admin-stat-value { font-size: 28px; font-weight: 800; color: var(--primary); line-height: 1; }
-        .admin-stat-label { font-size: 11px; color: var(--text-muted); font-weight: 600; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        /* Оголошення на предмет */
+        .lesson-ann-list { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+        .lesson-ann-item { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:12px 14px; display:flex; gap:10px; align-items:flex-start; }
+        .lesson-ann-item-body { flex:1; min-width:0; }
+        .lesson-ann-item-subject { font-size:11px; font-weight:700; color:var(--accent-purple); text-transform:uppercase; letter-spacing:0.5px; }
+        .lesson-ann-item-text { font-size:13px; color:var(--text-main); margin-top:2px; }
 
-        /* Попередження-банер */
-        .warning-banner {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            color: #fff; padding: 14px 18px;
-            border-radius: 14px; margin-bottom: 16px;
-            display: none; animation: slideUp 0.4s ease;
-            position: relative; overflow: hidden;
-        }
+        /* Warning banner */
+        .warning-banner { background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; padding:14px 18px; border-radius:14px; margin-bottom:16px; display:none; animation:slideUp 0.4s ease; position:relative; overflow:hidden; }
         .warning-banner.active { display: block; }
-        .warning-banner::before { content: ''; position: absolute; top: -30%; right: -10%; width: 120px; height: 120px; background: rgba(255,255,255,0.08); border-radius: 50%; }
-        .warning-banner-title { font-size: 14px; font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
-        .warning-banner-text { font-size: 13px; font-weight: 500; opacity: 0.9; line-height: 1.4; }
-
-        /* Швидке посилання */
-        .quick-link-card {
-            display: none;
-            background: linear-gradient(135deg, var(--primary), var(--accent-purple));
-            border-radius: 14px; padding: 14px 18px;
-            text-decoration: none; color: #fff;
-            margin-bottom: 16px; animation: slideUp 0.4s ease;
-            align-items: center; gap: 14px;
-        }
+        .warning-banner::before { content:''; position:absolute; top:-30%; right:-10%; width:120px; height:120px; background:rgba(255,255,255,0.08); border-radius:50%; }
+        .warning-banner-title { font-size:14px; font-weight:800; margin-bottom:4px; display:flex; align-items:center; gap:6px; }
+        .warning-banner-text { font-size:13px; font-weight:500; opacity:0.9; line-height:1.4; }
+        .quick-link-card { display:none; background:linear-gradient(135deg,var(--primary),var(--accent-purple)); border-radius:14px; padding:14px 18px; text-decoration:none; color:#fff; margin-bottom:16px; animation:slideUp 0.4s ease; align-items:center; gap:14px; }
         .quick-link-card.active { display: flex; }
-        .quick-link-icon { width: 42px; height: 42px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
-        .quick-link-label { font-size: 11px; font-weight: 700; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.5px; }
-        .quick-link-name { font-size: 16px; font-weight: 800; }
-        .quick-link-arrow { margin-left: auto; font-size: 20px; opacity: 0.8; }
-
-        /* Святковий режим */
-        body.holiday-mode .bg-orb-1 { background: #ff6b6b !important; }
-        body.holiday-mode .bg-orb-2 { background: #ffd93d !important; }
-        body.holiday-mode .bg-orb-3 { background: #6bcb77 !important; }
-        body.holiday-mode .bg-orb-4 { background: #ff6b6b !important; }
-        .holiday-indicator {
-            display: none; align-items: center; gap: 6px;
-            font-size: 12px; font-weight: 700; color: var(--accent-green);
-            background: var(--bg-green); padding: 6px 12px; border-radius: 20px;
-            margin: 0 auto 16px; width: fit-content;
-        }
+        .quick-link-icon { width:42px; height:42px; background:rgba(255,255,255,0.2); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+        .quick-link-label { font-size:11px; font-weight:700; opacity:0.8; text-transform:uppercase; letter-spacing:0.5px; }
+        .quick-link-name { font-size:16px; font-weight:800; }
+        .quick-link-arrow { margin-left:auto; font-size:20px; opacity:0.8; }
+        body.holiday-mode .bg-orb-1{background:#ff6b6b!important} body.holiday-mode .bg-orb-2{background:#ffd93d!important} body.holiday-mode .bg-orb-3{background:#6bcb77!important} body.holiday-mode .bg-orb-4{background:#ff6b6b!important}
+        .holiday-indicator { display:none; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--accent-green); background:var(--bg-green); padding:6px 12px; border-radius:20px; margin:0 auto 16px; width:fit-content; }
         .holiday-indicator.active { display: flex; }
+        .admin-toggle-row { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border); }
+        .admin-toggle-row:last-child { border-bottom:none; padding-bottom:0; }
+        .admin-toggle-label { font-size:14px; font-weight:600; color:var(--text-main); }
+        .admin-toggle-sub { font-size:12px; color:var(--text-muted); margin-top:2px; }
 
-        /* Toggle у адмін */
-        .admin-toggle-row {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 12px 0; border-bottom: 1px solid var(--border);
-        }
-        .admin-toggle-row:last-child { border-bottom: none; padding-bottom: 0; }
-        .admin-toggle-label { font-size: 14px; font-weight: 600; color: var(--text-main); }
-        .admin-toggle-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-
+        /* Дедлайн-таймер */
+        .deadline-section { margin-top: 20px; }
+        .deadline-card { background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:10px; display:flex; align-items:center; gap:12px; animation:slideUp 0.3s ease; }
+        .deadline-card.urgent { border-color:#ef4444; background:rgba(239,68,68,0.05); }
+        .deadline-card.soon { border-color:#f59e0b; background:rgba(245,158,11,0.05); }
+        .deadline-icon { font-size:24px; flex-shrink:0; }
+        .deadline-body { flex:1; }
+        .deadline-title { font-size:14px; font-weight:700; color:var(--text-main); margin-bottom:2px; }
+        .deadline-subject { font-size:12px; color:var(--text-muted); margin-bottom:4px; }
+        .deadline-timer { font-size:13px; font-weight:700; }
+        .deadline-timer.urgent { color:#ef4444; }
+        .deadline-timer.soon { color:#f59e0b; }
+        .deadline-timer.ok { color:var(--accent-green); }
     </style>
 </head>
 <body>
@@ -788,7 +426,7 @@
         <div class="container">
             <header>
                 <div class="header-logo-row">
-                    <img src="https://image2url.com/r2/default/images/1771500451851-446b2df9-c4de-4696-bfaf-194abf93ad71.jpg" alt="ФЕП-13 логотип" class="site-logo" loading="lazy" onerror="this.style.display='none'"/>
+                    <img src="https://image2url.com/r2/default/images/1771500451851-446b2df9-c4de-4696-bfaf-194abf93ad71.jpg" alt="ФЕП-13" class="site-logo" loading="lazy" onerror="this.style.display='none'"/>
                     <h1>Розклад ФЕП-13</h1>
                 </div>
                 <p id="current-date-display">Завантаження...</p>
@@ -796,6 +434,16 @@
                     <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
                 </button>
             </header>
+
+            <!-- Закріплене повідомлення -->
+            <div id="pinned-msg" class="pinned-msg">
+                <div class="pinned-msg-icon">📌</div>
+                <div class="pinned-msg-body">
+                    <div class="pinned-msg-label">Закріплено</div>
+                    <div class="pinned-msg-text" id="pinned-msg-text"></div>
+                </div>
+            </div>
+
             <div class="controls">
                 <div class="select-wrapper">
                     <select id="group-select">
@@ -811,9 +459,14 @@
                 <button class="day-btn" data-tab="this_week">Цей тиждень</button>
                 <button class="day-btn" data-tab="next_week">Наст. тиждень</button>
             </nav>
-            <!-- Банер попередження та швидке посилання (для розкладу) -->
             <div id="schedule-banners"></div>
             <main class="schedule-list" id="schedule-container"></main>
+
+            <!-- Дедлайни -->
+            <div class="deadline-section" id="deadline-section" style="display:none">
+                <div style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">⏰ Дедлайни</div>
+                <div id="deadline-list"></div>
+            </div>
         </div>
     </div>
 
@@ -822,16 +475,15 @@
         <div class="container">
             <header>
                 <div class="header-logo-row">
-                    <img src="https://image2url.com/r2/default/images/1771500451851-446b2df9-c4de-4696-bfaf-194abf93ad71.jpg" alt="ФЕП-13 логотип" class="site-logo" loading="lazy" onerror="this.style.display='none'"/>
+                    <img src="https://image2url.com/r2/default/images/1771500451851-446b2df9-c4de-4696-bfaf-194abf93ad71.jpg" alt="ФЕП-13" class="site-logo" loading="lazy" onerror="this.style.display='none'"/>
                     <h1 id="useful-secret-trigger" style="cursor:default;user-select:none;">Корисне</h1>
                 </div>
                 <p>Важливі посилання та сервіси</p>
             </header>
 
-            <!-- ── ОГОЛОШЕННЯ ───────────────────── -->
+            <!-- ОГОЛОШЕННЯ -->
             <div class="announcement-wrap" id="announcement-wrap">
                 <div class="announcement-board">
-                    <!-- Верхня смуга -->
                     <div class="ann-stripe-top">
                         <div class="ann-stripe-top-left">
                             <div class="ann-icon-wrap">📢</div>
@@ -840,13 +492,10 @@
                                 <div class="ann-title-text">Для групи ФЕП-13</div>
                             </div>
                         </div>
-                        <!-- кнопка схована, відкривається через заголовок -->
                         <button class="ann-edit-image-btn" id="ann-edit-image-btn" style="display:none">
                             <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                         </button>
                     </div>
-
-                    <!-- Нижня смуга — тіло -->
                     <div class="ann-stripe-bottom" id="ann-body-wrap">
                         <div id="ann-display">
                             <p class="ann-body-text" id="ann-text-display"></p>
@@ -860,23 +509,20 @@
                             </p>
                         </div>
                     </div>
-
-                    <!-- Панель редагування -->
                     <div class="ann-editor" id="ann-editor">
-                        <!-- Завантаження фото -->
-        <div id="ann-image-section">
-            <input type="file" id="ann-image-file" accept="image/*" style="display:none"/>
-            <div id="ann-image-preview-wrap" style="display:none;position:relative;border-radius:12px;overflow:hidden;margin-bottom:4px;">
-                <img id="ann-image-preview" src="" alt="" style="width:100%;max-height:140px;object-fit:cover;display:block;border-radius:12px;"/>
-                <button id="ann-image-remove" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.6);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">×</button>
-            </div>
-            <button id="ann-image-pick-btn" type="button" style="width:100%;background:var(--bg-body);border:1px dashed var(--border);border-radius:12px;color:var(--text-muted);padding:12px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:0.2s;">
-                <svg style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                <span id="ann-image-pick-label">Додати банер з телефону</span>
-            </button>
-            <input type="hidden" id="ann-image-url" value=""/>
-        </div>
-        <textarea id="ann-textarea" placeholder="Введіть текст оголошення для всієї групи…" maxlength="1000"></textarea>
+                        <div id="ann-image-section">
+                            <input type="file" id="ann-image-file" accept="image/*" style="display:none"/>
+                            <div id="ann-image-preview-wrap" style="display:none;position:relative;border-radius:12px;overflow:hidden;margin-bottom:4px;">
+                                <img id="ann-image-preview" src="" alt="" style="width:100%;max-height:140px;object-fit:cover;display:block;border-radius:12px;"/>
+                                <button id="ann-image-remove" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.6);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">×</button>
+                            </div>
+                            <button id="ann-image-pick-btn" type="button" style="width:100%;background:var(--bg-body);border:1px dashed var(--border);border-radius:12px;color:var(--text-muted);padding:12px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:0.2s;">
+                                <svg style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                <span id="ann-image-pick-label">Додати банер з телефону</span>
+                            </button>
+                            <input type="hidden" id="ann-image-url" value=""/>
+                        </div>
+                        <textarea id="ann-textarea" placeholder="Введіть текст оголошення для всієї групи…" maxlength="1000"></textarea>
                         <input type="password" class="ann-editor-pass" id="ann-pass" placeholder="🔑 Пароль адміна" autocomplete="off"/>
                         <p class="ann-editor-pass-hint">Тільки адмін може змінювати оголошення</p>
                         <div class="ann-editor-row">
@@ -887,53 +533,33 @@
                     </div>
                 </div>
             </div>
-            <!-- ──────────────────────────────────── -->
 
             <div class="useful-grid">
                 <a href="https://dekanat.lnu.edu.ua" target="_blank" class="useful-card">
-                    <div class="useful-icon">
-                        <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 18h6"></path><path d="M12 10v.01"></path></svg>
-                    </div>
-                    <div>
-                        <h3>Мій «Деканат»</h3>
-                        <p>Оцінки, документи та важливі оповіщення</p>
-                    </div>
+                    <div class="useful-icon"><svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 18h6"></path><path d="M12 10v.01"></path></svg></div>
+                    <div><h3>Мій «Деканат»</h3><p>Оцінки, документи та важливі оповіщення</p></div>
                 </a>
                 <div class="useful-card" id="open-moodle">
-                    <div class="useful-icon">
-                        <svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
-                    </div>
-                    <div>
-                        <h3>Moodle</h3>
-                        <p>Навчальні матеріали і контроль ваших знань</p>
-                    </div>
+                    <div class="useful-icon"><svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg></div>
+                    <div><h3>Moodle</h3><p>Навчальні матеріали і контроль ваших знань</p></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ── ПОПЕРЕДЖЕННЯ-БАНЕР (видимий для всіх) ── -->
+    <!-- Попередження, швидке посилання, святковий індикатор -->
     <div id="warning-banner" class="warning-banner">
         <div class="warning-banner-title">⚠️ <span id="warning-banner-title-text">Увага!</span></div>
         <div class="warning-banner-text" id="warning-banner-text"></div>
     </div>
-
-    <!-- ── ШВИДКЕ ПОСИЛАННЯ (видиме для всіх) ── -->
     <a id="quick-link-card" class="quick-link-card" href="#" target="_blank">
         <div class="quick-link-icon">🔗</div>
-        <div>
-            <div class="quick-link-label">Швидке посилання</div>
-            <div class="quick-link-name" id="quick-link-name">Zoom-конференція</div>
-        </div>
+        <div><div class="quick-link-label">Швидке посилання</div><div class="quick-link-name" id="quick-link-name">Zoom-конференція</div></div>
         <div class="quick-link-arrow">→</div>
     </a>
+    <div class="holiday-indicator" id="holiday-indicator">🎉 Активовано святковий режим</div>
 
-    <!-- ── СВЯТКОВИЙ ІНДИКАТОР ── -->
-    <div class="holiday-indicator" id="holiday-indicator">
-        🎉 Активовано святковий режим
-    </div>
-
-    <!-- ── ПРИХОВАНА АДМІН-ПАНЕЛЬ ── -->
+    <!-- АДМІН-ПАНЕЛЬ -->
     <div class="admin-modal-overlay" id="admin-modal-overlay">
         <div class="admin-modal">
             <div class="admin-modal-header">
@@ -949,34 +575,83 @@
                 <div class="admin-section">
                     <div class="admin-section-header">
                         <div class="admin-section-icon" style="background:var(--bg-blue)">📊</div>
-                        <div>
-                            <div class="admin-section-title">Статистика</div>
-                            <div class="admin-section-desc">Переглядів сайту</div>
-                        </div>
+                        <div><div class="admin-section-title">Статистика</div><div class="admin-section-desc">Переглядів сайту за 14 днів</div></div>
                     </div>
                     <div class="admin-stats-grid">
-                        <div class="admin-stat-card">
-                            <div class="admin-stat-value" id="stat-today">—</div>
-                            <div class="admin-stat-label">Сьогодні</div>
-                        </div>
-                        <div class="admin-stat-card">
-                            <div class="admin-stat-value" id="stat-total">—</div>
-                            <div class="admin-stat-label">Всього</div>
-                        </div>
+                        <div class="admin-stat-card"><div class="admin-stat-value" id="stat-today">—</div><div class="admin-stat-label">Сьогодні</div></div>
+                        <div class="admin-stat-card"><div class="admin-stat-value" id="stat-total">—</div><div class="admin-stat-label">Всього</div></div>
                     </div>
-                    <button class="admin-btn admin-btn-danger" id="reset-stats-btn" style="font-size:12px;padding:10px">
-                        Скинути статистику
-                    </button>
+                    <div class="admin-chart-wrap">
+                        <div class="admin-chart-title">Перегляди по днях</div>
+                        <canvas id="stats-chart" height="120"></canvas>
+                    </div>
+                    <button class="admin-btn admin-btn-danger" id="reset-stats-btn" style="font-size:12px;padding:10px">Скинути статистику</button>
+                </div>
+
+                <!-- Закріплене повідомлення -->
+                <div class="admin-section">
+                    <div class="admin-section-header">
+                        <div class="admin-section-icon" style="background:var(--bg-blue)">📌</div>
+                        <div><div class="admin-section-title">Закріплене повідомлення</div><div class="admin-section-desc">Відображається на головній сторінці</div></div>
+                    </div>
+                    <textarea class="admin-input" id="pinned-text-input" placeholder="Текст закріпленого повідомлення…" rows="3" maxlength="300" style="resize:none"></textarea>
+                    <div class="admin-row">
+                        <button class="admin-btn admin-btn-danger" id="pinned-clear-btn">Прибрати</button>
+                        <button class="admin-btn admin-btn-primary" id="pinned-save-btn">Закріпити</button>
+                    </div>
+                </div>
+
+                <!-- Модифікації розкладу -->
+                <div class="admin-section">
+                    <div class="admin-section-header">
+                        <div class="admin-section-icon" style="background:rgba(245,158,11,0.15)">📅</div>
+                        <div><div class="admin-section-title">Зміни в розкладі</div><div class="admin-section-desc">Скасування або заміна пари на конкретний день</div></div>
+                    </div>
+                    <select class="admin-input" id="mod-type-select">
+                        <option value="cancel">❌ Скасування пари</option>
+                        <option value="change">✏️ Заміна (викладач/аудиторія)</option>
+                    </select>
+                    <input type="date" class="admin-input" id="mod-date-input"/>
+                    <input type="text" class="admin-input" id="mod-lesson-input" placeholder="Назва предмету (частина назви)"/>
+                    <div id="mod-change-fields" style="display:none">
+                        <input type="text" class="admin-input" id="mod-new-teacher" placeholder="Новий викладач (залиш порожнім якщо не змінюється)"/>
+                        <input type="text" class="admin-input" id="mod-new-room" placeholder="Нова аудиторія (залиш порожнім якщо не змінюється)"/>
+                        <input type="text" class="admin-input" id="mod-note" placeholder="Примітка (напр. «онлайн у Zoom»)"/>
+                    </div>
+                    <button class="admin-btn admin-btn-warning" id="mod-add-btn">➕ Додати зміну</button>
+                    <div class="mod-list" id="mod-list"></div>
+                </div>
+
+                <!-- Оголошення на предмет -->
+                <div class="admin-section">
+                    <div class="admin-section-header">
+                        <div class="admin-section-icon" style="background:var(--bg-purple)">📝</div>
+                        <div><div class="admin-section-title">Оголошення на предмет</div><div class="admin-section-desc">Прив'язується до картки пари в розкладі</div></div>
+                    </div>
+                    <input type="text" class="admin-input" id="lann-subject-input" placeholder="Назва предмету (частина назви)"/>
+                    <textarea class="admin-input" id="lann-text-input" placeholder="Текст оголошення…" rows="3" maxlength="300" style="resize:none"></textarea>
+                    <button class="admin-btn admin-btn-primary" id="lann-add-btn">➕ Додати оголошення</button>
+                    <div class="lesson-ann-list" id="lann-list"></div>
+                </div>
+
+                <!-- Дедлайни -->
+                <div class="admin-section">
+                    <div class="admin-section-header">
+                        <div class="admin-section-icon" style="background:rgba(239,68,68,0.12)">⏰</div>
+                        <div><div class="admin-section-title">Дедлайни</div><div class="admin-section-desc">Таймер зворотного відліку для групи</div></div>
+                    </div>
+                    <input type="text" class="admin-input" id="dl-title-input" placeholder="Назва (напр. «КР з Вищої математики»)"/>
+                    <input type="text" class="admin-input" id="dl-subject-input" placeholder="Предмет"/>
+                    <input type="datetime-local" class="admin-input" id="dl-date-input"/>
+                    <button class="admin-btn admin-btn-danger" id="dl-add-btn">➕ Додати дедлайн</button>
+                    <div class="mod-list" id="dl-list"></div>
                 </div>
 
                 <!-- Попередження -->
                 <div class="admin-section">
                     <div class="admin-section-header">
                         <div class="admin-section-icon" style="background:rgba(239,68,68,0.12)">🚨</div>
-                        <div>
-                            <div class="admin-section-title">Попередження для групи</div>
-                            <div class="admin-section-desc">Велика червона плашка зверху</div>
-                        </div>
+                        <div><div class="admin-section-title">Попередження для групи</div><div class="admin-section-desc">Велика червона плашка зверху</div></div>
                     </div>
                     <input type="text" class="admin-input" id="warning-title-input" placeholder="Заголовок (напр. «Скасування пари»)" maxlength="60"/>
                     <textarea class="admin-input" id="warning-text-input" placeholder="Текст попередження…" rows="3" maxlength="300" style="resize:none"></textarea>
@@ -990,10 +665,7 @@
                 <div class="admin-section">
                     <div class="admin-section-header">
                         <div class="admin-section-icon" style="background:var(--bg-purple)">🔗</div>
-                        <div>
-                            <div class="admin-section-title">Швидке посилання</div>
-                            <div class="admin-section-desc">Zoom, Meet, або будь-який URL</div>
-                        </div>
+                        <div><div class="admin-section-title">Швидке посилання</div><div class="admin-section-desc">Zoom, Meet, або будь-який URL</div></div>
                     </div>
                     <input type="text" class="admin-input" id="quicklink-name-input" placeholder="Назва (напр. «Zoom — Вища математика»)" maxlength="60"/>
                     <input type="url" class="admin-input" id="quicklink-url-input" placeholder="https://zoom.us/j/..."/>
@@ -1007,37 +679,22 @@
                 <div class="admin-section">
                     <div class="admin-section-header">
                         <div class="admin-section-icon" style="background:rgba(245,158,11,0.15)">🎉</div>
-                        <div>
-                            <div class="admin-section-title">Святковий режим</div>
-                            <div class="admin-section-desc">Змінює кольори орбів на святкові</div>
-                        </div>
+                        <div><div class="admin-section-title">Святковий режим</div><div class="admin-section-desc">Змінює кольори орбів на святкові</div></div>
                     </div>
                     <div class="admin-toggle-row">
-                        <div>
-                            <div class="admin-toggle-label">🎄 Новорічний</div>
-                            <div class="admin-toggle-sub">Червоний / золотий / зелений</div>
-                        </div>
-                        <label class="toggle"><input type="radio" name="holiday" id="holiday-new-year" style="opacity:0;width:0;height:0"><span class="toggle-slider"></span></label>
+                        <div><div class="admin-toggle-label">🎄 Новорічний</div><div class="admin-toggle-sub">Червоний / золотий / зелений</div></div>
+                        <label class="toggle"><input type="radio" name="holiday" id="holiday-newyear" style="opacity:0;width:0;height:0"><span class="toggle-slider"></span></label>
                     </div>
                     <div class="admin-toggle-row">
-                        <div>
-                            <div class="admin-toggle-label">💙💛 Патріотичний</div>
-                            <div class="admin-toggle-sub">Синій та жовтий</div>
-                        </div>
+                        <div><div class="admin-toggle-label">💙💛 Патріотичний</div><div class="admin-toggle-sub">Синій та жовтий</div></div>
                         <label class="toggle"><input type="radio" name="holiday" id="holiday-ua" style="opacity:0;width:0;height:0"><span class="toggle-slider"></span></label>
                     </div>
                     <div class="admin-toggle-row">
-                        <div>
-                            <div class="admin-toggle-label">🌸 Весняний</div>
-                            <div class="admin-toggle-sub">Рожевий / бузковий / м'ятний</div>
-                        </div>
+                        <div><div class="admin-toggle-label">🌸 Весняний</div><div class="admin-toggle-sub">Рожевий / бузковий / м'ятний</div></div>
                         <label class="toggle"><input type="radio" name="holiday" id="holiday-spring" style="opacity:0;width:0;height:0"><span class="toggle-slider"></span></label>
                     </div>
                     <div class="admin-toggle-row" style="border-bottom:none">
-                        <div>
-                            <div class="admin-toggle-label">❌ Вимкнути</div>
-                            <div class="admin-toggle-sub">Звичайні кольори</div>
-                        </div>
+                        <div><div class="admin-toggle-label">❌ Вимкнути</div><div class="admin-toggle-sub">Звичайні кольори</div></div>
                         <label class="toggle"><input type="radio" name="holiday" id="holiday-off" checked style="opacity:0;width:0;height:0"><span class="toggle-slider"></span></label>
                     </div>
                     <button class="admin-btn admin-btn-success" id="holiday-save-btn" style="margin-top:12px">Застосувати для всіх</button>
@@ -1047,13 +704,16 @@
         </div>
     </div>
 
-        <nav class="bottom-nav">
+    <nav class="bottom-nav">
         <button class="nav-item active" data-page="schedule">
             <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
             Розклад
         </button>
         <button class="nav-item" data-page="useful">
-            <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            <div style="position:relative;display:inline-flex">
+                <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                <span id="unread-badge" style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:9px;font-weight:800;width:14px;height:14px;border-radius:50%;display:none;align-items:center;justify-content:center;line-height:1;">!</span>
+            </div>
             Корисне
         </button>
     </nav>
@@ -1062,29 +722,17 @@
 <!-- МОДАЛКИ -->
 <div class="modal-overlay" id="moodle-modal">
     <div class="modal-content">
-        <div class="modal-header">
-            <h2>Виберіть платформу</h2>
-            <button class="close-btn" id="close-moodle">×</button>
-        </div>
+        <div class="modal-header"><h2>Виберіть платформу</h2><button class="close-btn" id="close-moodle">×</button></div>
         <div class="modal-body">
-            <a href="https://e-learning.lnu.edu.ua/auth/oidc/?source=loginpage" target="_blank" class="moodle-btn">
-                <span>Головний</span>
-                <small>e-learning.lnu.edu.ua</small>
-            </a>
-            <a href="https://moodle.elct.lnu.edu.ua/auth/oidc/?source=loginpage" target="_blank" class="moodle-btn">
-                <span>Для факультету</span>
-                <small>moodle.elct.lnu.edu.ua</small>
-            </a>
+            <a href="https://e-learning.lnu.edu.ua/auth/oidc/?source=loginpage" target="_blank" class="moodle-btn"><span>Головний</span><small>e-learning.lnu.edu.ua</small></a>
+            <a href="https://moodle.elct.lnu.edu.ua/auth/oidc/?source=loginpage" target="_blank" class="moodle-btn"><span>Для факультету</span><small>moodle.elct.lnu.edu.ua</small></a>
         </div>
     </div>
 </div>
 
 <div class="modal-overlay" id="settings-modal">
     <div class="modal-content">
-        <div class="modal-header">
-            <h2>Налаштування</h2>
-            <button class="close-btn" id="close-settings">×</button>
-        </div>
+        <div class="modal-header"><h2>Налаштування</h2><button class="close-btn" id="close-settings">×</button></div>
         <div class="modal-body">
             <div class="setting-group">
                 <label>Ваш викладач Англійської</label>
@@ -1099,22 +747,13 @@
                     </select>
                 </div>
             </div>
-            <div class="setting-group">
-                <label>Колір додатку</label>
-                <div class="color-picker" id="color-picker"></div>
-            </div>
+            <div class="setting-group"><label>Колір додатку</label><div class="color-picker" id="color-picker"></div></div>
             <div class="setting-group">
                 <label>Тема оформлення</label>
                 <div class="theme-switch">
-                    <button class="theme-btn" data-theme-val="light">
-                        <svg viewBox="0 0 24 24"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Світла
-                    </button>
-                    <button class="theme-btn" data-theme-val="dark">
-                        <svg viewBox="0 0 24 24"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Темна
-                    </button>
-                    <button class="theme-btn" data-theme-val="black">
-                        <svg viewBox="0 0 24 24"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" fill="currentColor"/></svg> Black
-                    </button>
+                    <button class="theme-btn" data-theme-val="light"><svg viewBox="0 0 24 24"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Світла</button>
+                    <button class="theme-btn" data-theme-val="dark"><svg viewBox="0 0 24 24"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Темна</button>
+                    <button class="theme-btn" data-theme-val="black"><svg viewBox="0 0 24 24"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" fill="currentColor"/></svg> Black</button>
                 </div>
             </div>
             <div class="setting-group">
@@ -1127,99 +766,63 @@
             </div>
             <div class="setting-group">
                 <label>Вигляд карток</label>
-                <div class="toggle-row">
-                    <div class="toggle-label">
-                        <span>⚡ Простий інтерфейс</span>
-                        <small>Вимикає анімації та розмиття. Для слабких телефонів</small>
-                    </div>
-                    <label class="toggle"><input type="checkbox" id="toggle-simple"><span class="toggle-slider"></span></label>
-                </div>
-                <div class="toggle-row">
-                    <div class="toggle-label">
-                        <span>Скляні картки</span>
-                        <small>Напівпрозорий стиль з розмиттям</small>
-                    </div>
-                    <label class="toggle"><input type="checkbox" id="toggle-glass"><span class="toggle-slider"></span></label>
-                </div>
-                <div class="toggle-row">
-                    <div class="toggle-label">
-                        <span>Компактний режим</span>
-                        <small>Менші відступи, більше пар на екрані</small>
-                    </div>
-                    <label class="toggle"><input type="checkbox" id="toggle-compact"><span class="toggle-slider"></span></label>
-                </div>
+                <div class="toggle-row"><div class="toggle-label"><span>⚡ Простий інтерфейс</span><small>Вимикає анімації та розмиття</small></div><label class="toggle"><input type="checkbox" id="toggle-simple"><span class="toggle-slider"></span></label></div>
+                <div class="toggle-row"><div class="toggle-label"><span>Скляні картки</span><small>Напівпрозорий стиль з розмиттям</small></div><label class="toggle"><input type="checkbox" id="toggle-glass"><span class="toggle-slider"></span></label></div>
+                <div class="toggle-row"><div class="toggle-label"><span>Компактний режим</span><small>Менші відступи, більше пар на екрані</small></div><label class="toggle"><input type="checkbox" id="toggle-compact"><span class="toggle-slider"></span></label></div>
             </div>
             <div class="setting-group">
                 <label>Відображення інформації</label>
-                <div class="toggle-row">
-                    <div class="toggle-label">
-                        <span>Показувати викладача</span>
-                        <small>Ім'я викладача на картці пари</small>
-                    </div>
-                    <label class="toggle"><input type="checkbox" id="toggle-teacher" checked><span class="toggle-slider"></span></label>
-                </div>
-                <div class="toggle-row">
-                    <div class="toggle-label">
-                        <span>Показувати аудиторію</span>
-                        <small>Номер кімнати на картці пари</small>
-                    </div>
-                    <label class="toggle"><input type="checkbox" id="toggle-room" checked><span class="toggle-slider"></span></label>
-                </div>
+                <div class="toggle-row"><div class="toggle-label"><span>Показувати викладача</span><small>Ім'я викладача на картці пари</small></div><label class="toggle"><input type="checkbox" id="toggle-teacher" checked><span class="toggle-slider"></span></label></div>
+                <div class="toggle-row"><div class="toggle-label"><span>Показувати аудиторію</span><small>Номер кімнати на картці пари</small></div><label class="toggle"><input type="checkbox" id="toggle-room" checked><span class="toggle-slider"></span></label></div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-// ── STORAGE ────────────────────────────────────────
 const storage = {
     get: (key, def) => { try { return localStorage.getItem(key) || def; } catch(e) { return def; } },
     set: (key, val) => { try { localStorage.setItem(key, val); } catch(e) {} }
 };
 
-// ── ОГОЛОШЕННЯ: Пароль ─────────────────────────────
-// Змініть цей рядок на свій пароль!
-// Пароль захищено SHA-256 хешем — у коді зберігається лише хеш, не сам пароль
 const ADMIN_PASS_HASH = '42f4190f765a004bdcfe6ed4616d6ca1342e1d20c1030fd0169d071496275367';
 
-// ── ANNOUNCEMENT LOGIC ─────────────────────────────
-function initAnnouncement() {
-    const editor      = document.getElementById('ann-editor');
-    const textarea    = document.getElementById('ann-textarea');
-    const passInput   = document.getElementById('ann-pass');
-    const saveBtn     = document.getElementById('ann-save-btn');
-    const cancelBtn   = document.getElementById('ann-cancel-btn');
-    const clearBtn    = document.getElementById('ann-clear-btn');
-    const textDisplay = document.getElementById('ann-text-display');
-    const updatedEl   = document.getElementById('ann-updated-at');
-    const secretTrig  = document.getElementById('useful-secret-trigger');
-    const expandBtn   = document.getElementById('ann-expand-btn');
-    const expandLabel = document.getElementById('ann-expand-label');
+// ── Глобальні дані з Firebase ──
+let gScheduleMods = [];
+let gLessonAnns = [];
+let gDeadlines = [];
 
-    // ── Секретний тригер: 5 швидких торкань ──
+// ── ANNOUNCEMENT ──────────────────────────────────
+function initAnnouncement() {
+    const editor = document.getElementById('ann-editor');
+    const textarea = document.getElementById('ann-textarea');
+    const passInput = document.getElementById('ann-pass');
+    const saveBtn = document.getElementById('ann-save-btn');
+    const cancelBtn = document.getElementById('ann-cancel-btn');
+    const clearBtn = document.getElementById('ann-clear-btn');
+    const textDisplay = document.getElementById('ann-text-display');
+    const updatedEl = document.getElementById('ann-updated-at');
+    const secretTrig = document.getElementById('useful-secret-trigger');
+    const expandBtn = document.getElementById('ann-expand-btn');
+    const expandLabel = document.getElementById('ann-expand-label');
+    const annStripeTop = document.querySelector('.ann-stripe-top');
+
     let tapCount = 0, tapTimer = null;
     secretTrig.addEventListener('click', () => {
         tapCount++;
         clearTimeout(tapTimer);
         secretTrig.style.opacity = '0.5';
         setTimeout(() => { secretTrig.style.opacity = ''; }, 80);
-        if (tapCount >= 5) {
-            tapCount = 0;
-            editor.classList.contains('open') ? closeEditor() : openEditor();
-        } else {
-            tapTimer = setTimeout(() => { tapCount = 0; }, 1500);
-        }
+        if (tapCount >= 5) { tapCount = 0; editor.classList.contains('open') ? closeEditor() : openEditor(); }
+        else { tapTimer = setTimeout(() => { tapCount = 0; }, 1500); }
     });
 
-    // ── Розкрити/згорнути текст ──
     expandBtn.addEventListener('click', () => {
         const isExp = textDisplay.classList.contains('expanded');
         textDisplay.classList.toggle('expanded', !isExp);
         expandBtn.classList.toggle('expanded', !isExp);
         expandLabel.textContent = isExp ? 'Читати більше' : 'Згорнути';
     });
-
-    const annStripeTop = document.querySelector('.ann-stripe-top');
 
     function applyBanner(imageUrl) {
         if (imageUrl && imageUrl.trim()) {
@@ -1233,6 +836,16 @@ function initAnnouncement() {
 
     function showText(text, ts, imageUrl) {
         applyBanner(imageUrl);
+        // Лічильник непрочитаних
+        const lastSeen = storage.get('fep13_ann_last_seen', '');
+        const currentTs = ts ? ts.toString() : '';
+        const badge = document.getElementById('unread-badge');
+        if (text && text.trim() && currentTs && currentTs !== lastSeen) {
+            if (badge) badge.style.display = 'flex';
+        } else {
+            if (badge) badge.style.display = 'none';
+        }
+
         if (text && text.trim()) {
             textDisplay.textContent = text;
             textDisplay.className = 'ann-body-text';
@@ -1241,16 +854,12 @@ function initAnnouncement() {
                     expandBtn.classList.add('visible');
                     expandBtn.classList.remove('expanded');
                     expandLabel.textContent = 'Читати більше';
-                } else {
-                    expandBtn.classList.remove('visible');
-                }
+                } else { expandBtn.classList.remove('visible'); }
             }, 50);
             if (ts) {
                 const d = new Date(typeof ts === 'number' ? ts : parseInt(ts));
                 updatedEl.style.display = 'flex';
-                updatedEl.querySelector('span').textContent =
-                    'Оновлено: ' + d.toLocaleDateString('uk-UA', { day:'numeric', month:'long' }) +
-                    ' о ' + d.toLocaleTimeString('uk-UA', { hour:'2-digit', minute:'2-digit' });
+                updatedEl.querySelector('span').textContent = 'Оновлено: ' + d.toLocaleDateString('uk-UA', { day:'numeric', month:'long' }) + ' о ' + d.toLocaleTimeString('uk-UA', { hour:'2-digit', minute:'2-digit' });
             }
         } else {
             textDisplay.innerHTML = '<span class="ann-empty-hint">Оголошень поки немає.</span>';
@@ -1260,54 +869,45 @@ function initAnnouncement() {
         }
     }
 
-    // ── Завантаження з Firebase ──
+    // Позначити як прочитане при відкритті сторінки "Корисне"
+    document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.dataset.page === 'useful') {
+                const ts = storage.get('fep13_ann_cache_ts', '');
+                if (ts) storage.set('fep13_ann_last_seen', ts);
+                const badge = document.getElementById('unread-badge');
+                if (badge) badge.style.display = 'none';
+            }
+        });
+    });
+
     async function loadAnnouncement() {
-        // Показуємо локальний кеш поки грузиться Firebase
         const cachedText = storage.get('fep13_ann_cache_text', '');
-        const cachedTs   = storage.get('fep13_ann_cache_ts', '');
+        const cachedTs = storage.get('fep13_ann_cache_ts', '');
         const cachedImage = storage.get('fep13_ann_cache_image', '');
         showText(cachedText, cachedTs, cachedImage);
-
-        const waitForFirebase = () => new Promise(resolve => {
-            if (window.firebaseReady) resolve();
-            else window.addEventListener('firebase-ready', resolve, { once: true });
-        });
+        const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
         await waitForFirebase();
-
         const data = await window.fbGetAnnouncement();
         if (data) {
             showText(data.text, data.updatedAt, data.imageUrl);
             storage.set('fep13_ann_cache_text', data.text || '');
             storage.set('fep13_ann_cache_ts', data.updatedAt ? data.updatedAt.toString() : '');
             storage.set('fep13_ann_cache_image', data.imageUrl || '');
-        } else {
-            showText('', null, '');
-        }
+        } else { showText('', null, ''); }
     }
 
     function openEditor() {
-        const cached = storage.get('fep13_ann_cache_text', '');
+        textarea.value = storage.get('fep13_ann_cache_text', '');
         const cachedImg = storage.get('fep13_ann_cache_image', '');
-        textarea.value = cached;
         document.getElementById('ann-image-url').value = cachedImg;
-        // Відновлюємо прев'ю якщо є збережена картинка
-        if (cachedImg) {
-            document.getElementById('ann-image-preview').src = cachedImg;
-            document.getElementById('ann-image-preview-wrap').style.display = 'block';
-            document.getElementById('ann-image-pick-btn').style.display = 'none';
-        } else {
-            document.getElementById('ann-image-preview-wrap').style.display = 'none';
-            document.getElementById('ann-image-pick-btn').style.display = 'flex';
-            document.getElementById('ann-image-pick-label').textContent = 'Додати банер з телефону';
-        }
+        if (cachedImg) { document.getElementById('ann-image-preview').src = cachedImg; document.getElementById('ann-image-preview-wrap').style.display = 'block'; document.getElementById('ann-image-pick-btn').style.display = 'none'; }
+        else { document.getElementById('ann-image-preview-wrap').style.display = 'none'; document.getElementById('ann-image-pick-btn').style.display = 'flex'; document.getElementById('ann-image-pick-label').textContent = 'Додати банер з телефону'; }
         passInput.value = '';
         passInput.classList.remove('error');
         editor.classList.add('open');
         document.getElementById('ann-edit-image-btn').style.display = 'flex';
-        setTimeout(() => {
-            editor.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            passInput.focus();
-        }, 120);
+        setTimeout(() => { editor.scrollIntoView({behavior:'smooth',block:'center'}); passInput.focus(); }, 120);
     }
 
     function closeEditor() {
@@ -1317,130 +917,81 @@ function initAnnouncement() {
         document.getElementById('ann-edit-image-btn').style.display = 'none';
     }
 
-    // ── ImgBB завантаження фото ──
     const IMGBB_KEY = '6311636c1f646d2a42df314a0275efb8';
-    const fileInput     = document.getElementById('ann-image-file');
-    const pickBtn       = document.getElementById('ann-image-pick-btn');
-    const pickLabel     = document.getElementById('ann-image-pick-label');
-    const previewWrap   = document.getElementById('ann-image-preview-wrap');
-    const previewImg    = document.getElementById('ann-image-preview');
-    const removeBtn     = document.getElementById('ann-image-remove');
+    const fileInput = document.getElementById('ann-image-file');
+    const pickBtn = document.getElementById('ann-image-pick-btn');
+    const pickLabel = document.getElementById('ann-image-pick-label');
+    const previewWrap = document.getElementById('ann-image-preview-wrap');
+    const previewImg = document.getElementById('ann-image-preview');
+    const removeBtn = document.getElementById('ann-image-remove');
     const imageUrlInput = document.getElementById('ann-image-url');
 
     pickBtn.addEventListener('click', () => fileInput.click());
-
     fileInput.addEventListener('change', async () => {
-        const file = fileInput.files[0];
-        if (!file) return;
-
-        // Показуємо прев'ю одразу
-        const localUrl = URL.createObjectURL(file);
-        previewImg.src = localUrl;
-        previewWrap.style.display = 'block';
-        pickBtn.style.display = 'none';
-        pickLabel.textContent = 'Завантаження...';
-        pickBtn.style.display = 'flex';
-        pickBtn.disabled = true;
-
-        // Показуємо локальний прев'ю
-        previewWrap.style.display = 'block';
-        pickBtn.style.display = 'none';
-
+        const file = fileInput.files[0]; if (!file) return;
+        previewImg.src = URL.createObjectURL(file); previewWrap.style.display = 'block'; pickBtn.style.display = 'none';
+        pickLabel.textContent = 'Завантаження...'; pickBtn.style.display = 'flex'; pickBtn.disabled = true;
+        previewWrap.style.display = 'block'; pickBtn.style.display = 'none';
         try {
-            const formData = new FormData();
-            formData.append('image', file);
-            formData.append('key', IMGBB_KEY);
-
-            const res = await fetch('https://api.imgbb.com/1/upload', {
-                method: 'POST',
-                body: formData
-            });
+            const formData = new FormData(); formData.append('image', file); formData.append('key', IMGBB_KEY);
+            const res = await fetch('https://api.imgbb.com/1/upload', {method:'POST', body:formData});
             const data = await res.json();
-
-            if (data.success) {
-                imageUrlInput.value = data.data.url;
-                previewImg.src = data.data.url;
-                pickLabel.textContent = 'Змінити фото';
-                pickBtn.style.display = 'flex';
-                pickBtn.disabled = false;
-                // Одразу показуємо прев'ю на банері
-                applyBanner(data.data.url);
-            } else {
-                throw new Error('ImgBB error');
-            }
-        } catch(e) {
-            alert('Помилка завантаження фото. Спробуй ще раз.');
-            previewWrap.style.display = 'none';
-            pickBtn.style.display = 'flex';
-            pickBtn.disabled = false;
-            pickLabel.textContent = 'Додати банер з телефону';
-            imageUrlInput.value = '';
-        }
+            if (data.success) { imageUrlInput.value = data.data.url; previewImg.src = data.data.url; pickLabel.textContent = 'Змінити фото'; pickBtn.style.display = 'flex'; pickBtn.disabled = false; applyBanner(data.data.url); }
+            else { throw new Error('ImgBB error'); }
+        } catch(e) { alert('Помилка завантаження фото.'); previewWrap.style.display = 'none'; pickBtn.style.display = 'flex'; pickBtn.disabled = false; pickLabel.textContent = 'Додати банер з телефону'; imageUrlInput.value = ''; }
         fileInput.value = '';
     });
-
-    removeBtn.addEventListener('click', () => {
-        imageUrlInput.value = '';
-        previewImg.src = '';
-        previewWrap.style.display = 'none';
-        pickBtn.style.display = 'flex';
-        pickLabel.textContent = 'Додати банер з телефону';
-        applyBanner('');
-    });
+    removeBtn.addEventListener('click', () => { imageUrlInput.value = ''; previewImg.src = ''; previewWrap.style.display = 'none'; pickBtn.style.display = 'flex'; pickLabel.textContent = 'Додати банер з телефону'; applyBanner(''); });
 
     async function checkPassword(input) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(input);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        return hashHex === ADMIN_PASS_HASH;
+        const enc = new TextEncoder();
+        const buf = await crypto.subtle.digest('SHA-256', enc.encode(input));
+        return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('') === ADMIN_PASS_HASH;
     }
 
     async function saveAnnouncement(clear) {
         const isValid = await checkPassword(passInput.value);
-        if (!isValid) {
-            passInput.classList.add('error');
-            setTimeout(() => passInput.classList.remove('error'), 600);
-            passInput.focus();
-            return;
-        }
+        if (!isValid) { passInput.classList.add('error'); setTimeout(()=>passInput.classList.remove('error'),600); passInput.focus(); return; }
         const text = clear ? '' : textarea.value.trim();
-        const imageUrl = clear ? '' : (document.getElementById('ann-image-url').value.trim());
-        saveBtn.textContent = 'Збереження...';
-        saveBtn.disabled = true;
-
+        const imageUrl = clear ? '' : imageUrlInput.value.trim();
+        saveBtn.textContent = 'Збереження...'; saveBtn.disabled = true;
         const ok = await window.fbSetAnnouncement(text, imageUrl);
-        saveBtn.textContent = 'Зберегти';
-        saveBtn.disabled = false;
-
+        saveBtn.textContent = 'Зберегти'; saveBtn.disabled = false;
         if (ok) {
+            const ts = Date.now();
             storage.set('fep13_ann_cache_text', text);
-            storage.set('fep13_ann_cache_ts', Date.now().toString());
+            storage.set('fep13_ann_cache_ts', ts.toString());
             storage.set('fep13_ann_cache_image', imageUrl);
-            showText(text, Date.now(), imageUrl);
+            storage.set('fep13_ann_last_seen', ts.toString());
+            showText(text, ts, imageUrl);
             closeEditor();
-        } else {
-            alert('Помилка збереження. Перевір інтернет.');
-        }
+        } else { alert('Помилка збереження. Перевір інтернет.'); }
     }
 
     cancelBtn.addEventListener('click', closeEditor);
     saveBtn.addEventListener('click', () => saveAnnouncement(false));
     clearBtn.addEventListener('click', () => { textarea.value = ''; saveAnnouncement(true); });
-    passInput.addEventListener('keydown', e => { if(e.key === 'Enter') saveAnnouncement(false); });
-
+    passInput.addEventListener('keydown', e => { if(e.key==='Enter') saveAnnouncement(false); });
     loadAnnouncement();
 }
 
-// ── СТАН ───────────────────────────────────────────
+// ── СТАН ─────────────────────────────────────────
 const htmlEl = document.documentElement;
+// badge-group = зелений, badge-type = фіолетовий, badge-potik = синій
+// тому всі кольори нижче навмисно НЕ зелені, НЕ фіолетові та НЕ сині
 const colors = {
-    blue:    { main: '#3b82f6', hover: '#2563eb', light: 'rgba(59,130,246,0.15)' },
-    purple:  { main: '#8b5cf6', hover: '#7c3aed', light: 'rgba(139,92,246,0.15)' },
-    emerald: { main: '#10b981', hover: '#059669', light: 'rgba(16,185,129,0.15)' },
-    rose:    { main: '#f43f5e', hover: '#e11d48', light: 'rgba(244,63,94,0.15)' },
-    amber:   { main: '#f59e0b', hover: '#d97706', light: 'rgba(245,158,11,0.15)' }
+    // ── ОРИГІНАЛЬНІ ──
+    blue:    { main:'#3b82f6', hover:'#2563eb', light:'rgba(59,130,246,0.12)', btnBg:'linear-gradient(135deg,#3b82f6,#2563eb)', btnShadow:'0 4px 14px rgba(59,130,246,0.5)' },
+    amber:   { main:'#f59e0b', hover:'#d97706', light:'rgba(245,158,11,0.12)',  btnBg:'linear-gradient(135deg,#f59e0b,#d97706)', btnShadow:'0 4px 14px rgba(245,158,11,0.5)' },
+    rose:    { main:'#f43f5e', hover:'#e11d48', light:'rgba(244,63,94,0.12)',   btnBg:'linear-gradient(135deg,#f43f5e,#e11d48)', btnShadow:'0 4px 14px rgba(244,63,94,0.5)'  },
+    emerald: { main:'#10b981', hover:'#059669', light:'rgba(16,185,129,0.12)',  btnBg:'linear-gradient(135deg,#10b981,#059669)', btnShadow:'0 4px 14px rgba(16,185,129,0.5)' },
+    purple:  { main:'#8b5cf6', hover:'#7c3aed', light:'rgba(139,92,246,0.12)', btnBg:'linear-gradient(135deg,#8b5cf6,#7c3aed)', btnShadow:'0 4px 14px rgba(139,92,246,0.5)' },
+    // ── НОВІ ──
+    pink:    { main:'#ec4899', hover:'#db2777', light:'rgba(236,72,153,0.12)',  btnBg:'linear-gradient(135deg,#ec4899,#db2777)', btnShadow:'0 4px 14px rgba(236,72,153,0.5)' },
+    cyan:    { main:'#06b6d4', hover:'#0891b2', light:'rgba(6,182,212,0.12)',   btnBg:'linear-gradient(135deg,#06b6d4,#0891b2)', btnShadow:'0 4px 14px rgba(6,182,212,0.5)'  },
+    orange:  { main:'#f97316', hover:'#ea580c', light:'rgba(249,115,22,0.12)',  btnBg:'linear-gradient(135deg,#f97316,#ea580c)', btnShadow:'0 4px 14px rgba(249,115,22,0.5)' },
+    lime:    { main:'#84cc16', hover:'#65a30d', light:'rgba(132,204,22,0.12)',  btnBg:'linear-gradient(135deg,#84cc16,#65a30d)', btnShadow:'0 4px 14px rgba(132,204,22,0.5)' },
+    red:     { main:'#ef4444', hover:'#dc2626', light:'rgba(239,68,68,0.12)',   btnBg:'linear-gradient(135deg,#ef4444,#dc2626)', btnShadow:'0 4px 14px rgba(239,68,68,0.5)'  },
 };
 let state = {
     tab: 'today',
@@ -1461,26 +1012,22 @@ applyFontSize(state.fontSize);
 applyBodyClasses();
 
 let els = {};
-
 const BASE_MONDAY_UTC = Date.UTC(2026,1,9);
 const BASE_WEEK_TYPE = 'numerator';
 const monthNames = ['січ.','лют.','бер.','квіт.','трав.','черв.','лип.','серп.','вер.','жовт.','лист.','груд.'];
 const uaDays = ['Неділя','Понеділок','Вівторок','Середа','Четвер','Пʼятниця','Субота'];
 const jsDaysMap = ['sun','mon','tue','wed','thu','fri','sat'];
 
-function getKyivDate() {
-    try { return new Date(new Date().toLocaleString("en-US",{timeZone:"Europe/Kyiv"})); }
-    catch(e) { return new Date(); }
-}
+function getKyivDate() { try { return new Date(new Date().toLocaleString("en-US",{timeZone:"Europe/Kyiv"})); } catch(e) { return new Date(); } }
 function timeToSeconds(t) { if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*3600+m*60; }
 function formatTimeLeft(s) { const h=Math.floor(s/3600); const m=Math.floor((s%3600)/60); const sc=s%60; return `${h>0?h+':':''}${m.toString().padStart(2,'0')}:${sc.toString().padStart(2,'0')}`; }
 
 const getEngLessons = (roomShumska) => [
-    { start:"08:30",end:"09:50",title:"Іноземна мова (ПрС)",teacher:"доц. Брона О.А.",room:"5/Б",isEng:true },
-    { start:"08:30",end:"09:50",title:"Іноземна мова (ПрС)",teacher:"доц. Думашівський Я.Є.",room:"123/Т",isEng:true },
-    { start:"08:30",end:"09:50",title:"Іноземна мова (ПрС)",teacher:"доц. Шандра Н.А.",room:"406/Т",isEng:true },
-    { start:"08:30",end:"09:50",title:"Іноземна мова (ПрС)",teacher:"ас. Довбенко Л.В.",room:"129а/Т",isEng:true },
-    { start:"08:30",end:"09:50",title:"Іноземна мова (ПрС)",teacher:"ас. Шумська О.А.",room:roomShumska,isEng:true }
+    {start:"08:30",end:"09:50",title:"Іноземна мова (ПрС)",teacher:"доц. Брона О.А.",room:"5/Б",isEng:true},
+    {start:"08:30",end:"09:50",title:"Іноземна мова (ПрС)",teacher:"доц. Думашівський Я.Є.",room:"123/Т",isEng:true},
+    {start:"08:30",end:"09:50",title:"Іноземна мова (ПрС)",teacher:"доц. Шандра Н.А.",room:"406/Т",isEng:true},
+    {start:"08:30",end:"09:50",title:"Іноземна мова (ПрС)",teacher:"ас. Довбенко Л.В.",room:"129а/Т",isEng:true},
+    {start:"08:30",end:"09:50",title:"Іноземна мова (ПрС)",teacher:"ас. Шумська О.А.",room:roomShumska,isEng:true}
 ];
 
 const SCHEDULE = {
@@ -1556,19 +1103,15 @@ function applyColor(k) {
     htmlEl.style.setProperty('--primary', c.main);
     htmlEl.style.setProperty('--primary-hover', c.hover);
     htmlEl.style.setProperty('--bg-blue', c.light);
+    // Кнопки дня-навігації
+    htmlEl.style.setProperty('--day-btn-active-bg', c.btnBg);
+    htmlEl.style.setProperty('--day-btn-active-border', c.main);
+    htmlEl.style.setProperty('--day-btn-active-shadow', c.btnShadow);
 }
 function applyFontSize(size) {
-    const map = {
-        small:  {title:'13px',meta:'11px',time:'15px',timeEnd:'11px',dayTitle:'16px'},
-        normal: {title:'15px',meta:'13px',time:'18px',timeEnd:'13px',dayTitle:'18px'},
-        large:  {title:'18px',meta:'15px',time:'22px',timeEnd:'15px',dayTitle:'21px'},
-    };
+    const map = { small:{title:'13px',meta:'11px',time:'15px',timeEnd:'11px',dayTitle:'16px'}, normal:{title:'15px',meta:'13px',time:'18px',timeEnd:'13px',dayTitle:'18px'}, large:{title:'18px',meta:'15px',time:'22px',timeEnd:'15px',dayTitle:'21px'} };
     const s = map[size] || map['normal'];
-    htmlEl.style.setProperty('--fs-title',s.title);
-    htmlEl.style.setProperty('--fs-meta',s.meta);
-    htmlEl.style.setProperty('--fs-time',s.time);
-    htmlEl.style.setProperty('--fs-time-end',s.timeEnd);
-    htmlEl.style.setProperty('--fs-day-title',s.dayTitle);
+    htmlEl.style.setProperty('--fs-title',s.title); htmlEl.style.setProperty('--fs-meta',s.meta); htmlEl.style.setProperty('--fs-time',s.time); htmlEl.style.setProperty('--fs-time-end',s.timeEnd); htmlEl.style.setProperty('--fs-day-title',s.dayTitle);
 }
 function applyBodyClasses() {
     document.body.classList.toggle('glass-cards', state.glassCards);
@@ -1579,8 +1122,12 @@ function applyBodyClasses() {
 }
 function renderColorPicker() {
     const picker = document.getElementById('color-picker');
+    const colorNames = { blue:'Синій', amber:'Бурштин', rose:'Малиновий', emerald:'Смарагд', purple:'Фіолет', pink:'Рожевий', cyan:'Блакитний', orange:'Помаранч', lime:'Лайм', red:'Червоний' };
+    picker.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px;';
     picker.innerHTML = Object.keys(colors).map(key =>
-        `<div class="color-circle ${state.color===key?'active':''}" style="background-color:${colors[key].main}" data-color="${key}"></div>`
+        `<div class="color-circle ${state.color===key?'active':''}" style="background:${colors[key].btnBg||colors[key].main};border-radius:10px;width:auto;height:36px;position:relative;border:2px solid ${state.color===key?'var(--text-main)':'transparent'};cursor:pointer;display:flex;align-items:center;justify-content:center;" data-color="${key}" title="${colorNames[key]||key}">
+            ${state.color===key?'<span style="font-size:14px;color:#fff;">✓</span>':''}
+        </div>`
     ).join('');
     picker.querySelectorAll('.color-circle').forEach(c => {
         c.addEventListener('click', () => {
@@ -1607,7 +1154,6 @@ function init() {
         moodleModal: document.getElementById('moodle-modal'),
         themeBtns: document.querySelectorAll('.theme-btn')
     };
-
     const todayKyiv = getKyivDate();
     els.dateDisplay.textContent = todayKyiv.toLocaleDateString('uk-UA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
     els.groupSelect.value = state.group;
@@ -1639,27 +1185,17 @@ function init() {
         els.closeMoodleBtn.addEventListener('click', () => els.moodleModal.classList.remove('active'));
         els.moodleModal.addEventListener('click', e => { if(e.target===els.moodleModal) els.moodleModal.classList.remove('active'); });
     }
-    els.themeBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            state.theme = btn.dataset.themeVal;
-            htmlEl.setAttribute('data-theme', state.theme);
-            storage.set('fep13_theme', state.theme);
-            updateThemeUI();
-        });
-    });
-
+    els.themeBtns.forEach(btn => { btn.addEventListener('click', () => { state.theme=btn.dataset.themeVal; htmlEl.setAttribute('data-theme',state.theme); storage.set('fep13_theme',state.theme); updateThemeUI(); }); });
     render();
     setInterval(updateLiveTimers, 1000);
+    setInterval(renderDeadlines, 30000);
 }
 
 function initNewSettings() {
     const simpleToggle = document.getElementById('toggle-simple');
-    if(simpleToggle) { simpleToggle.checked=state.simpleMode; simpleToggle.addEventListener('change', ()=>{ state.simpleMode=simpleToggle.checked; storage.set('fep13_simple_mode',state.simpleMode); applyBodyClasses(); }); }
+    if(simpleToggle){simpleToggle.checked=state.simpleMode;simpleToggle.addEventListener('change',()=>{state.simpleMode=simpleToggle.checked;storage.set('fep13_simple_mode',state.simpleMode);applyBodyClasses();});}
     const sizeBtns = document.querySelectorAll('.size-btn');
-    sizeBtns.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.size===state.fontSize);
-        btn.addEventListener('click', ()=>{ state.fontSize=btn.dataset.size; storage.set('fep13_font_size',state.fontSize); applyFontSize(state.fontSize); sizeBtns.forEach(b=>b.classList.toggle('active',b.dataset.size===state.fontSize)); });
-    });
+    sizeBtns.forEach(btn => { btn.classList.toggle('active',btn.dataset.size===state.fontSize); btn.addEventListener('click',()=>{state.fontSize=btn.dataset.size;storage.set('fep13_font_size',state.fontSize);applyFontSize(state.fontSize);sizeBtns.forEach(b=>b.classList.toggle('active',b.dataset.size===state.fontSize));}); });
     const glassToggle=document.getElementById('toggle-glass');
     if(glassToggle){glassToggle.checked=state.glassCards;glassToggle.addEventListener('change',()=>{state.glassCards=glassToggle.checked;storage.set('fep13_glass_cards',state.glassCards);applyBodyClasses();});}
     const compactToggle=document.getElementById('toggle-compact');
@@ -1669,31 +1205,25 @@ function initNewSettings() {
     const roomToggle=document.getElementById('toggle-room');
     if(roomToggle){roomToggle.checked=state.showRoom;roomToggle.addEventListener('change',()=>{state.showRoom=roomToggle.checked;storage.set('fep13_show_room',state.showRoom);applyBodyClasses();});}
 }
+function updateThemeUI() { els.themeBtns.forEach(btn=>btn.classList.toggle('active',btn.dataset.themeVal===state.theme)); }
 
-function updateThemeUI() {
-    els.themeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.themeVal===state.theme));
-}
-
-function getLocalMonday(d) {
-    const di = new Date(d);
-    const day = di.getDay()===0?7:di.getDay();
-    di.setDate(di.getDate()-day+1);
-    di.setHours(0,0,0,0);
-    return di;
-}
-function getWeekType(dateObj) {
-    const lm = getLocalMonday(dateObj);
-    const utcC = Date.UTC(lm.getFullYear(),lm.getMonth(),lm.getDate());
-    const diffW = Math.floor(Math.floor((utcC-BASE_MONDAY_UTC)/(1000*60*60*24))/7);
-    return (diffW%2===0)?BASE_WEEK_TYPE:(BASE_WEEK_TYPE==='numerator'?'denominator':'numerator');
-}
+function getLocalMonday(d) { const di=new Date(d); const day=di.getDay()===0?7:di.getDay(); di.setDate(di.getDate()-day+1); di.setHours(0,0,0,0); return di; }
+function getWeekType(dateObj) { const lm=getLocalMonday(dateObj); const utcC=Date.UTC(lm.getFullYear(),lm.getMonth(),lm.getDate()); const diffW=Math.floor(Math.floor((utcC-BASE_MONDAY_UTC)/(1000*60*60*24))/7); return (diffW%2===0)?BASE_WEEK_TYPE:(BASE_WEEK_TYPE==='numerator'?'denominator':'numerator'); }
 function parseTitle(raw) {
-    let t = raw.replace(/\s*\(Потік\)/g,"").trim();
-    let type = "";
+    let t=raw.replace(/\s*\(Потік\)/g,"").trim(); let type="";
     if(t.includes('(Л)')){type="Лекція";t=t.replace('(Л)','');}
     else if(t.includes('(Лаб)')){type="Лабораторна";t=t.replace('(Лаб)','');}
     else if(t.includes('(ПрС)')){type="Практична";t=t.replace('(ПрС)','');}
     return {title:t.trim(),type,isPotik:raw.includes('(Потік)')};
+}
+
+// Знайти модифікацію для пари
+function findMod(dateStr, lessonTitle) {
+    return gScheduleMods.find(m => m.date === dateStr && lessonTitle.toLowerCase().includes(m.lesson.toLowerCase()));
+}
+// Знайти оголошення для пари
+function findLessonAnn(lessonTitle) {
+    return gLessonAnns.filter(a => lessonTitle.toLowerCase().includes(a.subject.toLowerCase()));
 }
 
 function renderDayBlock(targetDate, showHeader=true) {
@@ -1703,15 +1233,15 @@ function renderDayBlock(targetDate, showHeader=true) {
     const kyivNow = getKyivDate();
     const isTodayKyiv = targetDate.getDate()===kyivNow.getDate() && targetDate.getMonth()===kyivNow.getMonth() && targetDate.getFullYear()===kyivNow.getFullYear();
     const nowSecs = kyivNow.getHours()*3600+kyivNow.getMinutes()*60+kyivNow.getSeconds();
+    const dateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth()+1).padStart(2,'0')}-${String(targetDate.getDate()).padStart(2,'0')}`;
     let html = '';
     if(showHeader) {
-        const dateStr = `${targetDate.getDate()} ${monthNames[targetDate.getMonth()]}`;
         const wTypeName = weekType==='numerator'?'🔁 Чисельник':'🔁 Знаменник';
-        html += `<div class="day-header"><span class="day-title">${uaDays[dayIndex]}, ${dateStr}</span><span class="week-badge">${wTypeName}</span></div>`;
+        html += `<div class="day-header"><span class="day-title">${uaDays[dayIndex]}, ${targetDate.getDate()} ${monthNames[targetDate.getMonth()]}</span><span class="week-badge">${wTypeName}</span></div>`;
     }
     if(dayIndex===0||dayIndex===6) {
-        let out = html+`<div class="empty-state"><span>🎉</span><p>Ура, вихідний!</p>`;
-        if(isTodayKyiv) out+=`<button class="go-tomorrow-btn" style="margin:16px auto 0;width:fit-content;" onclick="document.querySelector('[data-tab=&quot;next_week&quot;]').click()">Наст. тиждень <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button>`;
+        let out=html+`<div class="empty-state"><span>🎉</span><p>Ура, вихідний!</p>`;
+        if(isTodayKyiv) out+=`<button class="go-tomorrow-btn" style="margin:16px auto 0;width:fit-content;" onclick="document.querySelector('[data-tab=&quot;next_week&quot;]').click()">Наст. тиждень →</button>`;
         return out+'</div>';
     }
     let dayLessons = SCHEDULE[weekType][dayKey]||[];
@@ -1721,15 +1251,15 @@ function renderDayBlock(targetDate, showHeader=true) {
         return true;
     });
     if(filtered.length===0) {
-        let out = html+`<div class="empty-state"><span>🙌</span><p>На цей день пар немає</p>`;
-        if(isTodayKyiv) { const isFri=dayIndex===5; const t=isFri?'next_week':'tomorrow'; const tx=isFri?'Наст. тиждень':'На завтра'; out+=`<button class="go-tomorrow-btn" style="margin:16px auto 0;width:fit-content;" onclick="document.querySelector('[data-tab=&quot;${t}&quot;]').click()">${tx} <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button>`; }
+        let out=html+`<div class="empty-state"><span>🙌</span><p>На цей день пар немає</p>`;
+        if(isTodayKyiv){const isFri=dayIndex===5;const t=isFri?'next_week':'tomorrow';const tx=isFri?'Наст. тиждень':'На завтра';out+=`<button class="go-tomorrow-btn" style="margin:16px auto 0;width:fit-content;" onclick="document.querySelector('[data-tab=&quot;${t}&quot;]').click()">${tx} →</button>`;}
         return out+'</div>';
     }
     let currentLessonId=null, nextLessonId=null;
     if(isTodayKyiv) {
         for(let i=0;i<filtered.length;i++) {
             const l=filtered[i];
-            const startS=timeToSeconds(l.start), endS=timeToSeconds(l.end);
+            const startS=timeToSeconds(l.start),endS=timeToSeconds(l.end);
             if(nowSecs>=startS&&nowSecs<=endS){currentLessonId=i;break;}
             else if(nowSecs<startS&&nextLessonId===null){nextLessonId=i;}
         }
@@ -1742,26 +1272,54 @@ function renderDayBlock(targetDate, showHeader=true) {
         if(lesson.group) badges+=`<span class="badge badge-group">Підгрупа ${lesson.group}</span>`;
         if(isPotik||lesson.teacher.includes('(Потік)')) badges+=`<span class="badge badge-potik">Потік</span>`;
         if(lesson.isEng&&state.engTeacher==='all') badges+=`<span class="badge badge-group">Збірна група</span>`;
-        let cardClasses="lesson-card";
-        let topBadge='', bottomExtras='', timerData='';
-        if(idx===currentLessonId) {
+
+        // Перевірка модифікацій
+        const mod = findMod(dateStr, lesson.title);
+        let cardExtra = '';
+        let cardClasses = 'lesson-card';
+        let topBadge = '', bottomExtras = '', timerData = '';
+
+        if (mod) {
+            if (mod.type === 'cancel') {
+                cardClasses += ' cancelled';
+                badges += `<span class="cancelled-badge">❌ Скасовано</span>`;
+            } else if (mod.type === 'change') {
+                cardClasses += ' modified';
+                badges += `<span class="modified-badge">✏️ Змінено</span>`;
+                const parts = [];
+                if (mod.newTeacher) parts.push(`Викладач: ${mod.newTeacher}`);
+                if (mod.newRoom) parts.push(`Ауд: ${mod.newRoom}`);
+                if (mod.note) parts.push(mod.note);
+                if (parts.length) cardExtra += `<div class="mod-note">📋 ${parts.join(' · ')}</div>`;
+            }
+        }
+
+        if(idx===currentLessonId && (!mod || mod.type !== 'cancel')) {
             cardClasses+=" current-lesson";
             topBadge=`<div class="current-badge">Триває зараз</div>`;
             bottomExtras=`<div class="live-timer-text"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>До кінця: <span id="live-time-val">--:--</span></div><div class="live-timer-wrapper"><div class="live-timer-progress" id="live-progress-bar"></div></div>`;
             timerData=`data-start="${timeToSeconds(lesson.start)}" data-end="${timeToSeconds(lesson.end)}" id="tracked-current"`;
-        } else if(idx===nextLessonId) {
+        } else if(idx===nextLessonId && (!mod || mod.type !== 'cancel')) {
             cardClasses+=" next-lesson";
             topBadge=`<div class="next-badge" id="tracked-next" data-start="${timeToSeconds(lesson.start)}">Почнеться через --:--</div>`;
         }
-        return `<div class="${cardClasses}" ${timerData}>${topBadge}<div style="display:flex;width:100%;gap:16px;"><div class="time-block"><span class="time-start">${lesson.start}</span><span class="time-end">${lesson.end}</span></div><div class="info-block">${badges?`<div class="badges">${badges}</div>`:''}<h3 class="lesson-title">${title}</h3>${lesson.room?`<div class="lesson-meta lesson-meta-room">${ICONS.room}<span>${lesson.room}</span></div>`:''} ${cleanTeacher?`<div class="lesson-meta lesson-meta-teacher">${ICONS.teacher}<span>${cleanTeacher}</span></div>`:''}</div></div>${bottomExtras}</div>`;
+
+        // Оголошення на предмет
+        const anns = findLessonAnn(lesson.title);
+        let annHtml = anns.map(a => `<div class="lesson-ann-note"><strong>📌 Оголошення</strong>${a.text}</div>`).join('');
+
+        const displayTeacher = (mod && mod.newTeacher) ? mod.newTeacher : cleanTeacher;
+        const displayRoom = (mod && mod.newRoom) ? mod.newRoom : lesson.room;
+
+        return `<div class="${cardClasses}" ${timerData}>${topBadge}<div class="lesson-card-inner"><div class="time-block"><span class="time-start">${lesson.start}</span><span class="time-end">${lesson.end}</span></div><div class="info-block">${badges?`<div class="badges">${badges}</div>`:''}<h3 class="lesson-title">${title}</h3>${displayRoom?`<div class="lesson-meta lesson-meta-room">${ICONS.room}<span>${displayRoom}</span></div>`:''} ${displayTeacher?`<div class="lesson-meta lesson-meta-teacher">${ICONS.teacher}<span>${displayTeacher}</span></div>`:''}</div></div>${cardExtra}${annHtml}${bottomExtras}</div>`;
     }).join('');
 
     if(isTodayKyiv) {
         const lastEndS=timeToSeconds(filtered[filtered.length-1].end);
         if(nowSecs>lastEndS) {
             const isFri=dayIndex===5;
-            const tt=isFri?'next_week':'tomorrow'; const tx=isFri?'Наст. тиждень':'На завтра';
-            html+=`<div class="all-done-message"><div class="all-done-icon">🎉</div><div class="all-done-text"><h4>На сьогодні все!</h4><p>Всі пари успішно завершено. Можна відпочивати.</p></div><button class="go-tomorrow-btn" onclick="document.querySelector('[data-tab=&quot;${tt}&quot;]').click()">${tx} <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button></div>`;
+            const tt=isFri?'next_week':'tomorrow';const tx=isFri?'Наст. тиждень':'На завтра';
+            html+=`<div class="all-done-message"><div class="all-done-icon">🎉</div><div class="all-done-text"><h4>На сьогодні все!</h4><p>Всі пари успішно завершено. Можна відпочивати.</p></div><button class="go-tomorrow-btn" onclick="document.querySelector('[data-tab=&quot;${tt}&quot;]').click()">${tx} →</button></div>`;
         }
     }
     return html;
@@ -1777,6 +1335,7 @@ function render() {
     else if(state.tab==='next_week'){const nm=getLocalMonday(nowKyiv);nm.setDate(nm.getDate()+7);for(let i=0;i<5;i++){const d=new Date(nm);d.setDate(d.getDate()+i);html+=renderDayBlock(d,true);}}
     els.scheduleContainer.innerHTML=html;
     updateLiveTimers();
+    renderDeadlines();
 }
 
 function updateLiveTimers() {
@@ -1794,335 +1353,424 @@ function updateLiveTimers() {
         if(pb) pb.style.width=`${pct}%`;
     }
     const nb=document.getElementById('tracked-next');
-    if(nb){
-        const start=parseInt(nb.dataset.start);
-        if(nowSecs>=start){render();return;}
-        nb.textContent=`Почнеться через ${formatTimeLeft(start-nowSecs)}`;
-    }
+    if(nb){ const start=parseInt(nb.dataset.start); if(nowSecs>=start){render();return;} nb.textContent=`Почнеться через ${formatTimeLeft(start-nowSecs)}`; }
 }
 
+// ── ДЕДЛАЙНИ ─────────────────────────────────────
+function renderDeadlines() {
+    const section = document.getElementById('deadline-section');
+    const list = document.getElementById('deadline-list');
+    if (!section || !list) return;
+    const now = new Date();
+    const upcoming = gDeadlines.filter(d => new Date(d.datetime) > now).sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
+    if (upcoming.length === 0) { section.style.display = 'none'; return; }
+    section.style.display = 'block';
+    list.innerHTML = upcoming.slice(0,5).map(dl => {
+        const diff = new Date(dl.datetime) - now;
+        const hours = Math.floor(diff/3600000);
+        const days = Math.floor(hours/24);
+        let timeStr, urgency = 'ok';
+        if (hours < 24) { timeStr = `⚡ Залишилось ${hours}г ${Math.floor((diff%3600000)/60000)}хв`; urgency = 'urgent'; }
+        else if (days < 3) { timeStr = `⏳ Залишилось ${days}д ${hours%24}г`; urgency = 'soon'; }
+        else { timeStr = `📅 Залишилось ${days} дн.`; }
+        return `<div class="deadline-card ${urgency}"><div class="deadline-icon">${urgency==='urgent'?'🔴':urgency==='soon'?'🟡':'🟢'}</div><div class="deadline-body"><div class="deadline-title">${dl.title}</div><div class="deadline-subject">${dl.subject}</div><div class="deadline-timer ${urgency}">${timeStr}</div></div></div>`;
+    }).join('');
+}
 
-// ── АДМІН-ПАНЕЛЬ ──────────────────────────────────
+// ── АДМІН ────────────────────────────────────────
+// Кожна святкова тема має 4 РІЗНИХ кольори для 4 орбів
 const HOLIDAY_THEMES = {
-    'new-year': { orb1:'#ff4444', orb2:'#ffd700', orb3:'#00cc44', orb4:'#ff4444' },
-    'ua':       { orb1:'#005bbb', orb2:'#ffd500', orb3:'#005bbb', orb4:'#ffd500' },
-    'spring':   { orb1:'#ff80ab', orb2:'#b388ff', orb3:'#80cbc4', orb4:'#ff80ab' },
-    'off':      null
+    // 🎄 Новорічний: класичні різдвяні — темно-червоний, золотий, смарагдово-зелений, льодяний блакитний
+    'new-year': {
+        orb1: '#cc0000',   // глибокий червоний
+        orb2: '#ffcc00',   // золото
+        orb3: '#006633',   // темно-зелений
+        orb4: '#99ddff',   // льодяний блакитний
+        indicator: '🎄 Новорічний режим'
+    },
+    // 💙💛 Патріотичний: синьо-жовтий з варіацією
+    'ua': {
+        orb1: '#005bbb',   // глибокий синій
+        orb2: '#ffd500',   // соковитий жовтий
+        orb3: '#0077dd',   // яскравий синій
+        orb4: '#ffaa00',   // темне золото
+        indicator: '💙💛 Патріотичний режим'
+    },
+    // 🌸 Весняний: рожевий, лавандовий, м'ятний, персиковий
+    'spring': {
+        orb1: '#ff69b4',   // рожевий
+        orb2: '#9b59b6',   // лавандовий
+        orb3: '#2ecc8e',   // м'ятний
+        orb4: '#ff8c69',   // персиковий
+        indicator: '🌸 Весняний режим'
+    },
+    'off': null
 };
 
 function applyHolidayTheme(mode) {
-    const orbs = [
-        document.querySelector('.bg-orb-1'),
-        document.querySelector('.bg-orb-2'),
-        document.querySelector('.bg-orb-3'),
-        document.querySelector('.bg-orb-4'),
-    ];
-    const indicator = document.getElementById('holiday-indicator');
-    if (!mode || mode === 'off' || !HOLIDAY_THEMES[mode]) {
-        orbs.forEach(o => o && o.style.removeProperty('background'));
+    const orbs=[document.querySelector('.bg-orb-1'),document.querySelector('.bg-orb-2'),document.querySelector('.bg-orb-3'),document.querySelector('.bg-orb-4')];
+    const indicator=document.getElementById('holiday-indicator');
+    if(!mode||mode==='off'||!HOLIDAY_THEMES[mode]){
+        orbs.forEach(o=>{ if(o){o.style.removeProperty('background');o.style.removeProperty('opacity');} });
         document.body.classList.remove('holiday-mode');
         indicator.classList.remove('active');
     } else {
-        const t = HOLIDAY_THEMES[mode];
-        if(orbs[0]) orbs[0].style.background = t.orb1;
-        if(orbs[1]) orbs[1].style.background = t.orb2;
-        if(orbs[2]) orbs[2].style.background = t.orb3;
-        if(orbs[3]) orbs[3].style.background = t.orb4;
+        const t=HOLIDAY_THEMES[mode];
+        // Кожен орб — свій унікальний колір з збільшеною непрозорістю
+        if(orbs[0]){orbs[0].style.background=t.orb1;orbs[0].style.opacity='0.35';}
+        if(orbs[1]){orbs[1].style.background=t.orb2;orbs[1].style.opacity='0.32';}
+        if(orbs[2]){orbs[2].style.background=t.orb3;orbs[2].style.opacity='0.30';}
+        if(orbs[3]){orbs[3].style.background=t.orb4;orbs[3].style.opacity='0.28';}
         document.body.classList.add('holiday-mode');
         indicator.classList.add('active');
+        indicator.textContent=t.indicator||'🎉 Святковий режим';
     }
 }
-
 function applyWarningBanner(title, text) {
-    const banner = document.getElementById('warning-banner');
-    if (text && text.trim()) {
-        document.getElementById('warning-banner-title-text').textContent = title || 'Увага!';
-        document.getElementById('warning-banner-text').textContent = text;
-        banner.classList.add('active');
-    } else {
-        banner.classList.remove('active');
-    }
+    const banner=document.getElementById('warning-banner');
+    if(text&&text.trim()){document.getElementById('warning-banner-title-text').textContent=title||'Увага!';document.getElementById('warning-banner-text').textContent=text;banner.classList.add('active');}
+    else{banner.classList.remove('active');}
 }
-
 function applyQuickLink(name, url) {
-    const card = document.getElementById('quick-link-card');
-    if (url && url.trim()) {
-        document.getElementById('quick-link-name').textContent = name || 'Швидке посилання';
-        card.href = url;
-        card.classList.add('active');
-    } else {
-        card.classList.remove('active');
-    }
+    const card=document.getElementById('quick-link-card');
+    if(url&&url.trim()){document.getElementById('quick-link-name').textContent=name||'Швидке посилання';card.href=url;card.classList.add('active');}
+    else{card.classList.remove('active');}
+}
+function applyPinnedMsg(text) {
+    const el=document.getElementById('pinned-msg');
+    const textEl=document.getElementById('pinned-msg-text');
+    if(text&&text.trim()){textEl.textContent=text;el.classList.add('active');}
+    else{el.classList.remove('active');}
 }
 
 async function loadAdminData() {
-    const waitForFirebase = () => new Promise(resolve => {
-        if (window.firebaseReady) resolve();
-        else window.addEventListener('firebase-ready', resolve, { once: true });
-    });
+    const waitForFirebase=()=>new Promise(r=>{if(window.firebaseReady)r();else window.addEventListener('firebase-ready',r,{once:true});});
     await waitForFirebase();
-
-    // Збільшити лічильник (1 раз на сесію)
-    if (!sessionStorage.getItem('fep13_counted')) {
-        sessionStorage.setItem('fep13_counted', '1');
-        window.fbIncrementView();
-    }
-
-    const data = await window.fbGetAdmin();
-    if (!data) return;
-    applyWarningBanner(data.warningTitle, data.warningText);
-    applyQuickLink(data.quicklinkName, data.quicklinkUrl);
+    if(!sessionStorage.getItem('fep13_counted')){sessionStorage.setItem('fep13_counted','1');window.fbIncrementView();}
+    const data=await window.fbGetAdmin();
+    if(!data) return;
+    applyWarningBanner(data.warningTitle,data.warningText);
+    applyQuickLink(data.quicklinkName,data.quicklinkUrl);
     applyHolidayTheme(data.holidayMode);
-    storage.set('fep13_admin_cache', JSON.stringify(data));
+    applyPinnedMsg(data.pinnedText);
+    storage.set('fep13_admin_cache',JSON.stringify(data));
+
+    // Завантажуємо модифікації та оголошення на предмети
+    const [modsData, lannData] = await Promise.all([window.fbGetScheduleMods(), window.fbGetLessonAnnouncements()]);
+    gScheduleMods = (modsData.mods || []).filter(m => m.date >= new Date().toISOString().slice(0,10));
+    gLessonAnns = lannData.items || [];
+    gDeadlines = data.deadlines || [];
+    render();
+    renderDeadlines();
 }
 
-// Завантажуємо з кешу одразу
 try {
-    const cached = JSON.parse(storage.get('fep13_admin_cache', '{}') || '{}');
-    if (cached.warningText) applyWarningBanner(cached.warningTitle, cached.warningText);
-    if (cached.quicklinkUrl) applyQuickLink(cached.quicklinkName, cached.quicklinkUrl);
-    if (cached.holidayMode) applyHolidayTheme(cached.holidayMode);
+    const cached=JSON.parse(storage.get('fep13_admin_cache','{}') || '{}');
+    if(cached.warningText) applyWarningBanner(cached.warningTitle,cached.warningText);
+    if(cached.quicklinkUrl) applyQuickLink(cached.quicklinkName,cached.quicklinkUrl);
+    if(cached.holidayMode) applyHolidayTheme(cached.holidayMode);
+    if(cached.pinnedText) applyPinnedMsg(cached.pinnedText);
 } catch(e) {}
 
+let statsChartInstance = null;
+
 function initAdminPanel() {
-    const overlay = document.getElementById('admin-modal-overlay');
-    const closeBtn = document.getElementById('close-admin');
+    const overlay=document.getElementById('admin-modal-overlay');
+    const closeBtn=document.getElementById('close-admin');
+    const ADMIN_PANEL_HASH='d16e394090d88753b438e3285c7843113a67729ff93f0994d30cd80faa36f6ee';
+    const settingsBtn=document.getElementById('open-settings');
+    let holdTimer=null, holdProgress=null;
 
-    // Секретний тригер — утримання кнопки «Налаштування» 10 секунд
-    const ADMIN_PANEL_HASH = 'd16e394090d88753b438e3285c7843113a67729ff93f0994d30cd80faa36f6ee';
-    const settingsBtn = document.getElementById('open-settings');
-    let holdTimer = null;
-    let holdProgress = null;
-
-    // Індикатор прогресу утримання
-    const holdIndicator = document.createElement('div');
-    holdIndicator.style.cssText = `
-        position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
-        background: var(--bg-card); border: 1px solid var(--border);
-        border-radius: 20px; padding: 8px 16px; font-size: 12px; font-weight: 700;
-        color: var(--text-muted); z-index: 300; opacity: 0;
-        transition: opacity 0.2s; pointer-events: none;
-        display: flex; align-items: center; gap: 8px;
-    `;
-    holdIndicator.innerHTML = '<div id="hold-ring" style="width:16px;height:16px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--primary);animation:spin 1s linear infinite;"></div><span id="hold-label">Утримуй…</span>';
+    const holdIndicator=document.createElement('div');
+    holdIndicator.style.cssText=`position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:8px 16px;font-size:12px;font-weight:700;color:var(--text-muted);z-index:300;opacity:0;transition:opacity 0.2s;pointer-events:none;display:flex;align-items:center;gap:8px;`;
+    holdIndicator.innerHTML='<div style="width:16px;height:16px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--primary);animation:spin 1s linear infinite;"></div><span>Утримуй…</span>';
     document.body.appendChild(holdIndicator);
 
-    function startHold(e) {
-        holdTimer = setTimeout(async () => {
-            holdIndicator.style.opacity = '0';
-            // Запитуємо пароль
-            await promptAdminPassword();
-        }, 10000);
-
-        // Показуємо індикатор через 1 сек
-        holdProgress = setTimeout(() => {
-            holdIndicator.style.opacity = '1';
-        }, 1000);
+    function startHold() {
+        holdTimer=setTimeout(async()=>{holdIndicator.style.opacity='0';await promptAdminPassword();},10000);
+        holdProgress=setTimeout(()=>{holdIndicator.style.opacity='1';},1000);
     }
-
-    function cancelHold() {
-        clearTimeout(holdTimer);
-        clearTimeout(holdProgress);
-        holdIndicator.style.opacity = '0';
-    }
-
-    settingsBtn.addEventListener('mousedown', startHold);
-    settingsBtn.addEventListener('touchstart', startHold, { passive: true });
-    settingsBtn.addEventListener('mouseup', cancelHold);
-    settingsBtn.addEventListener('mouseleave', cancelHold);
-    settingsBtn.addEventListener('touchend', cancelHold);
-    settingsBtn.addEventListener('touchcancel', cancelHold);
+    function cancelHold() { clearTimeout(holdTimer);clearTimeout(holdProgress);holdIndicator.style.opacity='0'; }
+    settingsBtn.addEventListener('mousedown',startHold);
+    settingsBtn.addEventListener('touchstart',startHold,{passive:true});
+    settingsBtn.addEventListener('mouseup',cancelHold);
+    settingsBtn.addEventListener('mouseleave',cancelHold);
+    settingsBtn.addEventListener('touchend',cancelHold);
+    settingsBtn.addEventListener('touchcancel',cancelHold);
 
     async function promptAdminPassword() {
-        // Модальний prompt з полем пароля
-        const promptOverlay = document.createElement('div');
-        promptOverlay.style.cssText = `
-            position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(6px); z-index: 400;
-            display: flex; align-items: center; justify-content: center; padding: 24px;
-        `;
-        promptOverlay.innerHTML = `
-            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:24px;width:100%;max-width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
-                <div style="font-size:32px;text-align:center;margin-bottom:12px;">🔐</div>
-                <h3 style="font-size:18px;font-weight:800;text-align:center;margin-bottom:6px;color:var(--text-main)">Адмін-доступ</h3>
-                <p style="font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:20px;">Введіть пароль для входу</p>
-                <input type="password" id="admin-prompt-pass" placeholder="Пароль" autocomplete="off"
-                    style="width:100%;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;
-                           color:var(--text-main);font-size:15px;padding:14px;outline:none;font-family:inherit;margin-bottom:12px;box-sizing:border-box;"/>
-                <p id="admin-prompt-error" style="color:#ef4444;font-size:12px;font-weight:700;text-align:center;display:none;margin-bottom:10px;">Невірний пароль</p>
-                <div style="display:flex;gap:10px;">
-                    <button id="admin-prompt-cancel" style="flex:1;padding:13px;border:1px solid var(--border);border-radius:12px;background:var(--bg-body);color:var(--text-muted);font-size:14px;font-weight:700;cursor:pointer;">Скасувати</button>
-                    <button id="admin-prompt-ok" style="flex:1;padding:13px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Увійти</button>
-                </div>
-            </div>
-        `;
+        const promptOverlay=document.createElement('div');
+        promptOverlay.style.cssText=`position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);z-index:400;display:flex;align-items:center;justify-content:center;padding:24px;`;
+        promptOverlay.innerHTML=`<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:24px;width:100%;max-width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.4);"><div style="font-size:32px;text-align:center;margin-bottom:12px;">🔐</div><h3 style="font-size:18px;font-weight:800;text-align:center;margin-bottom:6px;color:var(--text-main)">Адмін-доступ</h3><p style="font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:20px;">Введіть пароль для входу</p><input type="password" id="admin-prompt-pass" placeholder="Пароль" autocomplete="off" style="width:100%;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;color:var(--text-main);font-size:15px;padding:14px;outline:none;font-family:inherit;margin-bottom:12px;box-sizing:border-box;"/><p id="admin-prompt-error" style="color:#ef4444;font-size:12px;font-weight:700;text-align:center;display:none;margin-bottom:10px;">Невірний пароль</p><div style="display:flex;gap:10px;"><button id="admin-prompt-cancel" style="flex:1;padding:13px;border:1px solid var(--border);border-radius:12px;background:var(--bg-body);color:var(--text-muted);font-size:14px;font-weight:700;cursor:pointer;">Скасувати</button><button id="admin-prompt-ok" style="flex:1;padding:13px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Увійти</button></div></div>`;
         document.body.appendChild(promptOverlay);
-        const passInput = document.getElementById('admin-prompt-pass');
-        const errEl     = document.getElementById('admin-prompt-error');
-        setTimeout(() => passInput.focus(), 100);
-
-        async function checkAdminPass() {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(passInput.value);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
-            if (hashHex === ADMIN_PANEL_HASH) {
-                document.body.removeChild(promptOverlay);
-                openAdminPanel();
-            } else {
-                errEl.style.display = 'block';
-                passInput.style.border = '1px solid #ef4444';
-                passInput.value = '';
-                setTimeout(() => {
-                    passInput.style.border = '1px solid var(--border)';
-                    errEl.style.display = 'none';
-                }, 1500);
-            }
+        const passInput=document.getElementById('admin-prompt-pass');
+        const errEl=document.getElementById('admin-prompt-error');
+        setTimeout(()=>passInput.focus(),100);
+        async function checkAdminPass(){
+            const enc=new TextEncoder();
+            const buf=await crypto.subtle.digest('SHA-256',enc.encode(passInput.value));
+            const hashHex=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+            if(hashHex===ADMIN_PANEL_HASH){document.body.removeChild(promptOverlay);openAdminPanel();}
+            else{errEl.style.display='block';passInput.style.border='1px solid #ef4444';passInput.value='';setTimeout(()=>{passInput.style.border='1px solid var(--border)';errEl.style.display='none';},1500);}
         }
-
-        document.getElementById('admin-prompt-ok').addEventListener('click', checkAdminPass);
-        document.getElementById('admin-prompt-cancel').addEventListener('click', () => document.body.removeChild(promptOverlay));
-        passInput.addEventListener('keydown', e => { if(e.key === 'Enter') checkAdminPass(); });
-        promptOverlay.addEventListener('click', e => { if(e.target === promptOverlay) document.body.removeChild(promptOverlay); });
+        document.getElementById('admin-prompt-ok').addEventListener('click',checkAdminPass);
+        document.getElementById('admin-prompt-cancel').addEventListener('click',()=>document.body.removeChild(promptOverlay));
+        passInput.addEventListener('keydown',e=>{if(e.key==='Enter')checkAdminPass();});
+        promptOverlay.addEventListener('click',e=>{if(e.target===promptOverlay)document.body.removeChild(promptOverlay);});
     }
 
     function openAdminPanel() {
         overlay.classList.add('active');
         loadAdminStats();
-        // Заповнити поля поточними значеннями
         try {
-            const cached = JSON.parse(storage.get('fep13_admin_cache', '{}') || '{}');
-            document.getElementById('warning-title-input').value = cached.warningTitle || '';
-            document.getElementById('warning-text-input').value = cached.warningText || '';
-            document.getElementById('quicklink-name-input').value = cached.quicklinkName || '';
-            document.getElementById('quicklink-url-input').value = cached.quicklinkUrl || '';
-            const hm = cached.holidayMode || 'off';
-            const radioId = 'holiday-' + hm.replace('new-year', 'newyear');
-            const radio = document.getElementById(radioId) || document.getElementById('holiday-off');
-            if (radio) radio.checked = true;
+            const cached=JSON.parse(storage.get('fep13_admin_cache','{}') || '{}');
+            document.getElementById('warning-title-input').value=cached.warningTitle||'';
+            document.getElementById('warning-text-input').value=cached.warningText||'';
+            document.getElementById('quicklink-name-input').value=cached.quicklinkName||'';
+            document.getElementById('quicklink-url-input').value=cached.quicklinkUrl||'';
+            document.getElementById('pinned-text-input').value=cached.pinnedText||'';
+            const hm=cached.holidayMode||'off';
+            const radioId='holiday-'+(hm==='new-year'?'newyear':hm);
+            const radio=document.getElementById(radioId)||document.getElementById('holiday-off');
+            if(radio)radio.checked=true;
             updateRadioToggles();
-        } catch(e) {}
+        } catch(e){}
+        renderModList();
+        renderLannList();
+        renderDlList();
     }
 
     function updateRadioToggles() {
-        ['new-year','ua','spring','off'].forEach(key => {
-            const id = 'holiday-' + key.replace('-','');
-            const inp = document.getElementById(id);
-            if (!inp) return;
-            const slider = inp.nextElementSibling;
-            if (slider) {
-                slider.style.background = inp.checked ? 'var(--primary)' : '';
-                if (inp.checked) {
-                    slider.querySelector('::before');
-                    slider.style.background = 'var(--primary)';
-                }
-            }
+        ['newyear','ua','spring','off'].forEach(key=>{
+            const inp=document.getElementById('holiday-'+key);
+            if(!inp)return;
+            const slider=inp.nextElementSibling;
+            if(slider)slider.style.background=inp.checked?'var(--primary)':'';
         });
     }
-
-    // Оновлюємо вигляд radio кнопок як toggle
-    document.querySelectorAll('input[name="holiday"]').forEach(inp => {
-        inp.addEventListener('change', updateRadioToggles);
-    });
-
-    closeBtn.addEventListener('click', () => overlay.classList.remove('active'));
-    overlay.addEventListener('click', e => { if(e.target === overlay) overlay.classList.remove('active'); });
+    document.querySelectorAll('input[name="holiday"]').forEach(inp=>inp.addEventListener('change',updateRadioToggles));
+    closeBtn.addEventListener('click',()=>overlay.classList.remove('active'));
+    overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.classList.remove('active');});
 
     async function saveAdminField(updates) {
-        const waitForFirebase = () => new Promise(resolve => {
-            if (window.firebaseReady) resolve();
-            else window.addEventListener('firebase-ready', resolve, { once: true });
-        });
+        const waitForFirebase=()=>new Promise(r=>{if(window.firebaseReady)r();else window.addEventListener('firebase-ready',r,{once:true});});
         await waitForFirebase();
         try {
-            // fbGetAdmin вже повертає data (об'єкт), а не snap
-            const current = await window.fbGetAdmin();
-            const merged = Object.assign({}, current || {}, updates);
-            const ok = await window.fbSetAdmin(merged);
-            if (ok) {
-                storage.set('fep13_admin_cache', JSON.stringify(merged));
-            }
-            return ok;
-        } catch(e) {
-            console.error('saveAdminField error:', e);
-            return false;
-        }
+            const current=await window.fbGetAdmin();
+            const merged=Object.assign({},current||{},updates);
+            const ok=await window.fbSetAdmin(merged);
+            if(ok)storage.set('fep13_admin_cache',JSON.stringify(merged));
+            return ok?merged:null;
+        } catch(e){console.error('saveAdminField error:',e);return null;}
     }
 
     async function loadAdminStats() {
-        document.getElementById('stat-today').textContent = '…';
-        document.getElementById('stat-total').textContent = '…';
-        const stats = await window.fbGetStats();
-        document.getElementById('stat-today').textContent = stats.todayCount;
-        document.getElementById('stat-total').textContent = stats.total;
+        document.getElementById('stat-today').textContent='…';
+        document.getElementById('stat-total').textContent='…';
+        const stats=await window.fbGetStats();
+        document.getElementById('stat-today').textContent=stats.todayCount;
+        document.getElementById('stat-total').textContent=stats.total;
+        renderStatsChart(stats.history||{});
     }
 
-    // Попередження
-    document.getElementById('warning-save-btn').addEventListener('click', async () => {
-        const title = document.getElementById('warning-title-input').value.trim();
-        const text  = document.getElementById('warning-text-input').value.trim();
-        const btn = document.getElementById('warning-save-btn');
-        btn.textContent = '…'; btn.disabled = true;
-        const ok = await saveAdminField({ warningTitle: title, warningText: text });
-        btn.textContent = 'Показати'; btn.disabled = false;
-        if (ok) applyWarningBanner(title, text);
+    function renderStatsChart(history) {
+        const canvas=document.getElementById('stats-chart');
+        if(!canvas) return;
+        const keys=Object.keys(history).sort().slice(-14);
+        const labels=keys.map(k=>{const d=new Date(k);return `${d.getDate()}/${d.getMonth()+1}`;});
+        const values=keys.map(k=>history[k]||0);
+        const isDark=document.documentElement.getAttribute('data-theme')!=='light';
+        const gridColor=isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.08)';
+        const textColor=isDark?'#94a3b8':'#64748b';
+        if(statsChartInstance)statsChartInstance.destroy();
+        statsChartInstance=new Chart(canvas,{
+            type:'bar',
+            data:{labels,datasets:[{data:values,backgroundColor:'rgba(59,130,246,0.6)',borderColor:'rgba(59,130,246,0.9)',borderRadius:6,borderWidth:1}]},
+            options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{title:i=>`${keys[i[0].dataIndex]}`,label:i=>`${i.raw} переглядів`}}},scales:{x:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10}}},y:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10},stepSize:1,precision:0}}}}
+        });
+    }
+
+    // ── Закріплене повідомлення ──
+    document.getElementById('pinned-save-btn').addEventListener('click', async () => {
+        const text=document.getElementById('pinned-text-input').value.trim();
+        const btn=document.getElementById('pinned-save-btn');
+        btn.textContent='…';btn.disabled=true;
+        const result=await saveAdminField({pinnedText:text});
+        btn.textContent='Закріпити';btn.disabled=false;
+        if(result)applyPinnedMsg(text);
         else alert('Помилка збереження');
+    });
+    document.getElementById('pinned-clear-btn').addEventListener('click', async () => {
+        await saveAdminField({pinnedText:''});
+        applyPinnedMsg('');
+        document.getElementById('pinned-text-input').value='';
+    });
+
+    // ── Попередження ──
+    document.getElementById('warning-save-btn').addEventListener('click', async () => {
+        const title=document.getElementById('warning-title-input').value.trim();
+        const text=document.getElementById('warning-text-input').value.trim();
+        const btn=document.getElementById('warning-save-btn');btn.textContent='…';btn.disabled=true;
+        const result=await saveAdminField({warningTitle:title,warningText:text});
+        btn.textContent='Показати';btn.disabled=false;
+        if(result)applyWarningBanner(title,text);else alert('Помилка збереження');
     });
     document.getElementById('warning-clear-btn').addEventListener('click', async () => {
-        await saveAdminField({ warningTitle: '', warningText: '' });
-        applyWarningBanner('', '');
-        document.getElementById('warning-title-input').value = '';
-        document.getElementById('warning-text-input').value = '';
+        await saveAdminField({warningTitle:'',warningText:''});
+        applyWarningBanner('','');
+        document.getElementById('warning-title-input').value='';document.getElementById('warning-text-input').value='';
     });
 
-    // Швидке посилання
+    // ── Швидке посилання ──
     document.getElementById('quicklink-save-btn').addEventListener('click', async () => {
-        const name = document.getElementById('quicklink-name-input').value.trim();
-        const url  = document.getElementById('quicklink-url-input').value.trim();
-        const btn = document.getElementById('quicklink-save-btn');
-        btn.textContent = '…'; btn.disabled = true;
-        const ok = await saveAdminField({ quicklinkName: name, quicklinkUrl: url });
-        btn.textContent = 'Показати'; btn.disabled = false;
-        if (ok) applyQuickLink(name, url);
-        else alert('Помилка збереження');
+        const name=document.getElementById('quicklink-name-input').value.trim();
+        const url=document.getElementById('quicklink-url-input').value.trim();
+        const btn=document.getElementById('quicklink-save-btn');btn.textContent='…';btn.disabled=true;
+        const result=await saveAdminField({quicklinkName:name,quicklinkUrl:url});
+        btn.textContent='Показати';btn.disabled=false;
+        if(result)applyQuickLink(name,url);else alert('Помилка збереження');
     });
     document.getElementById('quicklink-clear-btn').addEventListener('click', async () => {
-        await saveAdminField({ quicklinkName: '', quicklinkUrl: '' });
-        applyQuickLink('', '');
-        document.getElementById('quicklink-name-input').value = '';
-        document.getElementById('quicklink-url-input').value = '';
+        await saveAdminField({quicklinkName:'',quicklinkUrl:''});
+        applyQuickLink('','');
+        document.getElementById('quicklink-name-input').value='';document.getElementById('quicklink-url-input').value='';
     });
 
-    // Святковий режим
+    // ── Святковий режим ──
     document.getElementById('holiday-save-btn').addEventListener('click', async () => {
-        const checked = document.querySelector('input[name="holiday"]:checked');
-        let mode = 'off';
-        if (checked) {
-            // holiday-new-year → new-year, holiday-ua → ua, holiday-spring → spring, holiday-off → off
-            const rawId = checked.id.replace('holiday-', '');
-            mode = rawId === 'newyear' ? 'new-year' : rawId;
-        }
-        const btn = document.getElementById('holiday-save-btn');
-        btn.textContent = '…'; btn.disabled = true;
-        const ok = await saveAdminField({ holidayMode: mode });
-        btn.textContent = 'Застосувати для всіх'; btn.disabled = false;
-        if (ok) applyHolidayTheme(mode);
-        else alert('Помилка збереження');
+        const checked=document.querySelector('input[name="holiday"]:checked');
+        let mode='off';
+        if(checked){const rawId=checked.id.replace('holiday-','');mode=rawId==='newyear'?'new-year':rawId;}
+        const btn=document.getElementById('holiday-save-btn');btn.textContent='…';btn.disabled=true;
+        const result=await saveAdminField({holidayMode:mode});
+        btn.textContent='Застосувати для всіх';btn.disabled=false;
+        if(result)applyHolidayTheme(mode);else alert('Помилка збереження');
     });
 
-    // Скидання статистики
+    // ── Скидання статистики ──
     document.getElementById('reset-stats-btn').addEventListener('click', async () => {
-        if (!confirm('Скинути всю статистику?')) return;
+        if(!confirm('Скинути всю статистику?'))return;
         await window.fbResetStats();
         loadAdminStats();
     });
+
+    // ── Модифікації розкладу ──
+    const modTypeSelect=document.getElementById('mod-type-select');
+    const modChangeFields=document.getElementById('mod-change-fields');
+    modTypeSelect.addEventListener('change',()=>{modChangeFields.style.display=modTypeSelect.value==='change'?'block':'none';});
+
+    // Встановлюємо мінімальну дату = сьогодні
+    const dateInput=document.getElementById('mod-date-input');
+    dateInput.min=new Date().toISOString().slice(0,10);
+    dateInput.value=new Date().toISOString().slice(0,10);
+
+    document.getElementById('mod-add-btn').addEventListener('click', async () => {
+        const date=document.getElementById('mod-date-input').value;
+        const lesson=document.getElementById('mod-lesson-input').value.trim();
+        const type=modTypeSelect.value;
+        if(!date||!lesson){alert('Заповни дату та назву предмету');return;}
+        const newMod={id:Date.now().toString(),date,lesson,type};
+        if(type==='change'){
+            newMod.newTeacher=document.getElementById('mod-new-teacher').value.trim();
+            newMod.newRoom=document.getElementById('mod-new-room').value.trim();
+            newMod.note=document.getElementById('mod-note').value.trim();
+        }
+        const waitForFirebase=()=>new Promise(r=>{if(window.firebaseReady)r();else window.addEventListener('firebase-ready',r,{once:true});});
+        await waitForFirebase();
+        const current=await window.fbGetScheduleMods();
+        const mods=[...(current.mods||[]),newMod];
+        const ok=await window.fbSetScheduleMods({mods});
+        if(ok){gScheduleMods=mods.filter(m=>m.date>=new Date().toISOString().slice(0,10));renderModList();render();document.getElementById('mod-lesson-input').value='';document.getElementById('mod-new-teacher').value='';document.getElementById('mod-new-room').value='';document.getElementById('mod-note').value='';}
+        else{alert('Помилка збереження');}
+    });
+
+    async function deleteMod(id) {
+        const waitForFirebase=()=>new Promise(r=>{if(window.firebaseReady)r();else window.addEventListener('firebase-ready',r,{once:true});});
+        await waitForFirebase();
+        const current=await window.fbGetScheduleMods();
+        const mods=(current.mods||[]).filter(m=>m.id!==id);
+        const ok=await window.fbSetScheduleMods({mods});
+        if(ok){gScheduleMods=mods.filter(m=>m.date>=new Date().toISOString().slice(0,10));renderModList();render();}
+    }
+
+    function renderModList() {
+        const list=document.getElementById('mod-list');
+        if(!list)return;
+        if(gScheduleMods.length===0){list.innerHTML='<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:10px;">Немає активних змін</div>';return;}
+        list.innerHTML=gScheduleMods.map(m=>{
+            const typeLabel=m.type==='cancel'?'cancel':'change';
+            const typeName=m.type==='cancel'?'Скасовано':'Замінено';
+            return `<div class="mod-item"><div class="mod-item-info"><div class="mod-item-date">${m.date}</div><div class="mod-item-title">${m.lesson}</div></div><span class="mod-item-type mod-type-${typeLabel}">${typeName}</span><button class="mod-delete-btn" data-id="${m.id}" title="Видалити">✕</button></div>`;
+        }).join('');
+        list.querySelectorAll('.mod-delete-btn').forEach(btn=>btn.addEventListener('click',()=>deleteMod(btn.dataset.id)));
+    }
+
+    // ── Оголошення на предмет ──
+    document.getElementById('lann-add-btn').addEventListener('click', async () => {
+        const subject=document.getElementById('lann-subject-input').value.trim();
+        const text=document.getElementById('lann-text-input').value.trim();
+        if(!subject||!text){alert('Заповни назву предмету та текст');return;}
+        const newAnn={id:Date.now().toString(),subject,text};
+        const waitForFirebase=()=>new Promise(r=>{if(window.firebaseReady)r();else window.addEventListener('firebase-ready',r,{once:true});});
+        await waitForFirebase();
+        const current=await window.fbGetLessonAnnouncements();
+        const items=[...(current.items||[]),newAnn];
+        const ok=await window.fbSetLessonAnnouncements({items});
+        if(ok){gLessonAnns=items;renderLannList();render();document.getElementById('lann-subject-input').value='';document.getElementById('lann-text-input').value='';}
+        else{alert('Помилка збереження');}
+    });
+
+    async function deleteLann(id) {
+        const waitForFirebase=()=>new Promise(r=>{if(window.firebaseReady)r();else window.addEventListener('firebase-ready',r,{once:true});});
+        await waitForFirebase();
+        const current=await window.fbGetLessonAnnouncements();
+        const items=(current.items||[]).filter(a=>a.id!==id);
+        const ok=await window.fbSetLessonAnnouncements({items});
+        if(ok){gLessonAnns=items;renderLannList();render();}
+    }
+
+    function renderLannList() {
+        const list=document.getElementById('lann-list');
+        if(!list)return;
+        if(gLessonAnns.length===0){list.innerHTML='<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:10px;">Немає активних оголошень</div>';return;}
+        list.innerHTML=gLessonAnns.map(a=>`<div class="lesson-ann-item"><div class="lesson-ann-item-body"><div class="lesson-ann-item-subject">${a.subject}</div><div class="lesson-ann-item-text">${a.text}</div></div><button class="mod-delete-btn" data-id="${a.id}" title="Видалити">✕</button></div>`).join('');
+        list.querySelectorAll('.mod-delete-btn').forEach(btn=>btn.addEventListener('click',()=>deleteLann(btn.dataset.id)));
+    }
+
+    // ── Дедлайни ──
+    document.getElementById('dl-add-btn').addEventListener('click', async () => {
+        const title=document.getElementById('dl-title-input').value.trim();
+        const subject=document.getElementById('dl-subject-input').value.trim();
+        const datetime=document.getElementById('dl-date-input').value;
+        if(!title||!datetime){alert('Заповни назву та дату');return;}
+        const newDl={id:Date.now().toString(),title,subject,datetime};
+        gDeadlines=[...gDeadlines,newDl];
+        const result=await saveAdminField({deadlines:gDeadlines});
+        if(result){renderDlList();renderDeadlines();document.getElementById('dl-title-input').value='';document.getElementById('dl-subject-input').value='';document.getElementById('dl-date-input').value='';}
+        else{gDeadlines.pop();alert('Помилка збереження');}
+    });
+
+    async function deleteDl(id) {
+        gDeadlines=gDeadlines.filter(d=>d.id!==id);
+        const result=await saveAdminField({deadlines:gDeadlines});
+        if(result){renderDlList();renderDeadlines();}
+        else{alert('Помилка збереження');}
+    }
+
+    function renderDlList() {
+        const list=document.getElementById('dl-list');
+        if(!list)return;
+        if(gDeadlines.length===0){list.innerHTML='<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:10px;">Немає дедлайнів</div>';return;}
+        list.innerHTML=gDeadlines.map(d=>{
+            const dt=new Date(d.datetime);
+            const label=dt.toLocaleDateString('uk-UA',{day:'numeric',month:'short'})+' '+dt.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
+            return `<div class="mod-item"><div class="mod-item-info"><div class="mod-item-date">${label}</div><div class="mod-item-title">${d.title}${d.subject?` · ${d.subject}`:''}</div></div><button class="mod-delete-btn" data-id="${d.id}" title="Видалити">✕</button></div>`;
+        }).join('');
+        list.querySelectorAll('.mod-delete-btn').forEach(btn=>btn.addEventListener('click',()=>deleteDl(btn.dataset.id)));
+    }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    initAdminPanel();
-    loadAdminData();
-});
-
+document.addEventListener('DOMContentLoaded', () => { initAdminPanel(); loadAdminData(); });
 document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
