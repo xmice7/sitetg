@@ -514,6 +514,21 @@
         .deadline-timer.soon { color:#f59e0b; }
         .deadline-timer.ok { color:var(--accent-green); }
         /* ── USER PROFILE BAR ── */
+        
+        /* ── Telegram Connect Banner ── */
+        .tg-connect-banner { display:none; align-items:center; gap:12px; background:linear-gradient(135deg,rgba(42,171,238,0.1),rgba(42,171,238,0.05)); border:1.5px solid rgba(42,171,238,0.35); border-radius:16px; padding:12px 14px; margin-bottom:16px; position:relative; animation:fadeIn 0.4s ease; }
+        .tg-connect-banner.visible { display:flex; }
+        .tg-connect-icon { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#2AABEE,#229ED9); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; box-shadow:0 3px 10px rgba(42,171,238,0.3); }
+        .tg-connect-text { flex:1; min-width:0; }
+        .tg-connect-text strong { display:block; font-size:13px; font-weight:700; color:var(--text-main); }
+        .tg-connect-text span { font-size:11px; color:var(--text-muted); }
+        .tg-connect-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+        .tg-connect-btn { background:linear-gradient(135deg,#2AABEE,#229ED9); border:none; border-radius:10px; color:#fff; font-size:12px; font-weight:700; padding:8px 13px; cursor:pointer; white-space:nowrap; box-shadow:0 3px 10px rgba(42,171,238,0.3); transition:all 0.2s; }
+        .tg-connect-btn:hover { transform:translateY(-1px); }
+        .tg-connect-dismiss { background:none; border:none; color:var(--text-muted); font-size:16px; cursor:pointer; padding:4px; line-height:1; transition:color 0.2s; }
+        .tg-connect-dismiss:hover { color:var(--text-main); }
+        .tg-connect-banner.success { background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(16,185,129,0.05)); border-color:rgba(16,185,129,0.35); }
+        .tg-connect-banner.success .tg-connect-icon { background:linear-gradient(135deg,#10b981,#059669); box-shadow:0 3px 10px rgba(16,185,129,0.3); }
         .user-profile-bar { display:flex; align-items:center; gap:10px; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:10px 14px; margin-bottom:16px; animation:fadeIn 0.4s ease; box-shadow:var(--shadow); position:relative; overflow:hidden; }
         .user-profile-bar::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(59,130,246,0.05),transparent 60%); pointer-events:none; }
         .user-avatar-wrap { width:44px; height:44px; border-radius:50%; flex-shrink:0; background:linear-gradient(135deg,var(--primary),var(--accent-purple)); display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; color:#fff; overflow:hidden; border:2px solid rgba(255,255,255,0.15); }
@@ -2777,6 +2792,110 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
 
     window.renderProfileBar = renderProfileBar;
     document.addEventListener('DOMContentLoaded', () => setTimeout(renderProfileBar, 200));
+
+    // ── Обробка ?tg_token=XXX при завантаженні сторінки ──
+    // Юзер повернувся з бота з посиланням — обмінюємо токен на дані
+    (async function handleTgToken() {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('tg_token');
+        if (!token) return;
+
+        // Прибираємо токен з URL одразу (щоб не світився)
+        window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+
+        // WORKER_URL береться з localStorage (задається один раз адміном)
+        // або можна захардкодити: const workerBase = 'https://your-worker.workers.dev';
+        const workerBase = localStorage.getItem('_worker_url') || '';
+        if (!workerBase) {
+            console.warn('TG Link: _worker_url not set in localStorage');
+            return;
+        }
+
+        try {
+            const res = await fetch(`${workerBase}/auth?token=${encodeURIComponent(token)}`);
+            if (!res.ok) { console.warn('TG Link: token not found or expired'); return; }
+            const data = await res.json();
+            if (!data.id) return;
+
+            // Зберігаємо назавжди у localStorage
+            localStorage.setItem('tg_user_cache', JSON.stringify(data));
+
+            // Показуємо банер успіху
+            const banner = document.getElementById('tg-connect-banner');
+            if (banner) {
+                banner.classList.add('visible', 'success');
+                const icon = banner.querySelector('.tg-connect-icon');
+                const strong = banner.querySelector('.tg-connect-text strong');
+                const span = banner.querySelector('.tg-connect-text span');
+                const actions = banner.querySelector('.tg-connect-actions');
+                if (icon) icon.textContent = '✅';
+                if (strong) strong.textContent = 'Telegram прив\'язано!';
+                if (span) span.textContent = `Вітаємо, ${data.first_name}!`;
+                if (actions) actions.innerHTML = '';
+                setTimeout(() => banner.classList.remove('visible', 'success'), 4000);
+            }
+
+            // Оновлюємо профіль-бар
+            window.renderProfileBar && window.renderProfileBar();
+        } catch(e) {
+            console.error('TG Link auth error:', e);
+        }
+    })();
+
+    // ── Логіка банера прив'язки ──
+    document.addEventListener('DOMContentLoaded', () => {
+        const banner  = document.getElementById('tg-connect-banner');
+        const btn     = document.getElementById('tg-connect-btn');
+        const dismiss = document.getElementById('tg-connect-dismiss');
+
+        // Показуємо банер якщо: не в Telegram Mini App + немає кешу + не закривали недавно
+        function shouldShow() {
+            const tg = window.Telegram && window.Telegram.WebApp;
+            if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) return false;
+            try { const c = JSON.parse(localStorage.getItem('tg_user_cache') || 'null'); if (c && c.id) return false; } catch{}
+            const d = localStorage.getItem('tg_banner_dismissed');
+            if (d && Date.now() - parseInt(d) < 86400000) return false; // 24 год
+            return true;
+        }
+
+        setTimeout(() => { if (banner && shouldShow()) banner.classList.add('visible'); }, 1000);
+
+        // Кнопка "Прив'язати" — генерує токен і відкриває бота
+        if (btn) {
+            btn.addEventListener('click', () => {
+                const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+                // Відкриваємо бота з deep link
+                window.open('https://t.me/shedulefep_bot?start=link_' + token, '_blank');
+                // Показуємо стан очікування
+                btn.textContent = '⏳ Очікуємо...';
+                btn.disabled = true;
+                // Поллінг — чекаємо поки юзер повернеться і дані з'являться в localStorage
+                const poll = setInterval(() => {
+                    try {
+                        const c = JSON.parse(localStorage.getItem('tg_user_cache') || 'null');
+                        if (c && c.id) {
+                            clearInterval(poll);
+                            if (banner) banner.classList.remove('visible');
+                            window.renderProfileBar && window.renderProfileBar();
+                        }
+                    } catch{}
+                }, 2000);
+                // Зупиняємо поллінг через 3 хвилини
+                setTimeout(() => {
+                    clearInterval(poll);
+                    if (btn.disabled) { btn.textContent = "Прив\'язати"; btn.disabled = false; }
+                }, 180000);
+            });
+        }
+
+        // Кнопка "✕" — закриваємо на 24 год
+        if (dismiss) {
+            dismiss.addEventListener('click', () => {
+                if (banner) banner.classList.remove('visible');
+                localStorage.setItem('tg_banner_dismissed', String(Date.now()));
+            });
+        }
+    });
 })();
 
 // ===== EXTRA SETTINGS LOGIC =====
