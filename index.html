@@ -121,6 +121,27 @@
             catch(e) { return false; }
         };
 
+        window.fbGetUsers = async (groupId='fep13') => {
+            try {
+                const apiKey = "AIzaSyBH8JKNOBWTjxSIiHNVI8LiwK8u9sPyVTo";
+                const url = `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/users?key=${apiKey}&pageSize=200`;
+                const res = await fetch(url);
+                const data = await res.json();
+                if (!data.documents) return [];
+                return data.documents.map(doc => {
+                    const f = doc.fields || {};
+                    return {
+                        id: f.id?.stringValue || '',
+                        first_name: f.first_name?.stringValue || '',
+                        last_name: f.last_name?.stringValue || '',
+                        username: f.username?.stringValue || '',
+                        photo_url: f.photo_url?.stringValue || '',
+                        last_seen: parseInt(f.last_seen?.integerValue || '0'),
+                    };
+                });
+            } catch(e) { console.error('fbGetUsers error:', e); return []; }
+        };
+
         window.firebaseReady = true;
         window.dispatchEvent(new Event("firebase-ready"));
     </script>
@@ -327,7 +348,7 @@
         .pwa-step-text { flex:1; }
         .pwa-step-text strong { font-size:14px; font-weight:700; color:var(--text-main); display:block; margin-bottom:3px; }
         .pwa-step-text span { font-size:13px; color:var(--text-muted); line-height:1.4; }
-        .pwa-step-text code { background:var(--bg-card); border:1px solid var(--border); border-radius:6px; padding:2px 7px; font-size:12px; font-weight:700; color:var(--primary); font-family:inherit; white-space:nowrap; }
+        .pwa-step-text code { background:var(--bg-card); border:1px solid var(--border); border-radius:6px; padding:2px 7px; font-size:12px; font-weight:700; color:var(--primary); font-family:inherit; }
         .pwa-step-icon { font-size:20px; flex-shrink:0; }
         
         .pwa-android-banner { background:linear-gradient(135deg,rgba(16,185,129,0.12),rgba(59,130,246,0.12)); border:1px solid rgba(16,185,129,0.3); border-radius:14px; padding:14px 16px; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
@@ -491,6 +512,43 @@
         .deadline-timer.urgent { color:#ef4444; }
         .deadline-timer.soon { color:#f59e0b; }
         .deadline-timer.ok { color:var(--accent-green); }
+        /* ── USER PROFILE BAR ── */
+        .user-profile-bar { display:flex; align-items:center; gap:10px; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:10px 14px; margin-bottom:16px; animation:fadeIn 0.4s ease; box-shadow:var(--shadow); position:relative; overflow:hidden; }
+        .user-profile-bar::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(59,130,246,0.05),transparent 60%); pointer-events:none; }
+        .user-avatar-wrap { width:44px; height:44px; border-radius:50%; flex-shrink:0; background:linear-gradient(135deg,var(--primary),var(--accent-purple)); display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; color:#fff; overflow:hidden; border:2px solid rgba(255,255,255,0.15); }
+        .user-avatar-wrap img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+        .user-info { flex:1; min-width:0; }
+        .user-name { font-size:15px; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .user-sub-info { font-size:11px; font-weight:600; color:var(--text-muted); margin-top:1px; display:flex; align-items:center; gap:5px; }
+        .user-streak { display:flex; align-items:center; gap:4px; font-size:12px; font-weight:700; color:#f59e0b; background:rgba(245,158,11,0.1); padding:5px 10px; border-radius:20px; flex-shrink:0; white-space:nowrap; }
+        /* ── ADMIN USERS ── */
+        .admin-users-search { width:100%; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; color:var(--text-main); font-size:14px; font-family:inherit; padding:10px 14px; outline:none; margin-bottom:10px; transition:0.2s; box-sizing:border-box; }
+        .admin-users-search:focus { border-color:var(--primary); }
+        .admin-users-filter { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+        .admin-users-filter-btn { padding:6px 12px; border-radius:20px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-muted); font-size:12px; font-weight:700; cursor:pointer; transition:0.2s; }
+        .admin-users-filter-btn.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+        .admin-users-grid { display:flex; flex-direction:column; gap:8px; }
+        .admin-user-card { display:flex; align-items:center; gap:12px; background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:12px 14px; transition:0.2s; }
+        .admin-user-card:hover { border-color:var(--primary); transform:translateX(2px); }
+        .admin-user-ava { width:42px; height:42px; border-radius:50%; flex-shrink:0; background:linear-gradient(135deg,var(--primary),var(--accent-purple)); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; color:#fff; overflow:hidden; border:2px solid var(--border); }
+        .admin-user-ava img { width:100%; height:100%; object-fit:cover; border-radius:50%; display:block; }
+        .admin-user-info { flex:1; min-width:0; }
+        .admin-user-name { font-size:14px; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .admin-user-meta { font-size:11px; color:var(--text-muted); margin-top:3px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+        .admin-user-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:6px; white-space:nowrap; }
+        .admin-user-badge.online { background:rgba(16,185,129,0.15); color:var(--accent-green); }
+        .admin-user-badge.today { background:rgba(59,130,246,0.15); color:var(--primary); }
+        .admin-user-badge.old { background:var(--bg-body); color:var(--text-muted); border:1px solid var(--border); }
+        .admin-users-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+        .admin-users-stat { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:10px; text-align:center; }
+        .admin-users-stat-val { font-size:22px; font-weight:800; color:var(--primary); }
+        .admin-users-stat-label { font-size:10px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
+        /* ── EXTRA SETTINGS ── */
+        .setting-section-title { font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin:20px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:6px; }
+        .name-display-input { width:100%; background:var(--bg-body); border:1px solid var(--border); border-radius:12px; color:var(--text-main); font-size:14px; font-family:inherit; padding:11px 14px; outline:none; transition:0.2s; box-sizing:border-box; margin-top:6px; }
+        .name-display-input:focus { border-color:var(--primary); }
+        @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+        .loading-skeleton { background:linear-gradient(90deg,var(--border) 25%,var(--bg-body) 50%,var(--border) 75%); background-size:200%; animation:shimmer 1.2s infinite; border-radius:8px; height:14px; }
     </style>
 </head>
 <body>
@@ -522,6 +580,19 @@
                     <div class="pinned-msg-label">Закріплено</div>
                     <div class="pinned-msg-text" id="pinned-msg-text"></div>
                 </div>
+            </div>
+
+            <div class="user-profile-bar" id="user-profile-bar" style="display:none">
+                <div class="user-avatar-wrap" id="user-avatar-wrap">👤</div>
+                <div class="user-info">
+                    <div class="user-name" id="user-display-name">Студент</div>
+                    <div class="user-sub-info">
+                        <span id="user-group-label">ФЕП</span>
+                        <span>·</span>
+                        <span id="user-subgroup-label"></span>
+                    </div>
+                </div>
+                <div class="user-streak" id="user-streak-badge" style="display:none">🔥 <span id="user-streak-num">0</span></div>
             </div>
 
             <div class="controls" style="display:none">
@@ -796,6 +867,30 @@
                     <button class="admin-btn admin-btn-success" id="holiday-save-btn" style="margin-top:12px">Застосувати для всіх</button>
                 </div>
 
+                <!-- USERS SECTION -->
+                <div class="admin-section">
+                    <div class="admin-section-header">
+                        <div class="admin-section-icon" style="background:rgba(139,92,246,0.15)">👥</div>
+                        <div><div class="admin-section-title">Користувачі</div><div class="admin-section-desc">Хто заходив через Telegram бота</div></div>
+                    </div>
+                    <div class="admin-users-stats">
+                        <div class="admin-users-stat"><div class="admin-users-stat-val" id="users-total-count">—</div><div class="admin-users-stat-label">Всього</div></div>
+                        <div class="admin-users-stat"><div class="admin-users-stat-val" id="users-today-count">—</div><div class="admin-users-stat-label">Сьогодні</div></div>
+                        <div class="admin-users-stat"><div class="admin-users-stat-val" id="users-week-count">—</div><div class="admin-users-stat-label">За тиждень</div></div>
+                    </div>
+                    <input type="search" class="admin-users-search" id="users-search" placeholder="🔍 Пошук за ім'ям або @username…"/>
+                    <div class="admin-users-filter">
+                        <button class="admin-users-filter-btn active" data-filter="all">Усі</button>
+                        <button class="admin-users-filter-btn" data-filter="today">Сьогодні</button>
+                        <button class="admin-users-filter-btn" data-filter="week">Тиждень</button>
+                        <button class="admin-users-filter-btn" data-filter="month">Місяць</button>
+                    </div>
+                    <div class="admin-users-grid" id="admin-users-grid">
+                        <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">Натисніть «Оновити» для завантаження</div>
+                    </div>
+                    <button class="admin-btn admin-btn-success" id="users-refresh-btn" style="margin-top:12px">🔄 Оновити список</button>
+                </div>
+
             </div>
         </div>
     </div>
@@ -963,6 +1058,50 @@
                 <label>Відображення інформації</label>
                 <div class="toggle-row"><div class="toggle-label"><span>Показувати викладача</span><small>Ім'я викладача на картці пари</small></div><label class="toggle"><input type="checkbox" id="toggle-teacher" checked><span class="toggle-slider"></span></label></div>
                 <div class="toggle-row"><div class="toggle-label"><span>Показувати аудиторію</span><small>Номер кімнати на картці пари</small></div><label class="toggle"><input type="checkbox" id="toggle-room" checked><span class="toggle-slider"></span></label></div>
+            </div>
+
+            <div class="setting-section-title">👤 Мій профіль</div>
+            <div class="setting-group">
+                <label>Відображуване ім'я</label>
+                <input type="text" class="name-display-input" id="custom-name-input" placeholder="Як тебе звати?" maxlength="30"/>
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                    <button id="custom-name-save-btn" style="flex:1;padding:11px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-size:14px;font-weight:700;cursor:pointer;transition:0.2s;">Зберегти</button>
+                    <button id="custom-name-clear-btn" style="padding:11px 16px;border:1px solid var(--border);border-radius:12px;background:var(--bg-body);color:var(--text-muted);font-size:14px;font-weight:700;cursor:pointer;transition:0.2s;">✕</button>
+                </div>
+                <div class="toggle-row" style="margin-top:10px;"><div class="toggle-label"><span>Показувати профіль-бар</span><small>Аватарка та ім'я зверху розкладу</small></div><label class="toggle"><input type="checkbox" id="toggle-profile-bar" checked><span class="toggle-slider"></span></label></div>
+            </div>
+
+            <div class="setting-section-title">🔔 Сповіщення</div>
+            <div class="setting-group">
+                <div class="toggle-row"><div class="toggle-label"><span>Нагадування про пари</span><small>Сповіщення за 10 хв до пари</small></div><label class="toggle"><input type="checkbox" id="toggle-notif-lessons"><span class="toggle-slider"></span></label></div>
+                <div class="toggle-row"><div class="toggle-label"><span>Нові оголошення</span><small>Значок непрочитаного при оновленні</small></div><label class="toggle"><input type="checkbox" id="toggle-notif-ann" checked><span class="toggle-slider"></span></label></div>
+                <div class="toggle-row"><div class="toggle-label"><span>Дедлайни</span><small>Нагадування за 24 год до дедлайну</small></div><label class="toggle"><input type="checkbox" id="toggle-notif-dl" checked><span class="toggle-slider"></span></label></div>
+            </div>
+
+            <div class="setting-section-title">📊 Статистика</div>
+            <div class="setting-group">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+                    <div style="background:var(--bg-body);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;">
+                        <div style="font-size:22px;font-weight:800;color:var(--primary);" id="my-visit-count">—</div>
+                        <div style="font-size:10px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Відвідувань</div>
+                    </div>
+                    <div style="background:var(--bg-body);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;">
+                        <div style="font-size:22px;font-weight:800;color:#f59e0b;" id="my-streak-count">—</div>
+                        <div style="font-size:10px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Стрік 🔥</div>
+                    </div>
+                </div>
+                <div class="toggle-row"><div class="toggle-label"><span>Відстежувати відвідуваність</span><small>Лічильник щоденних заходів</small></div><label class="toggle"><input type="checkbox" id="toggle-track-visits" checked><span class="toggle-slider"></span></label></div>
+            </div>
+
+            <div class="setting-section-title">⚡ Швидкий доступ</div>
+            <div class="setting-group">
+                <div class="toggle-row"><div class="toggle-label"><span>Автовибір сьогодні</span><small>Відкривати сьогоднішній день при запуску</small></div><label class="toggle"><input type="checkbox" id="toggle-auto-today" checked><span class="toggle-slider"></span></label></div>
+                <div class="toggle-row"><div class="toggle-label"><span>Зберігати вкладку</span><small>Запам'ятовувати останню відкриту вкладку</small></div><label class="toggle"><input type="checkbox" id="toggle-remember-tab"><span class="toggle-slider"></span></label></div>
+                <div class="toggle-row"><div class="toggle-label"><span>Вібрація при переключенні</span><small>Тактильний відгук (на мобільних)</small></div><label class="toggle"><input type="checkbox" id="toggle-haptic" checked><span class="toggle-slider"></span></label></div>
+            </div>
+
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+                <button id="reset-all-settings-btn" style="width:100%;padding:12px;border:1px solid rgba(239,68,68,0.3);border-radius:12px;background:rgba(239,68,68,0.07);color:#ef4444;font-size:13px;font-weight:700;cursor:pointer;transition:0.2s;">🗑 Скинути всі налаштування</button>
             </div>
         </div>
     </div>
@@ -2494,6 +2633,353 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
 </div>
 
 <script>
+// ===== USER PROFILE + STREAK =====
+(function() {
+    // --- Streak tracking ---
+    function getToday() { return new Date().toISOString().slice(0,10); }
+    function loadVisitData() {
+        try { return JSON.parse(localStorage.getItem('user_visit_data') || 'null') || { count:0, streak:0, lastDate:'', history:[] }; } catch{ return { count:0, streak:0, lastDate:'', history:[] }; }
+    }
+    function saveVisitData(d) { try { localStorage.setItem('user_visit_data', JSON.stringify(d)); } catch{} }
+    function trackVisit() {
+        if (!storage.get('toggle-track-visits_v', 'true') === 'false') return;
+        const today = getToday();
+        const d = loadVisitData();
+        if (d.lastDate === today) return; // вже відвідав сьогодні
+        const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+        const yStr = yesterday.toISOString().slice(0,10);
+        d.streak = (d.lastDate === yStr) ? (d.streak||0)+1 : 1;
+        d.count = (d.count||0)+1;
+        d.lastDate = today;
+        if (!d.history) d.history = [];
+        d.history.push(today);
+        if (d.history.length > 30) d.history = d.history.slice(-30);
+        saveVisitData(d);
+    }
+    trackVisit();
+    window._visitData = loadVisitData();
+
+    // --- Telegram WebApp user ---
+    function getTgUser() {
+        try {
+            const tg = window.Telegram && window.Telegram.WebApp;
+            if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) return tg.initDataUnsafe.user;
+        } catch{}
+        return null;
+    }
+
+    function getInitials(first, last) {
+        return ((first||'').charAt(0) + (last||'').charAt(0)).toUpperCase() || '👤';
+    }
+
+    async function loadUserFromFirebase(userId) {
+        try {
+            const apiKey = "AIzaSyBH8JKNOBWTjxSIiHNVI8LiwK8u9sPyVTo";
+            const url = `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/users/${userId}?key=${apiKey}`;
+            const res = await fetch(url);
+            if (!res.ok) return null;
+            const data = await res.json();
+            if (!data.fields) return null;
+            const f = data.fields;
+            return {
+                id: f.id?.stringValue || '',
+                first_name: f.first_name?.stringValue || '',
+                last_name: f.last_name?.stringValue || '',
+                username: f.username?.stringValue || '',
+                photo_url: f.photo_url?.stringValue || '',
+            };
+        } catch { return null; }
+    }
+
+    async function renderProfileBar() {
+        const bar = document.getElementById('user-profile-bar');
+        const avatarWrap = document.getElementById('user-avatar-wrap');
+        const nameEl = document.getElementById('user-display-name');
+        const subEl = document.getElementById('user-sub-info') || document.getElementById('user-group-label');
+        const streakBadge = document.getElementById('user-streak-badge');
+        const streakNum = document.getElementById('user-streak-num');
+        if (!bar) return;
+
+        // Check settings toggle
+        const showBar = storage.get('toggle-profile-bar','true') !== 'false';
+        if (!showBar) { bar.style.display = 'none'; return; }
+
+        // Custom name from settings
+        const customName = storage.get('custom_display_name', '');
+
+        // Try Telegram WebApp first
+        const tgUser = getTgUser();
+        let user = null;
+
+        if (tgUser) {
+            user = tgUser;
+        } else {
+            // Try from localStorage cache
+            try { user = JSON.parse(localStorage.getItem('tg_user_cache') || 'null'); } catch{}
+        }
+
+        // Show bar immediately with what we have
+        bar.style.display = 'flex';
+        const displayName = customName || (user ? (user.first_name + (user.last_name ? ' '+user.last_name : '')) : 'Студент');
+        nameEl.textContent = displayName;
+
+        // Set initials placeholder
+        if (user) {
+            avatarWrap.textContent = getInitials(user.first_name, user.last_name);
+        }
+
+        // Update group label
+        const grpEl = document.getElementById('user-group-label');
+        const subGrpEl = document.getElementById('user-subgroup-label');
+        if (grpEl) {
+            const groupLabels = { fep11:'ФЕП-11', fep12:'ФЕП-12', fep13:'ФЕП-13' };
+            grpEl.textContent = groupLabels[storage.get('app_active_group','fep13')] || 'ФЕП';
+        }
+        if (subGrpEl) {
+            const sub = storage.get(storage.get('app_active_group','fep13')+'_subgroup','all');
+            subGrpEl.textContent = sub === '1' ? 'Підгрупа 1' : sub === '2' ? 'Підгрупа 2' : '';
+        }
+
+        // Streak
+        const vd = window._visitData;
+        if (vd && vd.streak > 1) {
+            streakBadge.style.display = 'flex';
+            streakNum.textContent = vd.streak;
+        }
+
+        // Load photo from Firebase if we have a TG user ID
+        if (tgUser && tgUser.id) {
+            localStorage.setItem('tg_user_cache', JSON.stringify(tgUser));
+            // Load from Firebase for real photo_url
+            const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
+            await waitForFirebase();
+            const fbUser = await loadUserFromFirebase(tgUser.id);
+            if (fbUser && fbUser.photo_url) {
+                localStorage.setItem('tg_user_cache', JSON.stringify({...tgUser, photo_url: fbUser.photo_url}));
+                const img = document.createElement('img');
+                img.src = fbUser.photo_url;
+                img.alt = '';
+                img.onerror = () => { avatarWrap.textContent = getInitials(user.first_name, user.last_name); };
+                avatarWrap.textContent = '';
+                avatarWrap.appendChild(img);
+            }
+        } else if (user && user.photo_url) {
+            // from cache
+            const img = document.createElement('img');
+            img.src = user.photo_url;
+            img.alt = '';
+            img.onerror = () => { avatarWrap.textContent = getInitials(user ? user.first_name : '', user ? user.last_name : ''); };
+            avatarWrap.textContent = '';
+            avatarWrap.appendChild(img);
+        }
+    }
+
+    window.renderProfileBar = renderProfileBar;
+    document.addEventListener('DOMContentLoaded', () => setTimeout(renderProfileBar, 200));
+})();
+
+// ===== EXTRA SETTINGS LOGIC =====
+(function() {
+    document.addEventListener('DOMContentLoaded', () => {
+        // Custom name
+        const nameInput = document.getElementById('custom-name-input');
+        if (nameInput) {
+            nameInput.value = storage.get('custom_display_name', '');
+            document.getElementById('custom-name-save-btn')?.addEventListener('click', () => {
+                storage.set('custom_display_name', nameInput.value.trim());
+                window.renderProfileBar && window.renderProfileBar();
+                nameInput.style.borderColor = 'var(--accent-green)';
+                setTimeout(() => nameInput.style.borderColor = '', 1000);
+            });
+            document.getElementById('custom-name-clear-btn')?.addEventListener('click', () => {
+                nameInput.value = ''; storage.set('custom_display_name', '');
+                window.renderProfileBar && window.renderProfileBar();
+            });
+        }
+
+        // Profile bar toggle
+        const profileBarToggle = document.getElementById('toggle-profile-bar');
+        if (profileBarToggle) {
+            profileBarToggle.checked = storage.get('toggle-profile-bar','true') !== 'false';
+            profileBarToggle.addEventListener('change', () => {
+                storage.set('toggle-profile-bar', profileBarToggle.checked ? 'true' : 'false');
+                window.renderProfileBar && window.renderProfileBar();
+            });
+        }
+
+        // Other toggles with simple persistence
+        ['toggle-notif-lessons','toggle-notif-ann','toggle-notif-dl','toggle-auto-today','toggle-remember-tab','toggle-haptic','toggle-track-visits'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const defaults = { 'toggle-notif-ann':'true', 'toggle-notif-dl':'true', 'toggle-auto-today':'true', 'toggle-haptic':'true', 'toggle-track-visits':'true' };
+            el.checked = storage.get(id+'_v', defaults[id]||'false') !== 'false';
+            el.addEventListener('change', () => storage.set(id+'_v', el.checked ? 'true' : 'false'));
+        });
+
+        // My stats in settings
+        const vd = window._visitData || { count:0, streak:0 };
+        const vc = document.getElementById('my-visit-count'); if(vc) vc.textContent = vd.count || 0;
+        const sc = document.getElementById('my-streak-count'); if(sc) sc.textContent = vd.streak || 0;
+
+        // Remember last tab
+        if (storage.get('toggle-remember-tab_v','false') === 'true') {
+            const lastTab = storage.get('last_active_tab', '');
+            if (lastTab) { setTimeout(() => { const btn = document.querySelector(`[data-tab="${lastTab}"]`); if(btn) btn.click(); }, 100); }
+        }
+        document.querySelectorAll('.day-btn').forEach(btn => {
+            btn.addEventListener('click', () => storage.set('last_active_tab', btn.dataset.tab));
+        });
+
+        // Haptic on tab switch
+        document.querySelectorAll('.day-btn, .nav-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (storage.get('toggle-haptic_v','true') !== 'false' && navigator.vibrate) navigator.vibrate(8);
+            });
+        });
+
+        // Reset all settings
+        document.getElementById('reset-all-settings-btn')?.addEventListener('click', () => {
+            if (confirm('Скинути всі налаштування? Група та тема збережуться.')) {
+                const keep = ['app_active_group','app_has_visited'];
+                const keys = [];
+                for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
+                keys.forEach(k => { if (!keep.includes(k)) localStorage.removeItem(k); });
+                location.reload();
+            }
+        });
+    });
+})();
+
+// ===== ADMIN USERS PANEL =====
+(function() {
+    let allUsers = [];
+    let currentFilter = 'all';
+    let searchQuery = '';
+
+    function timeAgo(ts) {
+        if (!ts) return 'Невідомо';
+        const diff = Date.now() - ts;
+        const mins = Math.floor(diff/60000);
+        const hours = Math.floor(diff/3600000);
+        const days = Math.floor(diff/86400000);
+        if (mins < 2) return '🟢 Щойно';
+        if (mins < 60) return `${mins} хв тому`;
+        if (hours < 24) return `${hours} год тому`;
+        if (days === 1) return 'Вчора';
+        if (days < 7) return `${days} дні тому`;
+        if (days < 30) return `${Math.floor(days/7)} тиж тому`;
+        return new Date(ts).toLocaleDateString('uk-UA', {day:'numeric',month:'short'});
+    }
+
+    function getBadge(ts) {
+        if (!ts) return '<span class="admin-user-badge old">Невідомо</span>';
+        const diff = Date.now() - ts;
+        const hours = Math.floor(diff/3600000);
+        const days = Math.floor(diff/86400000);
+        if (hours < 1) return '<span class="admin-user-badge online">🟢 Онлайн</span>';
+        if (days < 1) return '<span class="admin-user-badge today">Сьогодні</span>';
+        if (days < 7) return `<span class="admin-user-badge today">${days}д тому</span>`;
+        return `<span class="admin-user-badge old">${timeAgo(ts)}</span>`;
+    }
+
+    function renderUsers() {
+        const grid = document.getElementById('admin-users-grid');
+        if (!grid) return;
+        const today = Date.now() - 86400000;
+        const week = Date.now() - 7*86400000;
+        const month = Date.now() - 30*86400000;
+
+        let filtered = allUsers.filter(u => {
+            if (currentFilter === 'today' && u.last_seen < today) return false;
+            if (currentFilter === 'week' && u.last_seen < week) return false;
+            if (currentFilter === 'month' && u.last_seen < month) return false;
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                const name = (u.first_name+' '+u.last_name).toLowerCase();
+                const un = (u.username||'').toLowerCase();
+                if (!name.includes(q) && !un.includes(q)) return false;
+            }
+            return true;
+        });
+
+        filtered.sort((a,b) => (b.last_seen||0) - (a.last_seen||0));
+
+        // Update stat counters
+        document.getElementById('users-total-count').textContent = allUsers.length;
+        document.getElementById('users-today-count').textContent = allUsers.filter(u => u.last_seen >= today).length;
+        document.getElementById('users-week-count').textContent = allUsers.filter(u => u.last_seen >= week).length;
+
+        if (filtered.length === 0) {
+            grid.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">Нічого не знайдено</div>';
+            return;
+        }
+
+        grid.innerHTML = filtered.map(u => {
+            const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ') || 'Без імені';
+            const initials = ((u.first_name||'').charAt(0)+(u.last_name||'').charAt(0)).toUpperCase() || '?';
+            const avaHtml = u.photo_url
+                ? `<div class="admin-user-ava"><img src="${u.photo_url}" alt="" onerror="this.parentElement.textContent='${initials}'"/></div>`
+                : `<div class="admin-user-ava">${initials}</div>`;
+            const username = u.username ? `@${u.username}` : '';
+            const lastSeenStr = timeAgo(u.last_seen);
+            return `<div class="admin-user-card">
+                ${avaHtml}
+                <div class="admin-user-info">
+                    <div class="admin-user-name">${fullName}</div>
+                    <div class="admin-user-meta">
+                        ${username ? `<span>${username}</span>` : ''}
+                        <span>•</span>
+                        <span>${lastSeenStr}</span>
+                        ${getBadge(u.last_seen)}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    async function loadUsers() {
+        const grid = document.getElementById('admin-users-grid');
+        const btn = document.getElementById('users-refresh-btn');
+        if (!grid) return;
+        grid.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">⏳ Завантаження...</div>';
+        if (btn) { btn.textContent = '⏳ Завантаження...'; btn.disabled = true; }
+        const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
+        await waitForFirebase();
+        allUsers = await window.fbGetUsers();
+        renderUsers();
+        if (btn) { btn.textContent = '🔄 Оновити список'; btn.disabled = false; }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('users-refresh-btn')?.addEventListener('click', loadUsers);
+
+        document.getElementById('users-search')?.addEventListener('input', e => {
+            searchQuery = e.target.value.trim();
+            renderUsers();
+        });
+
+        document.querySelectorAll('.admin-users-filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.admin-users-filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                renderUsers();
+            });
+        });
+    });
+
+    // Auto-load when admin panel opens
+    const origOpen = window.openAdminPanel;
+    document.addEventListener('DOMContentLoaded', () => {
+        const overlay = document.getElementById('admin-modal-overlay');
+        if (!overlay) return;
+        const observer = new MutationObserver(() => {
+            if (overlay.classList.contains('active') && allUsers.length === 0) loadUsers();
+        });
+        observer.observe(overlay, { attributes: true, attributeFilter: ['class'] });
+    });
+})();
+
 // ===== SERVICE WORKER REGISTRATION =====
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
