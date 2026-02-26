@@ -1,6 +1,6 @@
 {
-  "name": "Розклад ФЕП-13",
-  "short_name": "ФЕП-13",
+  "name": "Schedule App",
+  "short_name": "Schedule",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",

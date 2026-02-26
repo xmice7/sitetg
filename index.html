@@ -294,6 +294,61 @@
         .nav-item { position: relative; }
 
         .useful-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding-top:10px; }
+        
+        /* === Install App Card & Modal === */
+        .install-app-card { background:linear-gradient(135deg,rgba(59,130,246,0.12),rgba(139,92,246,0.12)); border-color:rgba(59,130,246,0.3); position:relative; overflow:hidden; }
+        .install-app-card:hover { border-color:var(--primary); }
+        .install-app-card::after { content:''; position:absolute; top:-30px; right:-30px; width:80px; height:80px; background:radial-gradient(circle,rgba(59,130,246,0.25),transparent 70%); border-radius:50%; pointer-events:none; }
+        .install-app-icon { background:linear-gradient(135deg,var(--primary),var(--accent-purple)) !important; color:#fff !important; }
+        .install-app-icon svg { stroke:#fff !important; }
+        
+        .pwa-modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); z-index:300; opacity:0; pointer-events:none; transition:opacity 0.3s ease; display:flex; align-items:flex-end; justify-content:center; }
+        .pwa-modal-overlay.active { opacity:1; pointer-events:all; }
+        .pwa-modal { background:var(--modal-bg); width:100%; max-width:600px; border-radius:28px 28px 0 0; transform:translateY(100%); transition:transform 0.38s cubic-bezier(0.175,0.885,0.32,1.275); border-top:2px solid var(--primary); box-shadow:0 -10px 50px rgba(59,130,246,0.15); padding-bottom:env(safe-area-inset-bottom); }
+        .pwa-modal-overlay.active .pwa-modal { transform:translateY(0); }
+        .pwa-modal-header { padding:20px 24px 0; display:flex; align-items:center; justify-content:space-between; }
+        .pwa-modal-title-row { display:flex; align-items:center; gap:12px; }
+        .pwa-modal-app-icon { width:48px; height:48px; border-radius:14px; object-fit:cover; box-shadow:0 4px 12px rgba(0,0,0,0.2); flex-shrink:0; }
+        .pwa-modal-title { font-size:20px; font-weight:800; color:var(--text-main); }
+        .pwa-modal-subtitle { font-size:13px; color:var(--text-muted); font-weight:500; margin-top:2px; }
+        .pwa-modal-body { padding:20px 24px 28px; }
+        
+        .pwa-tabs { display:flex; background:var(--bg-body); border-radius:14px; padding:4px; border:1px solid var(--border); margin-bottom:20px; gap:4px; }
+        .pwa-tab { flex:1; padding:10px; border:none; background:transparent; color:var(--text-muted); font-size:14px; font-weight:700; border-radius:10px; cursor:pointer; transition:0.2s; display:flex; align-items:center; justify-content:center; gap:6px; }
+        .pwa-tab.active { background:var(--bg-card); color:var(--text-main); box-shadow:var(--shadow); }
+        .pwa-tab svg { width:16px; height:16px; fill:currentColor; }
+        
+        .pwa-panel { display:none; }
+        .pwa-panel.active { display:block; }
+        
+        .pwa-steps { display:flex; flex-direction:column; gap:12px; }
+        .pwa-step { display:flex; align-items:flex-start; gap:14px; background:var(--bg-body); border:1px solid var(--border); border-radius:14px; padding:14px; }
+        .pwa-step-num { width:30px; height:30px; border-radius:50%; background:linear-gradient(135deg,var(--primary),var(--accent-purple)); color:#fff; font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .pwa-step-text { flex:1; }
+        .pwa-step-text strong { font-size:14px; font-weight:700; color:var(--text-main); display:block; margin-bottom:3px; }
+        .pwa-step-text span { font-size:13px; color:var(--text-muted); line-height:1.4; }
+        .pwa-step-text code { background:var(--bg-card); border:1px solid var(--border); border-radius:6px; padding:2px 7px; font-size:12px; font-weight:700; color:var(--primary); font-family:inherit; }
+        .pwa-step-icon { font-size:20px; flex-shrink:0; }
+        
+        .pwa-android-banner { background:linear-gradient(135deg,rgba(16,185,129,0.12),rgba(59,130,246,0.12)); border:1px solid rgba(16,185,129,0.3); border-radius:14px; padding:14px 16px; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+        .pwa-android-banner svg { width:20px; height:20px; flex-shrink:0; fill:var(--accent-green); }
+        .pwa-android-banner p { font-size:13px; color:var(--text-main); font-weight:500; line-height:1.4; }
+        
+        #pwa-android-install-btn { width:100%; margin-top:16px; padding:15px; border:none; border-radius:14px; background:linear-gradient(135deg,var(--primary),var(--accent-purple)); color:#fff; font-size:16px; font-weight:700; cursor:pointer; display:none; align-items:center; justify-content:center; gap:8px; box-shadow:0 6px 20px rgba(59,130,246,0.35); transition:0.2s; }
+        #pwa-android-install-btn:hover { opacity:0.9; transform:translateY(-1px); }
+        #pwa-android-install-btn.visible { display:flex; }
+
+        /* ── Offline Banner ── */
+        .offline-banner { position:fixed; top:0; left:50%; transform:translateX(-50%) translateY(-100%); width:100%; max-width:600px; background:linear-gradient(135deg,#1e293b,#0f172a); border-bottom:2px solid #f59e0b; padding:12px 20px; display:flex; align-items:center; gap:12px; z-index:500; transition:transform 0.4s cubic-bezier(0.175,0.885,0.32,1.275); box-shadow:0 8px 24px rgba(0,0,0,0.4); }
+        .offline-banner.show { transform:translateX(-50%) translateY(0); }
+        .offline-banner-icon { font-size:20px; flex-shrink:0; }
+        .offline-banner-text { flex:1; }
+        .offline-banner-text strong { display:block; font-size:14px; font-weight:700; color:#f8fafc; }
+        .offline-banner-text span { font-size:12px; color:#94a3b8; }
+        .offline-banner-close { background:none; border:none; color:#94a3b8; font-size:18px; cursor:pointer; padding:4px; line-height:1; flex-shrink:0; }
+        .offline-banner-close:hover { color:#f8fafc; }
+        .online-toast { position:fixed; top:20px; left:50%; transform:translateX(-50%) scale(0.9); background:#10b981; color:#fff; padding:10px 20px; border-radius:40px; font-size:14px; font-weight:700; z-index:501; opacity:0; pointer-events:none; transition:all 0.3s ease; display:flex; align-items:center; gap:8px; box-shadow:0 4px 20px rgba(16,185,129,0.4); white-space:nowrap; }
+        .online-toast.show { opacity:1; transform:translateX(-50%) scale(1); }
         @media (max-width:380px) { .useful-grid { grid-template-columns:1fr; } }
         .useful-card { background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:20px; display:flex; flex-direction:column; gap:14px; text-decoration:none; transition:0.2s; box-shadow:var(--shadow); cursor:pointer; text-align:left; }
         .useful-card:hover { border-color:var(--primary); transform:translateY(-3px); box-shadow:var(--shadow-hover); }
@@ -576,6 +631,15 @@
                 <div class="useful-card" id="open-moodle">
                     <div class="useful-icon"><svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg></div>
                     <div><h3>Moodle</h3><p>Навчальні матеріали і контроль ваших знань</p></div>
+                </div>
+                <div class="useful-card install-app-card" id="install-app-btn">
+                    <div class="useful-icon install-app-icon">
+                        <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12" y2="18"/><path d="M9 22h6"/><path d="M12 6v6m0 0l-3-3m3 3l3-3"/></svg>
+                    </div>
+                    <div>
+                        <h3>Встановити<br>додаток</h3>
+                        <p>Додати на головний екран як мобільний застосунок</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2205,6 +2269,279 @@ function initWelcomeModal() {
 
 document.addEventListener('DOMContentLoaded', () => { initAdminPanel(); loadAdminData(); });
 document.addEventListener('DOMContentLoaded', init);
-document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGroupPicker(); });</script>
+document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGroupPicker(); });
+
+// ===== PWA INSTALL MODAL =====
+(function() {
+    let deferredPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        const androidBtn = document.getElementById('pwa-android-install-btn');
+        if (androidBtn) androidBtn.classList.add('visible');
+    });
+
+    window.addEventListener('appinstalled', () => {
+        deferredPrompt = null;
+    });
+
+    function isIOS() {
+        return /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
+    }
+
+    function isAndroid() {
+        return /Android/.test(navigator.userAgent);
+    }
+
+    function isInStandaloneMode() {
+        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('install-app-btn');
+        const overlay = document.getElementById('pwa-modal-overlay');
+        const closeBtn = document.getElementById('pwa-modal-close');
+        const tabs = document.querySelectorAll('.pwa-tab');
+        const panels = document.querySelectorAll('.pwa-panel');
+        const androidInstallBtn = document.getElementById('pwa-android-install-btn');
+
+        if (!btn || !overlay) return;
+
+        if (isInStandaloneMode()) {
+            btn.style.display = 'none';
+            return;
+        }
+
+        btn.addEventListener('click', () => {
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            // Auto-select tab based on OS
+            if (isIOS()) {
+                switchTab('ios');
+            } else {
+                switchTab('android');
+            }
+        });
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closePwaModal();
+        });
+
+        if (closeBtn) closeBtn.addEventListener('click', closePwaModal);
+
+        function closePwaModal() {
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function switchTab(name) {
+            tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+            panels.forEach(p => p.classList.toggle('active', p.id === 'pwa-panel-' + name));
+        }
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+        });
+
+        if (androidInstallBtn) {
+            androidInstallBtn.addEventListener('click', async () => {
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    closePwaModal();
+                    deferredPrompt = null;
+                    androidInstallBtn.classList.remove('visible');
+                }
+            });
+        }
+    });
+})();
+</script>
+
+<!-- PWA Install Modal -->
+<div class="pwa-modal-overlay" id="pwa-modal-overlay">
+    <div class="pwa-modal">
+        <div class="pwa-modal-header">
+            <div class="pwa-modal-title-row">
+                <img src="https://image2url.com/r2/default/images/1771500451851-446b2df9-c4de-4696-bfaf-194abf93ad71.jpg"
+                     alt="ФЕП-13" class="pwa-modal-app-icon" onerror="this.style.display='none'"/>
+                <div>
+                    <div class="pwa-modal-title">Встановити додаток</div>
+                    <div class="pwa-modal-subtitle">Розклад ФЕП — на головний екран 📲</div>
+                </div>
+            </div>
+            <button class="close-btn" id="pwa-modal-close">✕</button>
+        </div>
+        <div class="pwa-modal-body">
+            <!-- Tabs -->
+            <div class="pwa-tabs">
+                <button class="pwa-tab active" data-tab="android">
+                    <svg viewBox="0 0 24 24"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zm-2.5-1C2.67 17 2 17.67 2 18.5v-9C2 8.67 2.67 8 3.5 8S5 8.67 5 9.5v9c0 .83-.67 1.5-1.5 1.5zm17 0c-.83 0-1.5-.67-1.5-1.5v-9c0-.83.67-1.5 1.5-1.5S22 8.67 22 9.5v9c0 .83-.67 1.5-1.5 1.5zM15.53 2.16l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48C13.85 1.23 12.95 1 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31C6.97 3.26 6 5.01 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg>
+                    Android
+                </button>
+                <button class="pwa-tab" data-tab="ios">
+                    <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                    iPhone / iOS
+                </button>
+            </div>
+
+            <!-- Android Panel -->
+            <div class="pwa-panel active" id="pwa-panel-android">
+                <div class="pwa-android-banner">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+                    <p>Chrome автоматично запропонує встановити додаток. Якщо ні — скористайся інструкцією нижче.</p>
+                </div>
+                <div class="pwa-steps">
+                    <div class="pwa-step">
+                        <div class="pwa-step-num">1</div>
+                        <div class="pwa-step-text">
+                            <strong>Відкрий меню браузера</strong>
+                            <span>Натисни <code>⋮</code> у правому верхньому куті Chrome</span>
+                        </div>
+                        <div class="pwa-step-icon">⋮</div>
+                    </div>
+                    <div class="pwa-step">
+                        <div class="pwa-step-num">2</div>
+                        <div class="pwa-step-text">
+                            <strong>Знайди потрібний пункт</strong>
+                            <span>Вибери <code>Додати на головний екран</code> або <code>Встановити додаток</code></span>
+                        </div>
+                        <div class="pwa-step-icon">📲</div>
+                    </div>
+                    <div class="pwa-step">
+                        <div class="pwa-step-num">3</div>
+                        <div class="pwa-step-text">
+                            <strong>Підтверди встановлення</strong>
+                            <span>Натисни <code>Додати</code> — іконка з'явиться на головному екрані!</span>
+                        </div>
+                        <div class="pwa-step-icon">✅</div>
+                    </div>
+                </div>
+                <button id="pwa-android-install-btn">
+                    <svg style="width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Встановити зараз
+                </button>
+            </div>
+
+            <!-- iOS Panel -->
+            <div class="pwa-panel" id="pwa-panel-ios">
+                <div class="pwa-steps">
+                    <div class="pwa-step">
+                        <div class="pwa-step-num">1</div>
+                        <div class="pwa-step-text">
+                            <strong>Відкрий сайт у Safari</strong>
+                            <span>Перейди за посиланням: <a href="https://xmice7.github.io/sitetg/" target="_blank" style="color:var(--primary);font-weight:700;word-break:break-all;">xmice7.github.io/sitetg</a> — саме через <code>Safari</code></span>
+                        </div>
+                        <div class="pwa-step-icon">🧭</div>
+                    </div>
+                    <div class="pwa-step">
+                        <div class="pwa-step-num">2</div>
+                        <div class="pwa-step-text">
+                            <strong>Натисни «Поширити»</strong>
+                            <span>Кнопка з іконкою
+                                <span style="display:inline-flex;align-items:center;justify-content:center;background:#007AFF;border-radius:7px;width:24px;height:24px;vertical-align:middle;margin:0 3px;">
+                                    <svg style="width:14px;height:14px;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M12 3v13M7 8l5-5 5 5"/><path d="M5 20h14"/></svg>
+                                </span>
+                                внизу екрана Safari</span>
+                        </div>
+                        <div class="pwa-step-icon" style="display:flex;align-items:center;justify-content:center;background:#007AFF;border-radius:8px;width:36px;height:36px;flex-shrink:0;">
+                            <svg style="width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M12 3v13M7 8l5-5 5 5"/><path d="M5 20h14"/></svg>
+                        </div>
+                    </div>
+                    <div class="pwa-step">
+                        <div class="pwa-step-num">3</div>
+                        <div class="pwa-step-text">
+                            <strong>На початковий екран</strong>
+                            <span>Прокрути список вниз і вибери <code>На початковий екран</code></span>
+                        </div>
+                        <div class="pwa-step-icon">🏠</div>
+                    </div>
+                    <div class="pwa-step">
+                        <div class="pwa-step-num">4</div>
+                        <div class="pwa-step-text">
+                            <strong>Натисни «Додати»</strong>
+                            <span>Підтверди у правому верхньому куті — і додаток з'явиться як звичайна програма!</span>
+                        </div>
+                        <div class="pwa-step-icon">✅</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Offline Banner -->
+<div class="offline-banner" id="offline-banner">
+    <div class="offline-banner-icon">📶</div>
+    <div class="offline-banner-text">
+        <strong>Немає інтернету</strong>
+        <span>Розклад доступний з кешу — дані можуть бути застарілими</span>
+    </div>
+    <button class="offline-banner-close" id="offline-banner-close">✕</button>
+</div>
+<div class="online-toast" id="online-toast">
+    <svg style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    Підключення відновлено!
+</div>
+
+<script>
+// ===== SERVICE WORKER REGISTRATION =====
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then((reg) => {
+                console.log('[SW] Зареєстровано, scope:', reg.scope);
+
+                // Якщо є нова версія SW — підтягуємо автоматично
+                reg.addEventListener('updatefound', () => {
+                    const newWorker = reg.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            newWorker.postMessage('skipWaiting');
+                        }
+                    });
+                });
+            })
+            .catch((err) => console.warn('[SW] Помилка реєстрації:', err));
+    });
+}
+
+// ===== OFFLINE / ONLINE DETECTION =====
+(function() {
+    const banner  = document.getElementById('offline-banner');
+    const closeBtn= document.getElementById('offline-banner-close');
+    const toast   = document.getElementById('online-toast');
+    let toastTimer = null;
+    let wasOffline = false;
+
+    function showOffline() {
+        if (!banner) return;
+        wasOffline = true;
+        banner.classList.add('show');
+    }
+
+    function showOnline() {
+        if (!banner) return;
+        banner.classList.remove('show');
+        if (wasOffline) {
+            wasOffline = false;
+            if (toast) {
+                toast.classList.add('show');
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+            }
+        }
+    }
+
+    if (closeBtn) closeBtn.addEventListener('click', () => banner.classList.remove('show'));
+
+    window.addEventListener('offline', showOffline);
+    window.addEventListener('online',  showOnline);
+
+    // Перевіряємо одразу при завантаженні
+    if (!navigator.onLine) showOffline();
+})();
+</script>
 </body>
 </html>
