@@ -1,0 +1,10 @@
+{
+  "name": "fep-schedule-render",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "satori": "^0.10.13",
+    "@resvg/resvg-wasm": "^2.6.0"
+  }
+}
