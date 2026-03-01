@@ -1,6 +1,5 @@
 // api/render.js — Vercel Edge Function
-// Використовує @vercel/og — офіційна бібліотека Vercel для генерації PNG
-// Не потребує нативних залежностей, працює на Edge Runtime
+// Дизайн як на сайті: великий час зліва, badges зверху, вертикальна лінія
 
 import { ImageResponse } from "@vercel/og";
 
@@ -21,16 +20,16 @@ export default async function handler(req) {
   const { lessons = [], date = "", weekType = "", group = "" } = body;
 
   const typeColor = (title) => {
-    if (title.includes("(Л)")) return "#4A90D9";
+    if (title.includes("(Л)"))   return "#7C6AF7";
     if (title.includes("(Лаб)")) return "#27AE60";
     if (title.includes("(ПрС)")) return "#E67E22";
-    return "#8E44AD";
+    return "#4A90D9";
   };
 
   const typeLabel = (title) => {
-    if (title.includes("(Л)")) return "Лекція";
-    if (title.includes("(Лаб)")) return "Лаб";
-    if (title.includes("(ПрС)")) return "Практика";
+    if (title.includes("(Л)"))   return "ЛЕКЦІЯ";
+    if (title.includes("(Лаб)")) return "ЛАБОРАТОРНА";
+    if (title.includes("(ПрС)")) return "ПРАКТИЧНА";
     return "";
   };
 
@@ -44,98 +43,140 @@ export default async function handler(req) {
   }
   const slotEntries = [...slots.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 
-  const weekBadgeColor = weekType.includes("Чисельник") ? "#4A90D9" : "#E67E22";
+  const isNumerator = weekType.includes("Чисельник");
+  const weekBadgeColor = isNumerator ? "#4A90D9" : "#E67E22";
   const hasLessons = slotEntries.length > 0;
 
-  const lessonCards = slotEntries.flatMap(([, items]) => {
-    const l0 = items[0];
-    return [
-      {
+  const totalCards = slotEntries.reduce((acc, [, items]) => acc + items.length, 0);
+  const estimatedHeight = hasLessons ? 120 + totalCards * 128 : 220;
+
+  const lessonCards = slotEntries.flatMap(([, items]) =>
+    items.map((l) => {
+      const color = typeColor(l.title);
+      const title = cleanTitle(l.title);
+      const label = typeLabel(l.title);
+      const tags = [];
+      if (l.group) tags.push(`ПІДГРУПА ${l.group}`);
+      if (l.potik) tags.push("ПОТІК");
+      const teacher = (l.teacher ?? "").replace(/\s*\(Потік\)/g, "").trim();
+
+      return {
         type: "div",
         props: {
-          style: { display: "flex", fontSize: 13, color: "#666", fontWeight: 600, marginBottom: 6, marginTop: 8 },
-          children: `${l0.start} – ${l0.end}`,
-        },
-      },
-      ...items.map((l) => {
-        const color = typeColor(l.title);
-        const title = cleanTitle(l.title);
-        const label = typeLabel(l.title);
-        const tags = [];
-        if (l.group) tags.push(`Підгр. ${l.group}`);
-        if (l.potik) tags.push("Потік");
-        const teacher = (l.teacher ?? "").replace(/\s*\(Потік\)/g, "").trim();
-
-        return {
-          type: "div",
-          props: {
-            style: {
-              display: "flex",
-              flexDirection: "column",
-              background: "#1a1a2e",
-              borderRadius: 12,
-              border: `1.5px solid ${color}`,
-              borderLeft: `5px solid ${color}`,
-              padding: "10px 14px",
-              marginBottom: 8,
-              gap: 4,
-            },
-            children: [
-              {
-                type: "div",
-                props: {
-                  style: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-                  children: [
-                    { type: "div", props: { style: { fontSize: 15, fontWeight: "bold", color: "#fff" }, children: title } },
-                    label
-                      ? { type: "div", props: { style: { fontSize: 11, color, background: color + "22", border: `1px solid ${color}`, borderRadius: 10, padding: "2px 10px" }, children: label } }
-                      : { type: "div", props: { children: "" } },
-                  ],
+          style: { display: "flex", flexDirection: "row", marginBottom: 10 },
+          children: [
+            // Час зліва
+            {
+              type: "div",
+              props: {
+                style: {
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-end",
+                  justifyContent: "flex-start",
+                  width: 68,
+                  paddingTop: 14,
+                  paddingRight: 10,
+                  flexShrink: 0,
                 },
+                children: [
+                  { type: "div", props: { style: { fontSize: 20, fontWeight: "bold", color: "#fff", lineHeight: 1 }, children: l.start } },
+                  { type: "div", props: { style: { fontSize: 12, color: "#555", marginTop: 3 }, children: l.end } },
+                ],
               },
-              { type: "div", props: { style: { fontSize: 12, color: "#aaa" }, children: `${l.room ?? "—"}` } },
-              { type: "div", props: { style: { fontSize: 12, color: "#777" }, children: `${teacher}${tags.length ? "   ·   " + tags.join(", ") : ""}` } },
-            ],
-          },
-        };
-      }),
-    ];
-  });
-
-  const estimatedHeight = Math.max(200, 120 + slotEntries.reduce((acc, [, items]) => acc + items.length, 0) * 110 + slotEntries.length * 38);
+            },
+            // Вертикальна лінія
+            {
+              type: "div",
+              props: {
+                style: { width: 2, background: "#2a2a3e", borderRadius: 1, marginRight: 10, marginTop: 18, flexShrink: 0 },
+              },
+            },
+            // Картка
+            {
+              type: "div",
+              props: {
+                style: {
+                  display: "flex",
+                  flexDirection: "column",
+                  flex: 1,
+                  background: "#1a1a2e",
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  gap: 5,
+                },
+                children: [
+                  // Badges
+                  {
+                    type: "div",
+                    props: {
+                      style: { display: "flex", flexDirection: "row", gap: 6 },
+                      children: [
+                        label ? { type: "div", props: { style: { fontSize: 10, fontWeight: "bold", color: color, background: color + "22", borderRadius: 5, padding: "2px 7px", letterSpacing: 0.5 }, children: label } } : null,
+                        ...tags.map(tag => ({ type: "div", props: { style: { fontSize: 10, fontWeight: "bold", color: "#27AE60", background: "#27AE6022", borderRadius: 5, padding: "2px 7px", letterSpacing: 0.5 }, children: tag } })),
+                      ].filter(Boolean),
+                    },
+                  },
+                  // Назва
+                  { type: "div", props: { style: { fontSize: 15, fontWeight: "bold", color: "#fff" }, children: title } },
+                  // Аудиторія
+                  { type: "div", props: { style: { fontSize: 12, color: "#777" }, children: "⌂  " + (l.room ?? "—") } },
+                  // Викладач
+                  { type: "div", props: { style: { fontSize: 12, color: "#777" }, children: "•  " + teacher } },
+                ],
+              },
+            },
+          ],
+        },
+      };
+    })
+  );
 
   return new ImageResponse(
     {
       type: "div",
       props: {
-        style: { display: "flex", flexDirection: "column", background: "#0f0f1a", width: "100%", height: "100%", padding: 20, fontFamily: "sans-serif" },
+        style: {
+          display: "flex",
+          flexDirection: "column",
+          background: "#0f0f1a",
+          width: "100%",
+          height: "100%",
+          padding: "22px 18px",
+          fontFamily: "sans-serif",
+        },
         children: [
+          // Заголовок
           {
             type: "div",
             props: {
-              style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 },
+              style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 },
               children: [
+                { type: "div", props: { style: { fontSize: 24, fontWeight: "bold", color: "#fff" }, children: date } },
                 {
                   type: "div",
                   props: {
-                    style: { display: "flex", flexDirection: "column", gap: 6 },
+                    style: { display: "flex", alignItems: "center", gap: 6, background: "#1a1a2e", borderRadius: 20, padding: "5px 12px", border: "1px solid #2a2a3e" },
                     children: [
-                      { type: "div", props: { style: { fontSize: 22, fontWeight: "bold", color: "#fff" }, children: date } },
-                      { type: "div", props: { style: { fontSize: 12, color: weekBadgeColor, background: weekBadgeColor + "22", border: `1px solid ${weekBadgeColor}`, borderRadius: 10, padding: "3px 12px", alignSelf: "flex-start" }, children: weekType } },
+                      { type: "div", props: { style: { width: 7, height: 7, borderRadius: "50%", background: weekBadgeColor } } },
+                      { type: "div", props: { style: { fontSize: 12, color: "#ccc", fontWeight: 600 }, children: weekType.replace(" 🔢","").replace(" 🔡","") } },
                     ],
                   },
                 },
-                { type: "div", props: { style: { fontSize: 13, color: "#555", marginTop: 6 }, children: group } },
               ],
             },
           },
-          { type: "div", props: { style: { height: 1, background: "#2a2a3e", marginBottom: 12 } } },
+          // Група
+          { type: "div", props: { style: { fontSize: 12, color: "#444", marginBottom: 12 }, children: group } },
+          // Лінія
+          { type: "div", props: { style: { height: 1, background: "#1e1e2e", marginBottom: 14 } } },
+          // Пари
           hasLessons
             ? { type: "div", props: { style: { display: "flex", flexDirection: "column" }, children: lessonCards } }
-            : { type: "div", props: { style: { fontSize: 20, color: "#555", textAlign: "center", marginTop: 40 }, children: "Пар немає — відпочивай!" } },
+            : { type: "div", props: { style: { display: "flex", alignItems: "center", justifyContent: "center", flex: 1, fontSize: 18, color: "#444" }, children: "Пар немає — відпочивай!" } },
         ],
       },
     },
-    { width: 700, height: estimatedHeight }
+    { width: 620, height: estimatedHeight }
   );
 }
