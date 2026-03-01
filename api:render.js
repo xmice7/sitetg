@@ -1,13 +1,10 @@
-// api/render.js — Vercel Serverless Function
-// Отримує JSON з даними розкладу → повертає PNG картинку
-// Деплоїться автоматично при push на GitHub
+
 
 import satori from "satori";
 import { Resvg, initWasm } from "@resvg/resvg-wasm";
 import { join } from "path";
 import { readFileSync } from "fs";
 
-// ── WASM ініціалізація (один раз) ────────────────────────────
 let wasmInited = false;
 async function ensureWasm() {
   if (wasmInited) return;
@@ -17,7 +14,6 @@ async function ensureWasm() {
   wasmInited = true;
 }
 
-// ── Шрифти (кеш між викликами) ───────────────────────────────
 let fonts = null;
 async function getFonts() {
   if (fonts) return fonts;
@@ -35,7 +31,6 @@ async function getFonts() {
   return fonts;
 }
 
-// ── Кольори — точно з index.html ─────────────────────────────
 const C = {
   bgBody:      "#0f172a",
   bgCard:      "#1e293b",
@@ -50,7 +45,6 @@ const C = {
   bgBlue:      "rgba(59,130,246,0.15)",
 };
 
-// ── Утиліти ──────────────────────────────────────────────────
 const detectType = (title) => {
   if (title.includes("(Лаб)")) return { bg: C.bgPurple, color: C.purple,  label: "Лабораторна" };
   if (title.includes("(Л)"))   return { bg: C.bgPurple, color: C.purple,  label: "Лекція"      };
@@ -61,7 +55,6 @@ const detectType = (title) => {
 const clean = (t) =>
   t.replace(/\s*\(Лаб\)|\s*\(Л\)|\s*\(ПрС\)|\s*\(Потік\)/gi, "").trim();
 
-// ── Компоненти (Satori vDOM) ─────────────────────────────────
 const Badge = (text, bg, color) => ({
   type: "div",
   props: {
@@ -216,9 +209,7 @@ const Layout = (dateLabel, weekLabel, lessons, groupLabel) => ({
   },
 });
 
-// ══════════════════════════════════════════════════════════════
-//  HANDLER
-// ══════════════════════════════════════════════════════════════
+
 export default async function handler(req, res) {
   // CORS — щоб Worker міг звертатись
   res.setHeader("Access-Control-Allow-Origin", "*");
