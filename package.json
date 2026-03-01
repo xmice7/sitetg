@@ -1,10 +1,7 @@
 {
-  "name": "fep-schedule-render",
+  "name": "sitetg",
   "version": "1.0.0",
-  "private": true,
-  "type": "module",
   "dependencies": {
-    "satori": "^0.10.13",
-    "@resvg/resvg-wasm": "^2.6.0"
+    "@resvg/resvg-js": "^2.6.2"
   }
 }
