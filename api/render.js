@@ -1,5 +1,5 @@
 // api/render.js — Vercel Edge Function
-// Дизайн як на сайті: великий час зліва, badges зверху, вертикальна лінія
+// Високоякісний рендер 1200px, дизайн як на сайті
 
 import { ImageResponse } from "@vercel/og";
 
@@ -21,9 +21,9 @@ export default async function handler(req) {
 
   const typeColor = (title) => {
     if (title.includes("(Л)"))   return "#7C6AF7";
-    if (title.includes("(Лаб)")) return "#27AE60";
-    if (title.includes("(ПрС)")) return "#E67E22";
-    return "#4A90D9";
+    if (title.includes("(Лаб)")) return "#22C55E";
+    if (title.includes("(ПрС)")) return "#F97316";
+    return "#3B82F6";
   };
 
   const typeLabel = (title) => {
@@ -43,12 +43,15 @@ export default async function handler(req) {
   }
   const slotEntries = [...slots.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 
-  const isNumerator = weekType.includes("Чисельник");
-  const weekBadgeColor = isNumerator ? "#4A90D9" : "#E67E22";
+  const weekBadgeColor = weekType.includes("Чисельник") ? "#3B82F6" : "#F97316";
   const hasLessons = slotEntries.length > 0;
-
   const totalCards = slotEntries.reduce((acc, [, items]) => acc + items.length, 0);
-  const estimatedHeight = hasLessons ? 120 + totalCards * 128 : 220;
+
+  // 1200px ширина, висота динамічна
+  const W = 1200;
+  const PADDING = 48;
+  const CARD_H = 160;
+  const estimatedHeight = hasLessons ? 180 + totalCards * (CARD_H + 20) : 400;
 
   const lessonCards = slotEntries.flatMap(([, items]) =>
     items.map((l) => {
@@ -57,15 +60,15 @@ export default async function handler(req) {
       const label = typeLabel(l.title);
       const tags = [];
       if (l.group) tags.push(`ПІДГРУПА ${l.group}`);
-      if (l.potik) tags.push("ПОТІК");
+      if (l.potik)  tags.push("ПОТІК");
       const teacher = (l.teacher ?? "").replace(/\s*\(Потік\)/g, "").trim();
 
       return {
         type: "div",
         props: {
-          style: { display: "flex", flexDirection: "row", marginBottom: 10 },
+          style: { display: "flex", flexDirection: "row", marginBottom: 20, width: "100%" },
           children: [
-            // Час зліва
+            // ── Час ──
             {
               type: "div",
               props: {
@@ -74,25 +77,45 @@ export default async function handler(req) {
                   flexDirection: "column",
                   alignItems: "flex-end",
                   justifyContent: "flex-start",
-                  width: 68,
-                  paddingTop: 14,
-                  paddingRight: 10,
+                  width: 130,
+                  paddingTop: 20,
+                  paddingRight: 20,
                   flexShrink: 0,
                 },
                 children: [
-                  { type: "div", props: { style: { fontSize: 20, fontWeight: "bold", color: "#fff", lineHeight: 1 }, children: l.start } },
-                  { type: "div", props: { style: { fontSize: 12, color: "#555", marginTop: 3 }, children: l.end } },
+                  {
+                    type: "div",
+                    props: {
+                      style: { fontSize: 38, fontWeight: "bold", color: "#ffffff", lineHeight: 1, letterSpacing: -1 },
+                      children: l.start,
+                    },
+                  },
+                  {
+                    type: "div",
+                    props: {
+                      style: { fontSize: 22, color: "#4B5563", marginTop: 6 },
+                      children: l.end,
+                    },
+                  },
                 ],
               },
             },
-            // Вертикальна лінія
+            // ── Вертикальна лінія ──
             {
               type: "div",
               props: {
-                style: { width: 2, background: "#2a2a3e", borderRadius: 1, marginRight: 10, marginTop: 18, flexShrink: 0 },
+                style: {
+                  width: 3,
+                  minHeight: CARD_H,
+                  background: "#1F2937",
+                  borderRadius: 2,
+                  marginRight: 20,
+                  marginTop: 24,
+                  flexShrink: 0,
+                },
               },
             },
-            // Картка
+            // ── Картка ──
             {
               type: "div",
               props: {
@@ -100,29 +123,91 @@ export default async function handler(req) {
                   display: "flex",
                   flexDirection: "column",
                   flex: 1,
-                  background: "#1a1a2e",
-                  borderRadius: 12,
-                  padding: "10px 14px",
-                  gap: 5,
+                  background: "#111827",
+                  borderRadius: 20,
+                  padding: "20px 28px",
+                  gap: 10,
+                  border: "1px solid #1F2937",
                 },
                 children: [
-                  // Badges
+                  // Badges рядок
                   {
                     type: "div",
                     props: {
-                      style: { display: "flex", flexDirection: "row", gap: 6 },
+                      style: { display: "flex", flexDirection: "row", gap: 10 },
                       children: [
-                        label ? { type: "div", props: { style: { fontSize: 10, fontWeight: "bold", color: color, background: color + "22", borderRadius: 5, padding: "2px 7px", letterSpacing: 0.5 }, children: label } } : null,
-                        ...tags.map(tag => ({ type: "div", props: { style: { fontSize: 10, fontWeight: "bold", color: "#27AE60", background: "#27AE6022", borderRadius: 5, padding: "2px 7px", letterSpacing: 0.5 }, children: tag } })),
+                        label
+                          ? {
+                              type: "div",
+                              props: {
+                                style: {
+                                  fontSize: 18,
+                                  fontWeight: "bold",
+                                  color: color,
+                                  background: color + "20",
+                                  borderRadius: 8,
+                                  padding: "4px 14px",
+                                  letterSpacing: 1,
+                                },
+                                children: label,
+                              },
+                            }
+                          : null,
+                        ...tags.map((tag) => ({
+                          type: "div",
+                          props: {
+                            style: {
+                              fontSize: 18,
+                              fontWeight: "bold",
+                              color: "#22C55E",
+                              background: "#22C55E20",
+                              borderRadius: 8,
+                              padding: "4px 14px",
+                              letterSpacing: 1,
+                            },
+                            children: tag,
+                          },
+                        })),
                       ].filter(Boolean),
                     },
                   },
-                  // Назва
-                  { type: "div", props: { style: { fontSize: 15, fontWeight: "bold", color: "#fff" }, children: title } },
-                  // Аудиторія
-                  { type: "div", props: { style: { fontSize: 12, color: "#777" }, children: "⌂  " + (l.room ?? "—") } },
-                  // Викладач
-                  { type: "div", props: { style: { fontSize: 12, color: "#777" }, children: "•  " + teacher } },
+                  // Назва предмету
+                  {
+                    type: "div",
+                    props: {
+                      style: { fontSize: 30, fontWeight: "bold", color: "#F9FAFB", lineHeight: 1.2 },
+                      children: title,
+                    },
+                  },
+                  // Аудиторія і викладач
+                  {
+                    type: "div",
+                    props: {
+                      style: { display: "flex", flexDirection: "row", gap: 32, marginTop: 4 },
+                      children: [
+                        {
+                          type: "div",
+                          props: {
+                            style: { display: "flex", alignItems: "center", gap: 8, fontSize: 20, color: "#6B7280" },
+                            children: [
+                              { type: "div", props: { style: { fontSize: 20 }, children: "⌂" } },
+                              { type: "div", props: { children: l.room ?? "—" } },
+                            ],
+                          },
+                        },
+                        {
+                          type: "div",
+                          props: {
+                            style: { display: "flex", alignItems: "center", gap: 8, fontSize: 20, color: "#6B7280" },
+                            children: [
+                              { type: "div", props: { style: { fontSize: 18 }, children: "◦" } },
+                              { type: "div", props: { children: teacher } },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
                 ],
               },
             },
@@ -139,27 +224,63 @@ export default async function handler(req) {
         style: {
           display: "flex",
           flexDirection: "column",
-          background: "#0f0f1a",
+          background: "#0B0F1A",
           width: "100%",
           height: "100%",
-          padding: "22px 18px",
+          padding: `${PADDING}px`,
           fontFamily: "sans-serif",
         },
         children: [
-          // Заголовок
+          // ── Заголовок ──
           {
             type: "div",
             props: {
-              style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 },
+              style: {
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 6,
+              },
               children: [
-                { type: "div", props: { style: { fontSize: 24, fontWeight: "bold", color: "#fff" }, children: date } },
                 {
                   type: "div",
                   props: {
-                    style: { display: "flex", alignItems: "center", gap: 6, background: "#1a1a2e", borderRadius: 20, padding: "5px 12px", border: "1px solid #2a2a3e" },
+                    style: { fontSize: 48, fontWeight: "bold", color: "#F9FAFB", letterSpacing: -1 },
+                    children: date,
+                  },
+                },
+                // Badge тижня
+                {
+                  type: "div",
+                  props: {
+                    style: {
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      background: "#111827",
+                      borderRadius: 40,
+                      padding: "10px 22px",
+                      border: "1px solid #1F2937",
+                    },
                     children: [
-                      { type: "div", props: { style: { width: 7, height: 7, borderRadius: "50%", background: weekBadgeColor } } },
-                      { type: "div", props: { style: { fontSize: 12, color: "#ccc", fontWeight: 600 }, children: weekType.replace(" 🔢","").replace(" 🔡","") } },
+                      {
+                        type: "div",
+                        props: {
+                          style: {
+                            width: 12,
+                            height: 12,
+                            borderRadius: "50%",
+                            background: weekBadgeColor,
+                          },
+                        },
+                      },
+                      {
+                        type: "div",
+                        props: {
+                          style: { fontSize: 22, color: "#D1D5DB", fontWeight: 600 },
+                          children: weekType.replace(" 🔢", "").replace(" 🔡", ""),
+                        },
+                      },
                     ],
                   },
                 },
@@ -167,16 +288,46 @@ export default async function handler(req) {
             },
           },
           // Група
-          { type: "div", props: { style: { fontSize: 12, color: "#444", marginBottom: 12 }, children: group } },
-          // Лінія
-          { type: "div", props: { style: { height: 1, background: "#1e1e2e", marginBottom: 14 } } },
-          // Пари
+          {
+            type: "div",
+            props: {
+              style: { fontSize: 22, color: "#374151", marginBottom: 20 },
+              children: group,
+            },
+          },
+          // Розділювач
+          {
+            type: "div",
+            props: {
+              style: { height: 1, background: "#1F2937", marginBottom: 24 },
+            },
+          },
+          // ── Пари або порожньо ──
           hasLessons
-            ? { type: "div", props: { style: { display: "flex", flexDirection: "column" }, children: lessonCards } }
-            : { type: "div", props: { style: { display: "flex", alignItems: "center", justifyContent: "center", flex: 1, fontSize: 18, color: "#444" }, children: "Пар немає — відпочивай!" } },
+            ? {
+                type: "div",
+                props: {
+                  style: { display: "flex", flexDirection: "column" },
+                  children: lessonCards,
+                },
+              }
+            : {
+                type: "div",
+                props: {
+                  style: {
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flex: 1,
+                    fontSize: 36,
+                    color: "#374151",
+                  },
+                  children: "Пар немає — відпочивай! 🎉",
+                },
+              },
         ],
       },
     },
-    { width: 620, height: estimatedHeight }
+    { width: W, height: estimatedHeight }
   );
 }
