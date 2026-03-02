@@ -2897,40 +2897,114 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
 
         // Кнопка "Прив'язати" — генерує токен і відкриває бота
         if (btn) {
-            btn.addEventListener('click', () => {
-                const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
-                // WORKER_URL зберігається в localStorage під ключем '_worker_url'
-                // Адмін задає його один раз: localStorage.setItem('_worker_url', 'https://your-worker.workers.dev')
-                // АБО можна захардкодити нижче замість порожнього рядка:
+                        btn.addEventListener('click', async () => {
+                const codeArea    = document.getElementById('tg-code-area');
+                const codeDisplay = document.getElementById('tg-code-display');
+                const codeStatus  = document.getElementById('tg-code-status');
+                const codeTimer   = document.getElementById('tg-code-timer');
+                const copyHint    = document.getElementById('tg-code-copy-hint');
+
+                // Генеруємо 6-значний код
+                const code = String(Math.floor(100000 + Math.random() * 900000));
                 const workerBase = localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
-                // Зберігаємо очікуваний токен, щоб при поверненні зі сторінки ми знали що чекаємо
-                localStorage.setItem('_pending_tg_token', token);
-                localStorage.setItem('_pending_tg_token_ts', String(Date.now()));
-                // Відкриваємо бота з deep link
-                window.open('https://t.me/shedulefep_bot?start=link_' + token, '_blank');
-                // Показуємо стан очікування
-                btn.textContent = '⏳ Очікуємо...';
+                const expiresAt  = Date.now() + 5 * 60 * 1000;
+
+                btn.textContent = '⏳ Генерація...';
                 btn.disabled = true;
-                // Поллінг — чекаємо поки юзер повернеться і дані з'являться в localStorage
-                const poll = setInterval(() => {
+
+                try {
+                    const res = await fetch(`${workerBase}/gen-code`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code })
+                    });
+                    if (!res.ok) throw new Error('Worker error');
+                } catch(e) {
+                    btn.textContent = '🔄 Спробуй ще раз';
+                    btn.disabled = false;
+                    if (codeStatus) { codeStatus.textContent = '⚠️ Помилка з\'єднання з сервером'; codeStatus.style.color = 'var(--accent-red, #ef4444)'; }
+                    return;
+                }
+
+                // Показуємо блок з кодом
+                codeArea.style.display = 'block';
+                codeDisplay.textContent = code;
+                if (copyHint) copyHint.textContent = 'Натисни на код щоб скопіювати';
+                codeStatus.textContent = '⏳ Очікуємо підтвердження від бота…';
+                codeStatus.style.color = 'var(--text-muted)';
+
+                // Кнопка «Відкрити бота» — глибоке посилання одразу з командою
+                // Telegram відкриє бота і автоматично надішле /start linkcode_XXXXXX
+                btn.textContent = '📲 Відкрити бота';
+                btn.disabled = false;
+                btn.onclick = () => {
+                    window.open(`https://t.me/shedulefep_bot?start=linkcode_${code}`, '_blank');
+                };
+
+                // Копіювання по кліку на код
+                codeDisplay.onclick = () => {
+                    navigator.clipboard?.writeText(code).catch(() => {});
+                    if (copyHint) { copyHint.textContent = '✅ Скопійовано!'; setTimeout(() => copyHint.textContent = 'Натисни на код щоб скопіювати', 2000); }
+                };
+
+                // Таймер зворотного відліку
+                clearInterval(window._codeTimerInterval);
+                window._codeTimerInterval = setInterval(() => {
+                    const left = Math.max(0, expiresAt - Date.now());
+                    const m = Math.floor(left / 60000);
+                    const s = Math.floor((left % 60000) / 1000);
+                    if (codeTimer) codeTimer.textContent = left > 0
+                        ? `⏱ Код дійсний ще ${m}:${String(s).padStart(2,'0')}`
+                        : '❌ Код протух — натисни «Оновити»';
+                    if (left === 0) {
+                        clearInterval(window._codeTimerInterval);
+                        clearInterval(window._codePolling);
+                        btn.textContent = '🔄 Оновити код';
+                        btn.onclick = null; // повернути оригінальний клік
+                    }
+                }, 1000);
+
+                // Поллінг — кожні 4 секунди (не навантажує)
+                clearInterval(window._codePolling);
+                window._codePolling = setInterval(async () => {
                     try {
-                        const c = JSON.parse(localStorage.getItem('tg_user_cache') || 'null');
-                        if (c && c.id) {
-                            clearInterval(poll);
-                            localStorage.removeItem('_pending_tg_token');
-                            localStorage.removeItem('_pending_tg_token_ts');
-                            if (banner) banner.classList.remove('visible');
+                        const r = await fetch(`${workerBase}/check-code?code=${code}`);
+                        if (!r.ok) return; // ще чекаємо
+
+                        const data = await r.json();
+                        if (data && data.id) {
+                            clearInterval(window._codePolling);
+                            clearInterval(window._codeTimerInterval);
+
+                            localStorage.setItem('tg_user_cache', JSON.stringify(data));
+
+                            // Показуємо успіх
+                            codeDisplay.textContent = '✅';
+                            codeDisplay.onclick = null;
+                            if (codeStatus) { codeStatus.textContent = `Вітаємо, ${data.first_name}! Telegram прив\'язано.`; codeStatus.style.color = 'var(--accent-green)'; }
+                            if (codeTimer) codeTimer.textContent = '';
+                            btn.textContent = 'Прив\'язано ✅';
+                            btn.disabled = true;
+
                             window.renderProfileBar && window.renderProfileBar();
+
+                            // Закриваємо модалку через 2.5 сек
+                            setTimeout(() => {
+                                document.getElementById('pwa-modal-overlay')?.classList.remove('active');
+                                // Скидаємо стан кнопки на випадок повторного відкриття
+                                btn.textContent = 'Отримати код';
+                                btn.disabled = false;
+                                btn.onclick = null;
+                                codeArea.style.display = 'none';
+                            }, 2500);
                         }
-                    } catch{}
-                }, 2000);
-                // Зупиняємо поллінг через 3 хвилини
-                setTimeout(() => {
-                    clearInterval(poll);
-                    if (btn.disabled) { btn.textContent = "Прив'язати"; btn.disabled = false; }
-                }, 180000);
+                    } catch(e) {}
+                }, 4000); // кожні 4 секунди
+
+                // Зупиняємо через 5 хвилин
+                setTimeout(() => clearInterval(window._codePolling), 5 * 60 * 1000);
             });
-        }
+}
     });
 })();
 
