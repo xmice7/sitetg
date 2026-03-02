@@ -125,7 +125,7 @@
         window.fbGetUsers = async (groupId='fep13') => {
             try {
                 const apiKey = "AIzaSyBH8JKNOBWTjxSIiHNVI8LiwK8u9sPyVTo";
-                const url = `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/users?key=${apiKey}&pageSize=200`;
+                const url = `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/users?key=${apiKey}&pageSize=500`;
                 const res = await fetch(url);
                 const data = await res.json();
                 if (!data.documents) return [];
@@ -137,10 +137,20 @@
                         last_name: f.last_name?.stringValue || '',
                         username: f.username?.stringValue || '',
                         photo_url: f.photo_url?.stringValue || '',
-                        last_seen: parseInt(f.last_seen?.integerValue || '0'),
+                        last_seen: parseInt(f.last_seen?.integerValue || f.last_seen?.doubleValue || '0'),
+                        group: f.group?.stringValue || '',
                     };
                 });
             } catch(e) { console.error('fbGetUsers error:', e); return []; }
+        };
+
+        window.fbUpdateUserLastSeen = async (userId, group) => {
+            try {
+                await setDoc(doc(db, 'users', String(userId)), {
+                    last_seen: Date.now(),
+                    group: group || 'fep13'
+                }, { merge: true });
+            } catch(e) { console.error('fbUpdateUserLastSeen error:', e); }
         };
 
         window.firebaseReady = true;
@@ -542,6 +552,8 @@
         .admin-users-filter { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
         .admin-users-filter-btn { padding:6px 12px; border-radius:20px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-muted); font-size:12px; font-weight:700; cursor:pointer; transition:0.2s; }
         .admin-users-filter-btn.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+        .admin-users-group-btn { padding:6px 12px; border-radius:20px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-muted); font-size:12px; font-weight:700; cursor:pointer; transition:0.2s; }
+        .admin-users-group-btn.active { background:var(--primary); border-color:var(--primary); color:#fff; }
         .admin-users-grid { display:flex; flex-direction:column; gap:8px; }
         .admin-user-card { display:flex; align-items:center; gap:12px; background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:12px 14px; transition:0.2s; }
         .admin-user-card:hover { border-color:var(--primary); transform:translateX(2px); }
@@ -608,8 +620,7 @@
                     </div>
                 </div>
                 <div class="user-streak" id="user-streak-badge" style="display:none">🔥 <span id="user-streak-num">0</span></div>
-                <!-- Кнопка відв'язки Telegram (показується якщо акаунт вже прив'язаний) -->
-                <button id="tg-unlink-btn" title="Від'язати Telegram" style="display:none;background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:8px;color:var(--text-muted);font-size:14px;transition:0.2s;flex-shrink:0;" onclick="(function(){if(confirm('Від\'язати Telegram акаунт?')){localStorage.removeItem('tg_user_cache');location.reload();}})()">✕</button>
+
             </div>
 
             <!-- ── Банер прив'язки Telegram ── -->
@@ -900,19 +911,32 @@
                 <div class="admin-section">
                     <div class="admin-section-header">
                         <div class="admin-section-icon" style="background:rgba(139,92,246,0.15)">👥</div>
-                        <div><div class="admin-section-title">Користувачі</div><div class="admin-section-desc">Хто заходив через Telegram бота</div></div>
+                        <div><div class="admin-section-title">Користувачі</div><div class="admin-section-desc">Список всіх студентів по групах</div></div>
                     </div>
-                    <div class="admin-users-stats">
+                    <div class="admin-users-stats" style="grid-template-columns:repeat(3,1fr)">
                         <div class="admin-users-stat"><div class="admin-users-stat-val" id="users-total-count">—</div><div class="admin-users-stat-label">Всього</div></div>
                         <div class="admin-users-stat"><div class="admin-users-stat-val" id="users-today-count">—</div><div class="admin-users-stat-label">Сьогодні</div></div>
                         <div class="admin-users-stat"><div class="admin-users-stat-val" id="users-week-count">—</div><div class="admin-users-stat-label">За тиждень</div></div>
                     </div>
+                    <div class="admin-users-stats" style="grid-template-columns:repeat(3,1fr);margin-top:0">
+                        <div class="admin-users-stat"><div class="admin-users-stat-val" id="users-fep11-count">—</div><div class="admin-users-stat-label" style="color:#10b981">ФЕП-11</div></div>
+                        <div class="admin-users-stat"><div class="admin-users-stat-val" id="users-fep12-count">—</div><div class="admin-users-stat-label" style="color:#f59e0b">ФЕП-12</div></div>
+                        <div class="admin-users-stat"><div class="admin-users-stat-val" id="users-fep13-count">—</div><div class="admin-users-stat-label" style="color:var(--primary)">ФЕП-13</div></div>
+                    </div>
                     <input type="search" class="admin-users-search" id="users-search" placeholder="🔍 Пошук за ім'ям або @username…"/>
-                    <div class="admin-users-filter">
+                    <div style="font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Фільтр по активності:</div>
+                    <div class="admin-users-filter" style="margin-bottom:6px">
                         <button class="admin-users-filter-btn active" data-filter="all">Усі</button>
                         <button class="admin-users-filter-btn" data-filter="today">Сьогодні</button>
                         <button class="admin-users-filter-btn" data-filter="week">Тиждень</button>
                         <button class="admin-users-filter-btn" data-filter="month">Місяць</button>
+                    </div>
+                    <div style="font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Фільтр по групі:</div>
+                    <div class="admin-users-filter">
+                        <button class="admin-users-group-btn active" data-group="all">👥 Всі групи</button>
+                        <button class="admin-users-group-btn" data-group="fep11">📗 ФЕП-11</button>
+                        <button class="admin-users-group-btn" data-group="fep12">📙 ФЕП-12</button>
+                        <button class="admin-users-group-btn" data-group="fep13">📘 ФЕП-13</button>
                     </div>
                     <div class="admin-users-grid" id="admin-users-grid">
                         <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">Натисніть «Оновити» для завантаження</div>
@@ -2782,6 +2806,9 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             // Load from Firebase for real photo_url
             const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
             await waitForFirebase();
+            // Update last_seen in Firebase (so admin can see when user last visited)
+            const activeGroup = storage.get('app_active_group', 'fep13');
+            if (window.fbUpdateUserLastSeen) window.fbUpdateUserLastSeen(tgUser.id, activeGroup);
             const fbUser = await loadUserFromFirebase(tgUser.id);
             if (fbUser && fbUser.photo_url) {
                 localStorage.setItem('tg_user_cache', JSON.stringify({...tgUser, photo_url: fbUser.photo_url}));
@@ -2802,13 +2829,6 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             avatarWrap.appendChild(img);
         }
 
-        // Показуємо кнопку відв'язки якщо акаунт прив'язаний через localStorage
-        // (тобто не через Telegram Mini App — там від'язка не потрібна)
-        const unlinkBtn = document.getElementById('tg-unlink-btn');
-        if (unlinkBtn) {
-            const hasCachedUser = (() => { try { const c = JSON.parse(localStorage.getItem('tg_user_cache') || 'null'); return !!(c && c.id); } catch { return false; } })();
-            unlinkBtn.style.display = (hasCachedUser && !tgUser) ? 'block' : 'none';
-        }
     }
 
     window.renderProfileBar = renderProfileBar;
@@ -2990,6 +3010,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
 (function() {
     let allUsers = [];
     let currentFilter = 'all';
+    let currentGroupFilter = 'all';
     let searchQuery = '';
 
     function timeAgo(ts) {
@@ -3002,7 +3023,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         if (mins < 60) return `${mins} хв тому`;
         if (hours < 24) return `${hours} год тому`;
         if (days === 1) return 'Вчора';
-        if (days < 7) return `${days} дні тому`;
+        if (days < 7) return `${days} дн тому`;
         if (days < 30) return `${Math.floor(days/7)} тиж тому`;
         return new Date(ts).toLocaleDateString('uk-UA', {day:'numeric',month:'short'});
     }
@@ -3018,17 +3039,22 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         return `<span class="admin-user-badge old">${timeAgo(ts)}</span>`;
     }
 
+    const groupColors = { fep11:'#10b981', fep12:'#f59e0b', fep13:'#3b82f6' };
+    const groupLabels = { fep11:'ФЕП-11', fep12:'ФЕП-12', fep13:'ФЕП-13' };
+
     function renderUsers() {
         const grid = document.getElementById('admin-users-grid');
         if (!grid) return;
-        const today = Date.now() - 86400000;
-        const week = Date.now() - 7*86400000;
-        const month = Date.now() - 30*86400000;
+        const now = Date.now();
+        const today = now - 86400000;
+        const week = now - 7*86400000;
+        const month = now - 30*86400000;
 
         let filtered = allUsers.filter(u => {
             if (currentFilter === 'today' && u.last_seen < today) return false;
             if (currentFilter === 'week' && u.last_seen < week) return false;
             if (currentFilter === 'month' && u.last_seen < month) return false;
+            if (currentGroupFilter !== 'all' && u.group !== currentGroupFilter) return false;
             if (searchQuery) {
                 const q = searchQuery.toLowerCase();
                 const name = (u.first_name+' '+u.last_name).toLowerCase();
@@ -3044,6 +3070,9 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         document.getElementById('users-total-count').textContent = allUsers.length;
         document.getElementById('users-today-count').textContent = allUsers.filter(u => u.last_seen >= today).length;
         document.getElementById('users-week-count').textContent = allUsers.filter(u => u.last_seen >= week).length;
+        document.getElementById('users-fep11-count').textContent = allUsers.filter(u => u.group === 'fep11').length;
+        document.getElementById('users-fep12-count').textContent = allUsers.filter(u => u.group === 'fep12').length;
+        document.getElementById('users-fep13-count').textContent = allUsers.filter(u => u.group === 'fep13').length;
 
         if (filtered.length === 0) {
             grid.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">Нічого не знайдено</div>';
@@ -3057,14 +3086,18 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                 ? `<div class="admin-user-ava"><img src="${u.photo_url}" alt="" onerror="this.parentElement.textContent='${initials}'"/></div>`
                 : `<div class="admin-user-ava">${initials}</div>`;
             const username = u.username ? `@${u.username}` : '';
-            const lastSeenStr = timeAgo(u.last_seen);
+            const lastSeenStr = u.last_seen ? timeAgo(u.last_seen) : 'Не заходив';
+            const groupLabel = groupLabels[u.group] || '';
+            const groupColor = groupColors[u.group] || 'var(--text-muted)';
+            const groupBadge = groupLabel ? `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;background:rgba(0,0,0,0.1);color:${groupColor};border:1px solid ${groupColor}40;">${groupLabel}</span>` : '';
             return `<div class="admin-user-card">
                 ${avaHtml}
                 <div class="admin-user-info">
                     <div class="admin-user-name">${fullName}</div>
                     <div class="admin-user-meta">
                         ${username ? `<span>${username}</span>` : ''}
-                        <span>•</span>
+                        ${groupBadge}
+                        <span style="color:var(--text-muted)">•</span>
                         <span>${lastSeenStr}</span>
                         ${getBadge(u.last_seen)}
                     </div>
@@ -3102,15 +3135,23 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                 renderUsers();
             });
         });
+
+        document.querySelectorAll('.admin-users-group-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.admin-users-group-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentGroupFilter = btn.dataset.group;
+                renderUsers();
+            });
+        });
     });
 
-    // Auto-load when admin panel opens
-    const origOpen = window.openAdminPanel;
+    // Auto-load when admin panel opens (always reload to get fresh last_seen)
     document.addEventListener('DOMContentLoaded', () => {
         const overlay = document.getElementById('admin-modal-overlay');
         if (!overlay) return;
         const observer = new MutationObserver(() => {
-            if (overlay.classList.contains('active') && allUsers.length === 0) loadUsers();
+            if (overlay.classList.contains('active')) loadUsers();
         });
         observer.observe(overlay, { attributes: true, attributeFilter: ['class'] });
     });
