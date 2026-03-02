@@ -525,8 +525,7 @@
         .tg-connect-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
         .tg-connect-btn { background:linear-gradient(135deg,#2AABEE,#229ED9); border:none; border-radius:10px; color:#fff; font-size:12px; font-weight:700; padding:8px 13px; cursor:pointer; white-space:nowrap; box-shadow:0 3px 10px rgba(42,171,238,0.3); transition:all 0.2s; }
         .tg-connect-btn:hover { transform:translateY(-1px); }
-        .tg-connect-dismiss { background:none; border:none; color:var(--text-muted); font-size:16px; cursor:pointer; padding:4px; line-height:1; transition:color 0.2s; }
-        .tg-connect-dismiss:hover { color:var(--text-main); }
+
         .tg-connect-banner.success { background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(16,185,129,0.05)); border-color:rgba(16,185,129,0.35); }
         .tg-connect-banner.success .tg-connect-icon { background:linear-gradient(135deg,#10b981,#059669); box-shadow:0 3px 10px rgba(16,185,129,0.3); }
         .user-profile-bar { display:flex; align-items:center; gap:10px; background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:10px 14px; margin-bottom:16px; animation:fadeIn 0.4s ease; box-shadow:var(--shadow); position:relative; overflow:hidden; }
@@ -622,7 +621,6 @@
                 </div>
                 <div class="tg-connect-actions">
                     <button class="tg-connect-btn" id="tg-connect-btn">Прив'язати</button>
-                    <button class="tg-connect-dismiss" id="tg-connect-dismiss">✕</button>
                 </div>
             </div>
 
@@ -2864,7 +2862,6 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
     document.addEventListener('DOMContentLoaded', () => {
         const banner  = document.getElementById('tg-connect-banner');
         const btn     = document.getElementById('tg-connect-btn');
-        const dismiss = document.getElementById('tg-connect-dismiss');
 
         // Показуємо банер якщо: не в Telegram Mini App + немає кешу + не закривали недавно
         function shouldShow() {
@@ -2912,14 +2909,6 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                     clearInterval(poll);
                     if (btn.disabled) { btn.textContent = "Прив'язати"; btn.disabled = false; }
                 }, 180000);
-            });
-        }
-
-        // Кнопка "✕" — закриваємо на 24 год
-        if (dismiss) {
-            dismiss.addEventListener('click', () => {
-                if (banner) banner.classList.remove('visible');
-                localStorage.setItem('tg_banner_dismissed', String(Date.now()));
             });
         }
     });
