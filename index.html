@@ -609,6 +609,21 @@
                     </div>
                 </div>
                 <div class="user-streak" id="user-streak-badge" style="display:none">🔥 <span id="user-streak-num">0</span></div>
+                <!-- Кнопка відв'язки Telegram (показується якщо акаунт вже прив'язаний) -->
+                <button id="tg-unlink-btn" title="Від'язати Telegram" style="display:none;background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:8px;color:var(--text-muted);font-size:14px;transition:0.2s;flex-shrink:0;" onclick="(function(){if(confirm('Від\'язати Telegram акаунт?')){localStorage.removeItem('tg_user_cache');location.reload();}})()">✕</button>
+            </div>
+
+            <!-- ── Банер прив'язки Telegram ── -->
+            <div class="tg-connect-banner" id="tg-connect-banner">
+                <div class="tg-connect-icon">✈️</div>
+                <div class="tg-connect-text">
+                    <strong>Прив'яжи Telegram</strong>
+                    <span>Щоб бачити своє ім'я та аватарку</span>
+                </div>
+                <div class="tg-connect-actions">
+                    <button class="tg-connect-btn" id="tg-connect-btn">Прив'язати</button>
+                    <button class="tg-connect-dismiss" id="tg-connect-dismiss">✕</button>
+                </div>
             </div>
 
             <div class="controls" style="display:none">
@@ -2788,6 +2803,14 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             avatarWrap.textContent = '';
             avatarWrap.appendChild(img);
         }
+
+        // Показуємо кнопку відв'язки якщо акаунт прив'язаний через localStorage
+        // (тобто не через Telegram Mini App — там від'язка не потрібна)
+        const unlinkBtn = document.getElementById('tg-unlink-btn');
+        if (unlinkBtn) {
+            const hasCachedUser = (() => { try { const c = JSON.parse(localStorage.getItem('tg_user_cache') || 'null'); return !!(c && c.id); } catch { return false; } })();
+            unlinkBtn.style.display = (hasCachedUser && !tgUser) ? 'block' : 'none';
+        }
     }
 
     window.renderProfileBar = renderProfileBar;
@@ -2803,13 +2826,8 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         // Прибираємо токен з URL одразу (щоб не світився)
         window.history.replaceState({}, '', window.location.pathname + window.location.hash);
 
-        // WORKER_URL береться з localStorage (задається один раз адміном)
-        // або можна захардкодити: const workerBase = 'https://your-worker.workers.dev';
-        const workerBase = localStorage.getItem('_worker_url') || '';
-        if (!workerBase) {
-            console.warn('TG Link: _worker_url not set in localStorage');
-            return;
-        }
+        // WORKER_URL — можна захардкодити або зберегти через localStorage
+        const workerBase = localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
 
         try {
             const res = await fetch(`${workerBase}/auth?token=${encodeURIComponent(token)}`);
@@ -2864,6 +2882,13 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         if (btn) {
             btn.addEventListener('click', () => {
                 const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+                // WORKER_URL зберігається в localStorage під ключем '_worker_url'
+                // Адмін задає його один раз: localStorage.setItem('_worker_url', 'https://your-worker.workers.dev')
+                // АБО можна захардкодити нижче замість порожнього рядка:
+                const workerBase = localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
+                // Зберігаємо очікуваний токен, щоб при поверненні зі сторінки ми знали що чекаємо
+                localStorage.setItem('_pending_tg_token', token);
+                localStorage.setItem('_pending_tg_token_ts', String(Date.now()));
                 // Відкриваємо бота з deep link
                 window.open('https://t.me/shedulefep_bot?start=link_' + token, '_blank');
                 // Показуємо стан очікування
@@ -2875,6 +2900,8 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                         const c = JSON.parse(localStorage.getItem('tg_user_cache') || 'null');
                         if (c && c.id) {
                             clearInterval(poll);
+                            localStorage.removeItem('_pending_tg_token');
+                            localStorage.removeItem('_pending_tg_token_ts');
                             if (banner) banner.classList.remove('visible');
                             window.renderProfileBar && window.renderProfileBar();
                         }
@@ -2883,7 +2910,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                 // Зупиняємо поллінг через 3 хвилини
                 setTimeout(() => {
                     clearInterval(poll);
-                    if (btn.disabled) { btn.textContent = "Прив\'язати"; btn.disabled = false; }
+                    if (btn.disabled) { btn.textContent = "Прив'язати"; btn.disabled = false; }
                 }, 180000);
             });
         }
