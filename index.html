@@ -2837,12 +2837,13 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
     window.renderProfileBar = renderProfileBar;
     document.addEventListener('DOMContentLoaded', () => setTimeout(renderProfileBar, 200));
 
-    // ── Обробка ?tg_token=XXX при завантаженні сторінки ──
+    // ── Обробка ?tg_token=XXX або ?tg_code=123456 при завантаженні сторінки ──
     // Юзер повернувся з бота з посиланням — обмінюємо токен на дані
-    (async function handleTgToken() {
+    (async function handleTgAuthFromUrl() {
         const params = new URLSearchParams(window.location.search);
         const token = params.get('tg_token');
-        if (!token) return;
+        const code  = params.get('tg_code');
+        if (!token && !code) return;
 
         // Прибираємо токен з URL одразу (щоб не світився)
         window.history.replaceState({}, '', window.location.pathname + window.location.hash);
@@ -2851,7 +2852,10 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         const workerBase = localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
 
         try {
-            const res = await fetch(`${workerBase}/auth?token=${encodeURIComponent(token)}`);
+            const endpoint = token
+                ? `/auth?token=${encodeURIComponent(token)}`
+                : `/auth-code?code=${encodeURIComponent(code)}`;
+            const res = await fetch(`${workerBase}${endpoint}`);
             if (!res.ok) { console.warn('TG Link: token not found or expired'); return; }
             const data = await res.json();
             if (!data.id) return;
@@ -2898,23 +2902,69 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
 
         setTimeout(() => { if (banner && shouldShow()) banner.classList.add('visible'); }, 1000);
 
-        // Кнопка "Прив'язати" — генерує токен і відкриває бота
-        if (btn) {
-            btn.addEventListener('click', () => {
+        // Кнопка "Прив'язати" — 2 способи: через посилання або через 6-значний код
+if (btn) {
+    btn.addEventListener('click', async () => {
+        const workerBase = localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
+
+        // Розгортаємо банер і підміняємо дії на вибір способу
+        if (banner) banner.classList.add('visible');
+
+        const actions = banner ? banner.querySelector('.tg-connect-actions') : null;
+        if (!actions) return;
+
+        // Щоб не дублювати UI при повторних кліках
+        if (!document.getElementById('tg-auth-actions')) {
+            actions.innerHTML = `
+                <div id="tg-auth-actions" style="display:flex;flex-direction:column;gap:10px;align-items:stretch;min-width:220px;">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button class="tg-connect-btn" id="tg-auth-link-btn" style="flex:1 1 120px;">Через посилання</button>
+                        <button class="tg-connect-btn" id="tg-auth-code-btn" style="flex:1 1 120px;">Через код</button>
+                    </div>
+
+                    <div id="tg-auth-code-panel" style="display:none;border-top:1px solid var(--border);padding-top:10px;">
+                        <div style="font-size:12px;color:var(--text-muted);line-height:1.35;">
+                            1) Відкрий бота і отримай код<br/>
+                            2) Введи 6 цифр тут і натисни «Підтвердити»
+                        </div>
+
+                        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
+                            <input id="tg-auth-code-input" inputmode="numeric" maxlength="6" placeholder="123456"
+                                style="flex:1;padding:10px 12px;border-radius:12px;border:2px solid var(--border);font-size:14px;font-weight:700;letter-spacing:2px;text-align:center;"/>
+                            <button class="tg-connect-btn" id="tg-auth-code-confirm" style="white-space:nowrap;">Підтвердити</button>
+                        </div>
+
+                        <div id="tg-auth-code-hint" style="margin-top:8px;font-size:12px;color:var(--text-muted);"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const linkBtn   = document.getElementById('tg-auth-link-btn');
+        const codeBtn   = document.getElementById('tg-auth-code-btn');
+        const panel     = document.getElementById('tg-auth-code-panel');
+        const input     = document.getElementById('tg-auth-code-input');
+        const confirm   = document.getElementById('tg-auth-code-confirm');
+        const hint      = document.getElementById('tg-auth-code-hint');
+
+        const openBot = (startPayload) => {
+            window.open('https://t.me/shedulefep_bot?start=' + encodeURIComponent(startPayload), '_blank');
+        };
+
+        const formatCode = (c) => (c && c.length === 6) ? (c.slice(0,3) + '-' + c.slice(3)) : c;
+
+        // Спосіб 1: через посилання (як було)
+        if (linkBtn) {
+            linkBtn.onclick = () => {
                 const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
-                // WORKER_URL зберігається в localStorage під ключем '_worker_url'
-                // Адмін задає його один раз: localStorage.setItem('_worker_url', 'https://your-worker.workers.dev')
-                // АБО можна захардкодити нижче замість порожнього рядка:
-                const workerBase = localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
-                // Зберігаємо очікуваний токен, щоб при поверненні зі сторінки ми знали що чекаємо
                 localStorage.setItem('_pending_tg_token', token);
                 localStorage.setItem('_pending_tg_token_ts', String(Date.now()));
-                // Відкриваємо бота з deep link
-                window.open('https://t.me/shedulefep_bot?start=link_' + token, '_blank');
-                // Показуємо стан очікування
-                btn.textContent = '⏳ Очікуємо...';
-                btn.disabled = true;
-                // Поллінг — чекаємо поки юзер повернеться і дані з'являться в localStorage
+                openBot('link_' + token);
+
+                // UI
+                linkBtn.textContent = '⏳ Очікуємо...';
+                linkBtn.disabled = true;
+
                 const poll = setInterval(() => {
                     try {
                         const c = JSON.parse(localStorage.getItem('tg_user_cache') || 'null');
@@ -2927,14 +2977,94 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                         }
                     } catch{}
                 }, 2000);
-                // Зупиняємо поллінг через 3 хвилини
+
                 setTimeout(() => {
                     clearInterval(poll);
-                    if (btn.disabled) { btn.textContent = "Прив'язати"; btn.disabled = false; }
+                    if (linkBtn.disabled) { linkBtn.textContent = "Через посилання"; linkBtn.disabled = false; }
                 }, 180000);
-            });
+            };
+        }
+
+        // Спосіб 2: через код
+        if (codeBtn) {
+            codeBtn.onclick = async () => {
+                if (panel) panel.style.display = 'block';
+                if (hint) hint.textContent = '';
+
+                // Генеруємо 6-значний код і реєструємо його у Worker
+                const code = String(Math.floor(100000 + Math.random()*900000));
+                try {
+                    const res = await fetch(`${workerBase}/gen-code`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code })
+                    });
+
+                    if (!res.ok) {
+                        const t = await res.text().catch(()=>'');
+                        if (hint) hint.textContent = 'Не вдалося згенерувати код. ' + (t || '');
+                        return;
+                    }
+
+                    // Відкриваємо бота з code_XXXXXX
+                    openBot('code_' + code);
+
+                    if (hint) hint.innerHTML = `Код: <strong>${formatCode(code)}</strong> (діє 10 хв)`;
+                    if (input) { input.value = code; input.focus(); }
+                } catch(e) {
+                    console.error('gen-code error:', e);
+                    if (hint) hint.textContent = 'Помилка мережі під час генерації коду.';
+                }
+            };
+        }
+
+        // Підтвердження коду на сайті (без редіректа)
+        if (confirm) {
+            confirm.onclick = async () => {
+                const raw = (input ? input.value : '').replace(/\D/g,'').slice(0,6);
+                if (!/^\d{6}$/.test(raw)) {
+                    if (hint) hint.textContent = 'Введіть 6 цифр.';
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`${workerBase}/auth-code?code=${encodeURIComponent(raw)}`);
+                    if (!res.ok) {
+                        if (hint) hint.textContent = 'Код не знайдено або ще не підтверджено в боті.';
+                        return;
+                    }
+                    const data = await res.json();
+                    if (!data.id) {
+                        if (hint) hint.textContent = 'Не вдалося отримати дані користувача.';
+                        return;
+                    }
+
+                    localStorage.setItem('tg_user_cache', JSON.stringify(data));
+
+                    // Банер успіху (як у handleTgAuthFromUrl)
+                    if (banner) {
+                        banner.classList.add('visible', 'success');
+                        const icon = banner.querySelector('.tg-connect-icon');
+                        const strong = banner.querySelector('.tg-connect-text strong');
+                        const span = banner.querySelector('.tg-connect-text span');
+                        const actions2 = banner.querySelector('.tg-connect-actions');
+                        if (icon) icon.textContent = '✅';
+                        if (strong) strong.textContent = 'Telegram прив\'язано!';
+                        if (span) span.textContent = `Вітаємо, ${data.first_name}!`;
+                        if (actions2) actions2.innerHTML = '';
+                        setTimeout(() => banner.classList.remove('visible', 'success'), 4000);
+                    }
+
+                    window.renderProfileBar && window.renderProfileBar();
+                } catch(e) {
+                    console.error('auth-code error:', e);
+                    if (hint) hint.textContent = 'Помилка мережі під час перевірки коду.';
+                }
+            };
         }
     });
+}
+});
 })();
 
 // ===== EXTRA SETTINGS LOGIC =====
