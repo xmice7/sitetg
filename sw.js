@@ -117,13 +117,11 @@ self.addEventListener('fetch', (event) => {
         })
     );
 });
-
 // ── Background Sync повідомлення ──────────────
 self.addEventListener('message', (event) => {
     if (event.data === 'skipWaiting') {
         self.skipWaiting();
     }
-    // Відповідаємо клієнту про версію кешу
     if (event.data === 'getCacheVersion') {
         event.ports[0].postMessage({ version: CACHE_NAME });
     }
