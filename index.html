@@ -139,6 +139,7 @@
                         photo_url: f.photo_url?.stringValue || '',
                         last_seen: parseInt(f.last_seen?.integerValue || f.last_seen?.doubleValue || '0'),
                         group: f.group?.stringValue || '',
+                        device: f.device?.stringValue || '',
                     };
                 });
             } catch(e) { console.error('fbGetUsers error:', e); return []; }
@@ -146,11 +147,40 @@
 
         window.fbUpdateUserLastSeen = async (userId, group) => {
             try {
+                // Визначаємо девайс з User-Agent
+                const ua = navigator.userAgent;
+                let device = 'Невідомий';
+                if (/iPhone/.test(ua)) device = '📱 iPhone';
+                else if (/iPad/.test(ua)) device = '📱 iPad';
+                else if (/Android.*Mobile/.test(ua)) device = '📱 Android';
+                else if (/Android/.test(ua)) device = '📱 Android планшет';
+                else if (/Macintosh/.test(ua)) device = '💻 Mac';
+                else if (/Windows/.test(ua)) device = '💻 Windows';
+                else if (/Linux/.test(ua)) device = '💻 Linux';
+
+                let browser = '';
+                if (/TelegramBot/.test(ua)) browser = 'Telegram';
+                else if (/SamsungBrowser/.test(ua)) browser = 'Samsung';
+                else if (/OPR|Opera/.test(ua)) browser = 'Opera';
+                else if (/Edg/.test(ua)) browser = 'Edge';
+                else if (/Chrome/.test(ua)) browser = 'Chrome';
+                else if (/Safari/.test(ua)) browser = 'Safari';
+                else if (/Firefox/.test(ua)) browser = 'Firefox';
+
                 await setDoc(doc(db, 'users', String(userId)), {
                     last_seen: Date.now(),
-                    group: group || 'fep13'
+                    group: group || 'fep13',
+                    device: device + (browser ? ' / ' + browser : ''),
                 }, { merge: true });
             } catch(e) { console.error('fbUpdateUserLastSeen error:', e); }
+        };
+
+        window.fbUnlinkUser = async (userId) => {
+            try {
+                const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+                await deleteDoc(doc(db, 'users', String(userId)));
+                return true;
+            } catch(e) { console.error('fbUnlinkUser error:', e); return false; }
         };
 
         window.firebaseReady = true;
@@ -2989,32 +3019,41 @@ if (btn) {
         if (codeBtn) {
             codeBtn.onclick = async () => {
                 if (panel) panel.style.display = 'block';
-                if (hint) hint.textContent = '';
+                if (hint) hint.innerHTML = '<span style="color:var(--text-muted)">⏳ Генеруємо код…</span>';
+                codeBtn.disabled = true;
 
-                // Генеруємо 6-значний код і реєструємо його у Worker
+                // Генеруємо 6-значний код
                 const code = String(Math.floor(100000 + Math.random()*900000));
+
+                // Відкриваємо бота ОДРАЗУ (до будь-якого await, бо браузер блокує window.open після async)
+                const botUrl = 'https://t.me/shedulefep_bot?start=code_' + code;
+                const win = window.open(botUrl, '_blank');
+                // Якщо popup заблоковано — показуємо пряме посилання
+                if (!win || win.closed || typeof win.closed === 'undefined') {
+                    if (hint) hint.innerHTML = `<a href="${botUrl}" target="_blank" style="color:var(--primary);font-weight:700;text-decoration:underline;">👉 Відкрити бота (натисни тут)</a>`;
+                }
+
+                // Реєструємо код у Worker у фоні
                 try {
                     const res = await fetch(`${workerBase}/gen-code`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ code })
                     });
-
                     if (!res.ok) {
                         const t = await res.text().catch(()=>'');
-                        if (hint) hint.textContent = 'Не вдалося згенерувати код. ' + (t || '');
+                        if (hint) hint.innerHTML = `<span style="color:#ef4444">Помилка реєстрації коду: ${t||''}</span>`;
+                        codeBtn.disabled = false;
                         return;
                     }
-
-                    // Відкриваємо бота з code_XXXXXX
-                    openBot('code_' + code);
-
-                    if (hint) hint.innerHTML = `Код: <strong>${formatCode(code)}</strong> (діє 10 хв)`;
+                    if (hint) hint.innerHTML = `Код: <strong>${formatCode(code)}</strong> — <a href="${botUrl}" target="_blank" style="color:var(--primary);font-weight:700;">Відкрити бота ↗</a><br><span style="color:var(--text-muted);font-size:11px;">Введи код нижче після підтвердження в боті (діє 10 хв)</span>`;
                     if (input) { input.value = code; input.focus(); }
                 } catch(e) {
                     console.error('gen-code error:', e);
-                    if (hint) hint.textContent = 'Помилка мережі під час генерації коду.';
+                    if (hint) hint.innerHTML = `<a href="${botUrl}" target="_blank" style="color:var(--primary);font-weight:700;">👉 Відкрити бота ↗</a><br><span style="color:#ef4444;font-size:11px;">Помилка мережі — але бот вже відкрито</span>`;
+                    if (input) { input.value = code; }
                 }
+                codeBtn.disabled = false;
             };
         }
 
@@ -3223,7 +3262,7 @@ if (btn) {
             const groupLabel = groupLabels[u.group] || '';
             const groupColor = groupColors[u.group] || 'var(--text-muted)';
             const groupBadge = groupLabel ? `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;background:rgba(0,0,0,0.1);color:${groupColor};border:1px solid ${groupColor}40;">${groupLabel}</span>` : '';
-            return `<div class="admin-user-card">
+            return `<div class="admin-user-card" data-uid="${u.id}">
                 ${avaHtml}
                 <div class="admin-user-info">
                     <div class="admin-user-name">${fullName}</div>
@@ -3234,7 +3273,11 @@ if (btn) {
                         <span>${lastSeenStr}</span>
                         ${getBadge(u.last_seen)}
                     </div>
+                    ${u.device ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${u.device}</div>` : ''}
                 </div>
+                <button class="admin-unlink-btn" data-uid="${u.id}" data-name="${fullName}" title="Відв'язати Telegram" style="flex-shrink:0;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#ef4444;border-radius:8px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;transition:0.2s;">
+                    🔓 Відв'язати
+                </button>
             </div>`;
         }).join('');
     }
@@ -3251,6 +3294,30 @@ if (btn) {
         renderUsers();
         if (btn) { btn.textContent = '🔄 Оновити список'; btn.disabled = false; }
     }
+
+    // Відв'язати користувача — делегування подій на grid
+    document.getElementById('admin-users-grid')?.addEventListener('click', async (e) => {
+        const unlinkBtn = e.target.closest('.admin-unlink-btn');
+        if (!unlinkBtn) return;
+        const uid  = unlinkBtn.dataset.uid;
+        const name = unlinkBtn.dataset.name;
+        if (!uid) return;
+        if (!confirm(`Відв'язати Telegram у «${name}»? Це видалить їхній обліковий запис з бази.`)) return;
+        unlinkBtn.textContent = '⏳…';
+        unlinkBtn.disabled = true;
+        const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
+        await waitForFirebase();
+        const ok = await window.fbUnlinkUser(uid);
+        if (ok) {
+            // Прибираємо з локального масиву і перемальовуємо
+            allUsers = allUsers.filter(u => String(u.id) !== String(uid));
+            renderUsers();
+        } else {
+            unlinkBtn.textContent = '🔓 Відв\'язати';
+            unlinkBtn.disabled = false;
+            alert('Помилка. Спробуй ще раз.');
+        }
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('users-refresh-btn')?.addEventListener('click', loadUsers);
