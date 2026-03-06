@@ -6,9 +6,6 @@
     <meta name="theme-color" content="#1e293b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Розклад ФЕП">
-    <link rel="apple-touch-icon" href="https://image2url.com/r2/default/images/1772730855081-a7e47bc5-e094-4349-96fa-caccfcd436c9.jpeg">
-    <link rel="icon" type="image/jpeg" href="https://image2url.com/r2/default/images/1772730855081-a7e47bc5-e094-4349-96fa-caccfcd436c9.jpeg">
     <link rel="manifest" href="manifest.json">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <title>Розклад ФЕП</title>
@@ -134,6 +131,18 @@
                 if (!data.documents) return [];
                 return data.documents.map(doc => {
                     const f = doc.fields || {};
+                    // Parse devices array from Firestore REST format
+                    let devices = [];
+                    if (f.devices?.arrayValue?.values) {
+                        devices = f.devices.arrayValue.values.map(v => {
+                            const m = v.mapValue?.fields || {};
+                            return {
+                                id: m.id?.stringValue || '',
+                                label: m.label?.stringValue || '',
+                                last_seen: parseInt(m.last_seen?.integerValue || m.last_seen?.doubleValue || '0'),
+                            };
+                        }).filter(d => d.id);
+                    }
                     return {
                         id: f.id?.stringValue || '',
                         first_name: f.first_name?.stringValue || '',
@@ -142,40 +151,82 @@
                         photo_url: f.photo_url?.stringValue || '',
                         last_seen: parseInt(f.last_seen?.integerValue || f.last_seen?.doubleValue || '0'),
                         group: f.group?.stringValue || '',
-                        device: f.device?.stringValue || '',
+                        devices,
                     };
                 });
             } catch(e) { console.error('fbGetUsers error:', e); return []; }
         };
 
+        // ── Визначення девайсу ──────────────────────────────────────────────
+        function detectDevice() {
+            const ua = navigator.userAgent;
+            let hw = 'Невідомий';
+            if (/iPhone/.test(ua)) hw = '📱 iPhone';
+            else if (/iPad/.test(ua)) hw = '📱 iPad';
+            else if (/Android.*Mobile/.test(ua)) hw = '📱 Android';
+            else if (/Android/.test(ua)) hw = '📱 Android-планшет';
+            else if (/Macintosh/.test(ua)) hw = '💻 Mac';
+            else if (/Windows NT/.test(ua)) hw = '💻 Windows';
+            else if (/Linux/.test(ua)) hw = '💻 Linux';
+
+            let br = '';
+            if (/TelegramBot/.test(ua)) br = 'Telegram';
+            else if (/SamsungBrowser/.test(ua)) br = 'Samsung';
+            else if (/OPR|Opera/.test(ua)) br = 'Opera';
+            else if (/Edg\//.test(ua)) br = 'Edge';
+            else if (/Chrome\//.test(ua)) br = 'Chrome';
+            else if (/Safari\//.test(ua)) br = 'Safari';
+            else if (/Firefox\//.test(ua)) br = 'Firefox';
+
+            return { hw, br, label: hw + (br ? ' · ' + br : '') };
+        }
+
+        // Унікальний ID цього браузера/девайсу (генерується один раз і зберігається)
+        function getDeviceId() {
+            let id = localStorage.getItem('_fep_device_id');
+            if (!id) {
+                id = 'dev_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+                localStorage.setItem('_fep_device_id', id);
+            }
+            return id;
+        }
+
         window.fbUpdateUserLastSeen = async (userId, group) => {
             try {
-                // Визначаємо девайс з User-Agent
-                const ua = navigator.userAgent;
-                let device = 'Невідомий';
-                if (/iPhone/.test(ua)) device = '📱 iPhone';
-                else if (/iPad/.test(ua)) device = '📱 iPad';
-                else if (/Android.*Mobile/.test(ua)) device = '📱 Android';
-                else if (/Android/.test(ua)) device = '📱 Android планшет';
-                else if (/Macintosh/.test(ua)) device = '💻 Mac';
-                else if (/Windows/.test(ua)) device = '💻 Windows';
-                else if (/Linux/.test(ua)) device = '💻 Linux';
+                const { arrayUnion, arrayRemove } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+                const deviceId = getDeviceId();
+                const { label } = detectDevice();
+                const now = Date.now();
+                const userRef = doc(db, 'users', String(userId));
 
-                let browser = '';
-                if (/TelegramBot/.test(ua)) browser = 'Telegram';
-                else if (/SamsungBrowser/.test(ua)) browser = 'Samsung';
-                else if (/OPR|Opera/.test(ua)) browser = 'Opera';
-                else if (/Edg/.test(ua)) browser = 'Edge';
-                else if (/Chrome/.test(ua)) browser = 'Chrome';
-                else if (/Safari/.test(ua)) browser = 'Safari';
-                else if (/Firefox/.test(ua)) browser = 'Firefox';
+                // Читаємо поточний стан — щоб оновити last_seen конкретного девайсу
+                const snap = await getDoc(userRef);
+                const existingDevices = snap.exists() ? (snap.data().devices || []) : [];
 
-                await setDoc(doc(db, 'users', String(userId)), {
-                    last_seen: Date.now(),
+                // Оновлюємо або додаємо поточний девайс
+                const otherDevices = existingDevices.filter(d => d.id !== deviceId);
+                const updatedDevices = [
+                    ...otherDevices,
+                    { id: deviceId, label, last_seen: now }
+                ];
+
+                await setDoc(userRef, {
+                    last_seen: now,
                     group: group || 'fep13',
-                    device: device + (browser ? ' / ' + browser : ''),
+                    devices: updatedDevices,
                 }, { merge: true });
             } catch(e) { console.error('fbUpdateUserLastSeen error:', e); }
+        };
+
+        // Відключити конкретний девайс
+        window.fbUnlinkDevice = async (userId, deviceId) => {
+            try {
+                const snap = await getDoc(doc(db, 'users', String(userId)));
+                if (!snap.exists()) return false;
+                const devices = (snap.data().devices || []).filter(d => d.id !== deviceId);
+                await setDoc(doc(db, 'users', String(userId)), { devices }, { merge: true });
+                return true;
+            } catch(e) { console.error('fbUnlinkDevice error:', e); return false; }
         };
 
         window.fbUnlinkUser = async (userId) => {
@@ -609,6 +660,79 @@
         .name-display-input:focus { border-color:var(--primary); }
         @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
         .loading-skeleton { background:linear-gradient(90deg,var(--border) 25%,var(--bg-body) 50%,var(--border) 75%); background-size:200%; animation:shimmer 1.2s infinite; border-radius:8px; height:14px; }
+
+        /* ── Redesigned admin user cards ── */
+        .admin-user-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 10px;
+            transition: box-shadow 0.2s;
+        }
+        .admin-user-card:hover { box-shadow: var(--shadow-hover); }
+        .admin-user-card-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .admin-user-info { flex: 1; min-width: 0; }
+        .admin-user-name { font-size: 15px; font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .admin-user-row2 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
+        .admin-group-badge {
+            font-size: 11px; font-weight: 800; padding: 2px 8px;
+            border-radius: 6px; letter-spacing: 0.3px;
+        }
+        .admin-user-username { font-size: 12px; color: var(--text-muted); }
+        .admin-user-lastseen { font-size: 12px; color: var(--text-muted); }
+
+        /* Devices section */
+        .admin-devices-section {
+            margin-top: 10px;
+            border-top: 1px solid var(--border);
+            padding-top: 10px;
+        }
+        .admin-devices-label {
+            font-size: 11px; font-weight: 700; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+        }
+        .admin-device-row {
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--bg-body);
+            border-radius: 10px; padding: 8px 10px;
+            margin-bottom: 6px; gap: 10px;
+        }
+        .admin-device-row:last-child { margin-bottom: 0; }
+        .admin-device-info { flex: 1; min-width: 0; }
+        .admin-device-name { font-size: 13px; font-weight: 600; color: var(--text-main); }
+        .admin-device-time { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+        .admin-device-unlink {
+            background: rgba(239,68,68,0.1);
+            border: 1px solid rgba(239,68,68,0.25);
+            color: #ef4444;
+            border-radius: 8px;
+            padding: 5px 9px;
+            font-size: 12px; font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+        .admin-device-unlink:hover { background: rgba(239,68,68,0.2); }
+        .admin-unlink-btn {
+            background: rgba(239,68,68,0.08);
+            border: 1px solid rgba(239,68,68,0.2);
+            color: #ef4444;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 12px; font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+        .admin-unlink-btn:hover { background: rgba(239,68,68,0.18); }
+
     </style>
 </head>
 <body>
@@ -3258,29 +3382,57 @@ if (btn) {
             const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ') || 'Без імені';
             const initials = ((u.first_name||'').charAt(0)+(u.last_name||'').charAt(0)).toUpperCase() || '?';
             const avaHtml = u.photo_url
-                ? `<div class="admin-user-ava"><img src="${u.photo_url}" alt="" onerror="this.parentElement.textContent='${initials}'"/></div>`
+                ? `<div class="admin-user-ava"><img src="${u.photo_url}" alt="" onerror="this.parentElement.innerHTML='${initials}'"/></div>`
                 : `<div class="admin-user-ava">${initials}</div>`;
-            const username = u.username ? `@${u.username}` : '';
+
+            const groupLabel = groupLabels[u.group] || u.group || '—';
+            const groupColor = groupColors[u.group] || '#64748b';
+            const groupBg    = u.group === 'fep13' ? 'rgba(59,130,246,0.12)' :
+                               u.group === 'fep12' ? 'rgba(124,58,237,0.12)' :
+                               u.group === 'fep11' ? 'rgba(5,150,105,0.12)' : 'rgba(100,116,139,0.1)';
+
             const lastSeenStr = u.last_seen ? timeAgo(u.last_seen) : 'Не заходив';
-            const groupLabel = groupLabels[u.group] || '';
-            const groupColor = groupColors[u.group] || 'var(--text-muted)';
-            const groupBadge = groupLabel ? `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;background:rgba(0,0,0,0.1);color:${groupColor};border:1px solid ${groupColor}40;">${groupLabel}</span>` : '';
-            return `<div class="admin-user-card" data-uid="${u.id}">
-                ${avaHtml}
-                <div class="admin-user-info">
-                    <div class="admin-user-name">${fullName}</div>
-                    <div class="admin-user-meta">
-                        ${username ? `<span>${username}</span>` : ''}
-                        ${groupBadge}
-                        <span style="color:var(--text-muted)">•</span>
-                        <span>${lastSeenStr}</span>
-                        ${getBadge(u.last_seen)}
-                    </div>
-                    ${u.device ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${u.device}</div>` : ''}
+            const usernameHtml = u.username ? `<span class="admin-user-username">@${u.username}</span>` : '';
+
+            // Devices list
+            const devices = u.devices || [];
+            const devicesHtml = devices.length > 0 ? `
+                <div class="admin-devices-section">
+                    <div class="admin-devices-label">📲 Девайси (${devices.length})</div>
+                    ${devices.sort((a,b)=>(b.last_seen||0)-(a.last_seen||0)).map(d => `
+                        <div class="admin-device-row">
+                            <div class="admin-device-info">
+                                <div class="admin-device-name">${d.label || 'Невідомий'}</div>
+                                <div class="admin-device-time">${d.last_seen ? timeAgo(d.last_seen) : '—'}</div>
+                            </div>
+                            <button class="admin-device-unlink"
+                                data-uid="${u.id}" data-did="${d.id}" data-name="${fullName}" data-dlabel="${(d.label||'').replace(/"/g,'')}"
+                                title="Відключити цей девайс">
+                                Відключити
+                            </button>
+                        </div>
+                    `).join('')}
                 </div>
-                <button class="admin-unlink-btn" data-uid="${u.id}" data-name="${fullName}" title="Відв'язати Telegram" style="flex-shrink:0;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#ef4444;border-radius:8px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;transition:0.2s;">
-                    🔓 Відв'язати
-                </button>
+            ` : `<div class="admin-devices-section"><div style="font-size:12px;color:var(--text-muted);">📲 Девайси не збережені (старий запис)</div></div>`;
+
+            return `<div class="admin-user-card" data-uid="${u.id}">
+                <div class="admin-user-card-top">
+                    ${avaHtml}
+                    <div class="admin-user-info">
+                        <div class="admin-user-name">${fullName}</div>
+                        <div class="admin-user-row2">
+                            <span class="admin-group-badge" style="background:${groupBg};color:${groupColor};">${groupLabel}</span>
+                            ${usernameHtml}
+                            <span class="admin-user-lastseen">${lastSeenStr} ${getBadge(u.last_seen)}</span>
+                        </div>
+                    </div>
+                    <button class="admin-unlink-btn"
+                        data-uid="${u.id}" data-name="${fullName}"
+                        title="Повністю відв'язати Telegram">
+                        🔓 Відв'язати
+                    </button>
+                </div>
+                ${devicesHtml}
             </div>`;
         }).join('');
     }
@@ -3298,27 +3450,53 @@ if (btn) {
         if (btn) { btn.textContent = '🔄 Оновити список'; btn.disabled = false; }
     }
 
-    // Відв'язати користувача — делегування подій на grid
+    // ── Делегування кліків у гриді користувачів ──────────────────────────
     document.getElementById('admin-users-grid')?.addEventListener('click', async (e) => {
-        const unlinkBtn = e.target.closest('.admin-unlink-btn');
-        if (!unlinkBtn) return;
-        const uid  = unlinkBtn.dataset.uid;
-        const name = unlinkBtn.dataset.name;
-        if (!uid) return;
-        if (!confirm(`Відв'язати Telegram у «${name}»? Це видалить їхній обліковий запис з бази.`)) return;
-        unlinkBtn.textContent = '⏳…';
-        unlinkBtn.disabled = true;
-        const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
-        await waitForFirebase();
-        const ok = await window.fbUnlinkUser(uid);
-        if (ok) {
-            // Прибираємо з локального масиву і перемальовуємо
-            allUsers = allUsers.filter(u => String(u.id) !== String(uid));
-            renderUsers();
-        } else {
-            unlinkBtn.textContent = '🔓 Відв\'язати';
-            unlinkBtn.disabled = false;
-            alert('Помилка. Спробуй ще раз.');
+        const waitFB = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
+
+        // Повне відключення акаунту
+        const fullUnlink = e.target.closest('.admin-unlink-btn');
+        if (fullUnlink) {
+            const uid  = fullUnlink.dataset.uid;
+            const name = fullUnlink.dataset.name;
+            if (!uid) return;
+            if (!confirm(`Повністю відв'язати Telegram у «${name}»?\nЦе видалить весь обліковий запис і всі девайси.`)) return;
+            const orig = fullUnlink.textContent;
+            fullUnlink.textContent = '⏳…'; fullUnlink.disabled = true;
+            await waitFB();
+            const ok = await window.fbUnlinkUser(uid);
+            if (ok) {
+                allUsers = allUsers.filter(u => String(u.id) !== String(uid));
+                renderUsers();
+            } else {
+                fullUnlink.textContent = orig; fullUnlink.disabled = false;
+                alert('Помилка. Спробуй ще раз.');
+            }
+            return;
+        }
+
+        // Відключення одного девайсу
+        const deviceUnlink = e.target.closest('.admin-device-unlink');
+        if (deviceUnlink) {
+            const uid    = deviceUnlink.dataset.uid;
+            const did    = deviceUnlink.dataset.did;
+            const name   = deviceUnlink.dataset.name;
+            const dlabel = deviceUnlink.dataset.dlabel;
+            if (!uid || !did) return;
+            if (!confirm(`Відключити девайс «${dlabel}» у «${name}»?\nКористувач зможе знову прив'язатись.`)) return;
+            deviceUnlink.textContent = '⏳…'; deviceUnlink.disabled = true;
+            await waitFB();
+            const ok = await window.fbUnlinkDevice(uid, did);
+            if (ok) {
+                // Оновлюємо локально
+                const user = allUsers.find(u => String(u.id) === String(uid));
+                if (user) user.devices = (user.devices || []).filter(d => d.id !== did);
+                renderUsers();
+            } else {
+                deviceUnlink.textContent = 'Відключити'; deviceUnlink.disabled = false;
+                alert('Помилка. Спробуй ще раз.');
+            }
+            return;
         }
     });
 
