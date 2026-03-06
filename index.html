@@ -3674,22 +3674,19 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             startAutoPoll(code);
         }
 
-        // Кнопка "Отримати код"
-        document.addEventListener('DOMContentLoaded', () => {
-            const genBtn  = document.getElementById('tg-generate-btn');
-            const regenBtn = document.getElementById('tg-regen-btn');
-
-            if (genBtn)   genBtn.addEventListener('click',  generateAndShowCode);
-            if (regenBtn) regenBtn.addEventListener('click', () => {
-                stopAutoPoll();
-                const step1 = document.getElementById('tg-step-generate');
-                const step2 = document.getElementById('tg-step-code');
-                if (step1) { step1.style.display = 'block'; }
-                if (step2) { step2.style.display = 'none'; }
-                const genBtnInner = document.getElementById('tg-generate-btn');
-                if (genBtnInner) { genBtnInner.disabled = false; genBtnInner.style.opacity = ''; genBtnInner.innerHTML = '<span style="font-size:20px;">🔢</span> Отримати код'; }
+        // Кнопка "Отримати код" — event delegation
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('#tg-generate-btn')) {
                 generateAndShowCode();
-            });
+            }
+            if (e.target.closest('#tg-regen-btn')) {
+                stopAutoPoll();
+                var s1 = document.getElementById('tg-step-generate');
+                var s2 = document.getElementById('tg-step-code');
+                if (s1) s1.style.display = 'block';
+                if (s2) s2.style.display = 'none';
+                generateAndShowCode();
+            }
         });
 
                 // Show banner if not linked and not dismissed recently
