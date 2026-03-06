@@ -3515,6 +3515,13 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             } else {
                 if (miniNote)  miniNote.style.display  = 'none';
                 if (browserUI) browserUI.style.display = 'block';
+                // Reset to step 1 each time sheet opens
+                const step1 = document.getElementById('tg-step-generate');
+                const step2 = document.getElementById('tg-step-code');
+                if (step1) step1.style.display = 'block';
+                if (step2) step2.style.display = 'none';
+                const genBtn = document.getElementById('tg-generate-btn');
+                if (genBtn) { genBtn.disabled = false; genBtn.style.opacity = ''; genBtn.innerHTML = '<span style="font-size:20px;">\u{1F522}</span> Отримати код'; }
             }
         }
 
@@ -3557,52 +3564,14 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         if (closeBtn)   closeBtn.addEventListener('click', closeSheet);
         overlay.addEventListener('click', e => { if (e.target === overlay) closeSheet(); });
 
-        // ── Method 1: via link ──
-        const linkBtn     = document.getElementById('tg-method-link');
-        const linkWaiting = document.getElementById('tg-link-waiting');
-
-        if (linkBtn) {
-            linkBtn.addEventListener('click', () => {
-                const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
-                localStorage.setItem('_pending_tg_token', token);
-                const botUrl = 'https://t.me/shedulefep_bot?start=link_' + encodeURIComponent(token);
-                window.open(botUrl, '_blank');
-
-                linkBtn.style.opacity = '0.5';
-                linkBtn.style.pointerEvents = 'none';
-                if (linkWaiting) linkWaiting.style.display = 'flex';
-
-                const poll = setInterval(() => {
-                    if (hasCachedUser()) {
-                        clearInterval(poll);
-                        localStorage.removeItem('_pending_tg_token');
-                        closeSheet();
-                        const u = JSON.parse(localStorage.getItem('tg_user_cache') || '{}');
-                        showSuccessBanner(u.first_name || 'Студент');
-                        window.renderProfileBar && window.renderProfileBar();
-                    }
-                }, 1500);
-                setTimeout(() => {
-                    clearInterval(poll);
-                    linkBtn.style.opacity = '';
-                    linkBtn.style.pointerEvents = '';
-                    if (linkWaiting) linkWaiting.style.display = 'none';
-                }, 180000);
-            });
-        }
-
-        // ── Method 2: via code — з авто-поллінгом ──
-        // Як тільки бот підтверджує → воркер зберігає юзера → сайт ловить автоматично
-        const codeBtn    = document.getElementById('tg-method-code');
-        const codeBox    = document.getElementById('tg-code-box');
-        const codeInput  = document.getElementById('tg-code-input');
-        const confirmBtn = document.getElementById('tg-code-confirm');
-        const codeHint   = document.getElementById('tg-code-hint');
-        const botLinkEl  = document.getElementById('tg-bot-link');
-        let autoPollTimer = null;
+        // ── Генерація коду: сайт показує код → юзер вводить в боті → авто-вхід ──
+        let autoPollTimer  = null;
+        let codeTimerInterval = null;
+        let currentCode    = null;
 
         function stopAutoPoll() {
-            if (autoPollTimer) { clearInterval(autoPollTimer); autoPollTimer = null; }
+            if (autoPollTimer)  { clearInterval(autoPollTimer);  autoPollTimer  = null; }
+            if (codeTimerInterval) { clearInterval(codeTimerInterval); codeTimerInterval = null; }
         }
 
         async function tryAuthCode(code) {
@@ -3614,10 +3583,34 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             } catch(e) { return null; }
         }
 
+        function startCodeTimer(seconds) {
+            clearInterval(codeTimerInterval);
+            const timerEl = document.getElementById('tg-code-timer');
+            let left = seconds;
+            function tick() {
+                if (!timerEl) return;
+                const m = Math.floor(left / 60);
+                const s = left % 60;
+                timerEl.textContent = m + ':' + String(s).padStart(2, '0');
+                if (left <= 60) timerEl.style.color = '#ef4444';
+                if (left <= 0) {
+                    clearInterval(codeTimerInterval);
+                    stopAutoPoll();
+                    const status = document.getElementById('tg-poll-status');
+                    if (status) { status.style.color = '#ef4444'; status.textContent = 'Код застарів — натисни «Новий код»'; }
+                }
+                left--;
+            }
+            tick();
+            codeTimerInterval = setInterval(tick, 1000);
+        }
+
         function startAutoPoll(code) {
             stopAutoPoll();
+            currentCode = code;
+            const status = document.getElementById('tg-poll-status');
             let dots = 0;
-            // Перший запит через 1.5с, потім кожні 2с
+
             const doCheck = async () => {
                 const data = await tryAuthCode(code);
                 if (data) {
@@ -3628,99 +3621,78 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                     window.renderProfileBar && window.renderProfileBar();
                 } else {
                     dots = (dots + 1) % 4;
-                    if (codeHint && !codeInput.value) {
-                        codeHint.style.color = 'var(--text-muted)';
-                        codeHint.textContent = 'Очікуємо підтвердження в боті' + '.'.repeat(dots + 1);
-                    }
+                    if (status) status.textContent = 'Очікуємо підтвердження від бота' + '.'.repeat(dots + 1);
                 }
             };
-            setTimeout(doCheck, 1500);
-            autoPollTimer = setInterval(doCheck, 2000);
-            // Зупиняємо через 5 хв
-            setTimeout(stopAutoPoll, 300000);
+
+            // Перший запит одразу через 2с, далі кожні 2.5с
+            setTimeout(doCheck, 2000);
+            autoPollTimer = setInterval(doCheck, 2500);
         }
 
-        if (codeBtn) {
-            codeBtn.addEventListener('click', async () => {
-                codeBtn.style.opacity = '0.5';
-                codeBtn.style.pointerEvents = 'none';
+        async function generateAndShowCode() {
+            const genBtn   = document.getElementById('tg-generate-btn');
+            const step1    = document.getElementById('tg-step-generate');
+            const step2    = document.getElementById('tg-step-code');
+            const displayEl = document.getElementById('tg-display-code');
+            const timerEl  = document.getElementById('tg-code-timer');
+            const status   = document.getElementById('tg-poll-status');
+
+            if (genBtn) { genBtn.disabled = true; genBtn.style.opacity = '0.6'; }
+
+            const code = String(Math.floor(100000 + Math.random() * 900000));
+
+            // Реєструємо код на воркері
+            let ok = false;
+            try {
+                const res = await fetch(workerBase + '/gen-code', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({code})
+                });
+                ok = res.ok;
+            } catch(e) { ok = false; }
+
+            if (!ok) {
+                if (genBtn) { genBtn.disabled = false; genBtn.style.opacity = ''; genBtn.textContent = '⚠️ Помилка — спробуй ще'; }
+                return;
+            }
+
+            // Показуємо крок 2 з кодом
+            if (step1) step1.style.display = 'none';
+            if (step2) step2.style.display = 'block';
+
+            // Відображаємо код по дві цифри для читабельності
+            if (displayEl) {
+                const formatted = code.slice(0,2) + ' ' + code.slice(2,4) + ' ' + code.slice(4,6);
+                displayEl.textContent = formatted;
+            }
+            if (timerEl) { timerEl.style.color = ''; }
+            if (status) { status.style.color = 'var(--text-muted)'; status.textContent = 'Очікуємо підтвердження від бота…'; }
+
+            startCodeTimer(600); // 10 хвилин
+            startAutoPoll(code);
+        }
+
+        // Кнопка "Отримати код"
+        document.addEventListener('DOMContentLoaded', () => {
+            const genBtn  = document.getElementById('tg-generate-btn');
+            const regenBtn = document.getElementById('tg-regen-btn');
+
+            if (genBtn)   genBtn.addEventListener('click',  generateAndShowCode);
+            if (regenBtn) regenBtn.addEventListener('click', () => {
                 stopAutoPoll();
-
-                const code   = String(Math.floor(100000 + Math.random() * 900000));
-                const botUrl = 'https://t.me/shedulefep_bot?start=code_' + code;
-                if (botLinkEl) botLinkEl.href = botUrl;
-
-                // Відкриваємо бота ДО await (браузер блокує window.open після async)
-                window.open(botUrl, '_blank');
-
-                if (codeBox)  { codeBox.style.display = 'block'; }
-                if (codeInput) { codeInput.value = ''; }
-                if (codeHint) { codeHint.style.color = 'var(--text-muted)'; codeHint.textContent = 'Реєструємо код...'; }
-
-                try {
-                    const res = await fetch(workerBase + '/gen-code', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({code})
-                    });
-                    if (res.ok) {
-                        // Запускаємо авто-поллінг — як тільки бот підтвердить, вхід автоматичний
-                        startAutoPoll(code);
-                        if (codeHint) {
-                            codeHint.style.color = 'var(--text-muted)';
-                            codeHint.textContent = 'Очікуємо підтвердження в боті...';
-                        }
-                    } else {
-                        if (codeHint) { codeHint.style.color = '#ef4444'; codeHint.textContent = 'Помилка реєстрації коду. Спробуй ще.'; }
-                    }
-                } catch(e) {
-                    if (codeHint) { codeHint.style.color = '#ef4444'; codeHint.textContent = 'Помилка мережі — але бот вже відкрито.'; }
-                }
-
-                codeBtn.style.opacity = '';
-                codeBtn.style.pointerEvents = '';
+                const step1 = document.getElementById('tg-step-generate');
+                const step2 = document.getElementById('tg-step-code');
+                if (step1) { step1.style.display = 'block'; }
+                if (step2) { step2.style.display = 'none'; }
+                const genBtnInner = document.getElementById('tg-generate-btn');
+                if (genBtnInner) { genBtnInner.disabled = false; genBtnInner.style.opacity = ''; genBtnInner.innerHTML = '<span style="font-size:20px;">🔢</span> Отримати код'; }
+                generateAndShowCode();
             });
-        }
+        });
 
-        // Ручне підтвердження — якщо юзер хоче ввести код сам (резервний варіант)
-        if (confirmBtn) {
-            confirmBtn.addEventListener('click', async () => {
-                const raw = (codeInput ? codeInput.value : '').replace(/\D/g, '').slice(0, 6);
-                if (!/^\d{6}$/.test(raw)) {
-                    if (codeHint) { codeHint.style.color = '#ef4444'; codeHint.textContent = 'Введи рівно 6 цифр.'; }
-                    if (codeInput) codeInput.focus();
-                    return;
-                }
-                stopAutoPoll();
-                confirmBtn.disabled = true;
-                confirmBtn.textContent = '...';
-                if (codeHint) { codeHint.style.color = 'var(--text-muted)'; codeHint.textContent = 'Перевіряємо...'; }
-                const data = await tryAuthCode(raw);
-                if (data) {
-                    localStorage.setItem('tg_user_cache', JSON.stringify(data));
-                    closeSheet();
-                    showSuccessBanner(data.first_name || 'Студент');
-                    window.renderProfileBar && window.renderProfileBar();
-                } else {
-                    if (codeHint) { codeHint.style.color = '#ef4444'; codeHint.textContent = 'Код не знайдено або ще не підтверджено в боті.'; }
-                    confirmBtn.disabled = false;
-                    confirmBtn.textContent = 'Підтвердити';
-                    // Відновлюємо авто-поллінг
-                    startAutoPoll(raw);
-                }
-            });
-        }
-
-        if (codeInput) {
-            codeInput.addEventListener('input', () => {
-                codeInput.value = codeInput.value.replace(/\D/g, '').slice(0, 6);
-                if (codeHint) codeHint.textContent = '';
-            });
-            codeInput.addEventListener('keydown', e => { if (e.key === 'Enter' && confirmBtn) confirmBtn.click(); });
-        }
-
-
-        // Show banner if not linked and not dismissed recently
+                // Show banner if not linked and not dismissed recently
         function shouldShowBanner() {
             if (isMiniApp) return false;
             if (hasCachedUser()) return false;
@@ -3815,40 +3787,53 @@ if ('serviceWorker' in navigator) {
         </div>
 
         <div id="tg-auth-browser-ui">
-            <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Обери зручний спосіб прив'язки:</p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;">
-                <button id="tg-method-link" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 12px;border:1.5px solid var(--border);border-radius:18px;background:var(--bg-body);cursor:pointer;transition:all 0.2s;font-family:inherit;text-align:center;">
-                    <span style="font-size:28px;">🔗</span>
-                    <span style="font-size:14px;font-weight:700;color:var(--text-main);">Через посилання</span>
-                    <span style="font-size:11px;color:var(--text-muted);line-height:1.35;">Перейдеш до бота — він поверне назад</span>
-                </button>
-                <button id="tg-method-code" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 12px;border:1.5px solid var(--border);border-radius:18px;background:var(--bg-body);cursor:pointer;transition:all 0.2s;font-family:inherit;text-align:center;">
-                    <span style="font-size:28px;">🔢</span>
-                    <span style="font-size:14px;font-weight:700;color:var(--text-main);">Через код</span>
-                    <span style="font-size:11px;color:var(--text-muted);line-height:1.35;">Отримаєш код у боті та введеш тут</span>
+
+            <!-- Крок 1: генерація коду -->
+            <div id="tg-step-generate">
+                <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.5;">
+                    Натисни кнопку — отримаєш код.<br>Відкрий бота і введи його там.
+                </p>
+                <button id="tg-generate-btn" style="width:100%;padding:15px;background:linear-gradient(135deg,#2AABEE,#229ED9);border:none;border-radius:16px;color:#fff;font-size:16px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;font-family:inherit;box-shadow:0 4px 16px rgba(42,171,238,0.35);transition:opacity 0.2s;">
+                    <span style="font-size:20px;">🔢</span> Отримати код
                 </button>
             </div>
 
-            <div id="tg-link-waiting" style="display:none;align-items:center;gap:10px;padding:14px;background:var(--bg-body);border:1px solid var(--border);border-radius:14px;margin-top:14px;font-size:13px;color:var(--text-muted);">
-                <div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--border);border-top-color:#2AABEE;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>
-                <div><strong style="color:var(--text-main);">Очікуємо підтвердження…</strong><br><span style="font-size:12px;">Перейди до бота і натисни <strong>«Підтвердити»</strong></span></div>
+            <!-- Крок 2: показуємо код + чекаємо -->
+            <div id="tg-step-code" style="display:none;">
+                <!-- Великий код -->
+                <div style="background:linear-gradient(135deg,rgba(42,171,238,0.1),rgba(42,171,238,0.05));border:1.5px solid rgba(42,171,238,0.3);border-radius:18px;padding:20px;text-align:center;margin-bottom:16px;">
+                    <div style="font-size:12px;font-weight:700;color:#2AABEE;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Твій код</div>
+                    <div id="tg-display-code" style="font-size:42px;font-weight:900;letter-spacing:10px;color:var(--text-main);font-variant-numeric:tabular-nums;line-height:1;">——————</div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Діє <span id="tg-code-timer" style="font-weight:700;color:var(--text-main);">10:00</span></div>
+                </div>
+
+                <!-- Інструкція -->
+                <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;">
+                        <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;">1</div>
+                        <div style="font-size:13px;color:var(--text-main);">Відкрий бота <a href="https://t.me/shedulefep_bot" target="_blank" style="color:#2AABEE;font-weight:700;">@shedulefep_bot ↗</a></div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;">
+                        <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;">2</div>
+                        <div style="font-size:13px;color:var(--text-main);">Надішли боту цей <strong>6-значний код</strong></div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;">
+                        <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;">3</div>
+                        <div style="font-size:13px;color:var(--text-main);">Сайт <strong>автоматично</strong> увійде — нічого більше робити не треба</div>
+                    </div>
+                </div>
+
+                <!-- Статус очікування -->
+                <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;">
+                    <div style="width:16px;height:16px;border-radius:50%;border:2px solid var(--border);border-top-color:#2AABEE;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>
+                    <div id="tg-poll-status" style="font-size:13px;color:var(--text-muted);">Очікуємо підтвердження від бота…</div>
+                </div>
+
+                <button id="tg-regen-btn" style="width:100%;margin-top:12px;padding:11px;background:transparent;border:1px solid var(--border);border-radius:12px;color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s;">
+                    🔄 Новий код
+                </button>
             </div>
 
-            <div id="tg-code-box" style="display:none;background:var(--bg-body);border:1px solid var(--border);border-radius:16px;padding:16px;margin-top:14px;">
-                <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;font-size:13px;color:var(--text-muted);line-height:1.5;">
-                    <div style="min-width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px;">1</div>
-                    <div>Відкрий бота — посилання вже відкрито. Якщо ні: <a id="tg-bot-link" href="https://t.me/shedulefep_bot" target="_blank" style="color:#2AABEE;font-weight:700;">натисни тут ↗</a></div>
-                </div>
-                <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;font-size:13px;color:var(--text-muted);line-height:1.5;">
-                    <div style="min-width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px;">2</div>
-                    <div>Підтверди в боті — сайт автоматично увійде. Або введи код нижче вручну.</div>
-                </div>
-                <div style="display:flex;gap:8px;">
-                    <input type="tel" id="tg-code-input" inputmode="numeric" maxlength="6" placeholder="——————" autocomplete="one-time-code" style="flex:1;padding:13px 14px;border-radius:12px;border:2px solid var(--border);background:var(--bg-card);color:var(--text-main);font-size:20px;font-weight:800;letter-spacing:5px;text-align:center;font-family:inherit;outline:none;transition:border-color 0.2s;"/>
-                    <button id="tg-code-confirm" style="padding:13px 18px;background:linear-gradient(135deg,#2AABEE,#229ED9);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(42,171,238,0.3);transition:all 0.2s;font-family:inherit;flex-shrink:0;">Підтвердити</button>
-                </div>
-                <div id="tg-code-hint" style="margin-top:10px;font-size:12px;color:var(--text-muted);line-height:1.5;min-height:18px;"></div>
-            </div>
         </div>
     </div>
 </div>
