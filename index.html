@@ -280,7 +280,8 @@
         .page.active { display: block; }
         @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
         header { text-align: center; margin-bottom: 24px; position: relative; padding-top: 10px; }
-        .header-logo-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px; }
+        .header-logo-row { display: flex; align-items: center; justify-content: center; margin-bottom: 6px; position: relative; min-height: 40px; }
+        .header-logo-row .site-logo { position: absolute; left: 0; top: 50%; transform: translateY(-50%); }
         .site-logo { width: 36px; height: 36px; border-radius: 10px; object-fit: cover; border: 2px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.2); flex-shrink: 0; transition: transform 0.3s ease,box-shadow 0.3s ease; }
         .site-logo:hover { transform: scale(1.08) rotate(3deg); box-shadow: 0 4px 16px rgba(59,130,246,0.35); }
         header h1 { font-size: 26px; font-weight: 800; background: linear-gradient(135deg,var(--primary) 0%,var(--accent-purple) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 0 12px rgba(59,130,246,0.4)); }
@@ -733,6 +734,40 @@
         }
         .admin-unlink-btn:hover { background: rgba(239,68,68,0.18); }
 
+
+        /* ── Pull-to-Refresh ── */
+        .ptr-indicator {
+            position: fixed; top: 0; left: 50%;
+            transform: translateX(-50%) translateY(-72px);
+            width: 48px; height: 48px; border-radius: 50%;
+            background: var(--bg-card); border: 1.5px solid var(--border);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 400; transition: none; opacity: 0; pointer-events: none;
+        }
+        .ptr-indicator.ptr-animate {
+            transition: transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275), opacity 0.25s;
+        }
+        .ptr-indicator.ptr-visible { opacity: 1; }
+        .ptr-indicator.ptr-ready { border-color: var(--primary); }
+        .ptr-indicator.ptr-refreshing {
+            transform: translateX(-50%) translateY(14px) !important;
+            opacity: 1 !important; border-color: var(--primary);
+            transition: transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275), opacity 0.25s;
+        }
+        .ptr-arrow {
+            width: 20px; height: 20px; stroke: var(--text-muted);
+            fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+            transition: transform 0.25s ease, stroke 0.2s;
+        }
+        .ptr-indicator.ptr-ready .ptr-arrow { stroke: var(--primary); transform: rotate(180deg); }
+        .ptr-spinner {
+            display: none; width: 20px; height: 20px;
+            border-radius: 50%; border: 2.5px solid var(--border);
+            border-top-color: var(--primary); animation: spin 0.7s linear infinite;
+        }
+        .ptr-indicator.ptr-refreshing .ptr-arrow { display: none; }
+        .ptr-indicator.ptr-refreshing .ptr-spinner { display: block; }
     </style>
 </head>
 <body>
@@ -2143,7 +2178,7 @@ function applyPinnedMsg(text) {
     else{el.classList.remove('active');}
 }
 
-async function loadAdminData() {
+window.loadAdminData = async function loadAdminData() {
     const waitForFirebase=()=>new Promise(r=>{if(window.firebaseReady)r();else window.addEventListener('firebase-ready',r,{once:true});});
     await waitForFirebase();
     const countedKey = `${state.scheduleGroup}_counted`;
@@ -3042,197 +3077,8 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         }
     })();
 
-    // ── Логіка банера прив'язки ──
-    document.addEventListener('DOMContentLoaded', () => {
-        const banner  = document.getElementById('tg-connect-banner');
-        const btn     = document.getElementById('tg-connect-btn');
 
-        // Показуємо банер якщо: не в Telegram Mini App + немає кешу + не закривали недавно
-        function shouldShow() {
-            const tg = window.Telegram && window.Telegram.WebApp;
-            if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) return false;
-            try { const c = JSON.parse(localStorage.getItem('tg_user_cache') || 'null'); if (c && c.id) return false; } catch{}
-            const d = localStorage.getItem('tg_banner_dismissed');
-            if (d && Date.now() - parseInt(d) < 86400000) return false; // 24 год
-            return true;
-        }
-
-        setTimeout(() => { if (banner && shouldShow()) banner.classList.add('visible'); }, 1000);
-
-        // Кнопка "Прив'язати" — 2 способи: через посилання або через 6-значний код
-if (btn) {
-    btn.addEventListener('click', async () => {
-        const workerBase = localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
-
-        // Розгортаємо банер і підміняємо дії на вибір способу
-        if (banner) banner.classList.add('visible');
-
-        const actions = banner ? banner.querySelector('.tg-connect-actions') : null;
-        if (!actions) return;
-
-        // Щоб не дублювати UI при повторних кліках
-        if (!document.getElementById('tg-auth-actions')) {
-            actions.innerHTML = `
-                <div id="tg-auth-actions" style="display:flex;flex-direction:column;gap:10px;align-items:stretch;min-width:220px;">
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <button class="tg-connect-btn" id="tg-auth-link-btn" style="flex:1 1 120px;">Через посилання</button>
-                        <button class="tg-connect-btn" id="tg-auth-code-btn" style="flex:1 1 120px;">Через код</button>
-                    </div>
-
-                    <div id="tg-auth-code-panel" style="display:none;border-top:1px solid var(--border);padding-top:10px;">
-                        <div style="font-size:12px;color:var(--text-muted);line-height:1.35;">
-                            1) Відкрий бота і отримай код<br/>
-                            2) Введи 6 цифр тут і натисни «Підтвердити»
-                        </div>
-
-                        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
-                            <input id="tg-auth-code-input" inputmode="numeric" maxlength="6" placeholder="123456"
-                                style="flex:1;padding:10px 12px;border-radius:12px;border:2px solid var(--border);font-size:14px;font-weight:700;letter-spacing:2px;text-align:center;"/>
-                            <button class="tg-connect-btn" id="tg-auth-code-confirm" style="white-space:nowrap;">Підтвердити</button>
-                        </div>
-
-                        <div id="tg-auth-code-hint" style="margin-top:8px;font-size:12px;color:var(--text-muted);"></div>
-                    </div>
-                </div>
-            `;
-        }
-
-        const linkBtn   = document.getElementById('tg-auth-link-btn');
-        const codeBtn   = document.getElementById('tg-auth-code-btn');
-        const panel     = document.getElementById('tg-auth-code-panel');
-        const input     = document.getElementById('tg-auth-code-input');
-        const confirm   = document.getElementById('tg-auth-code-confirm');
-        const hint      = document.getElementById('tg-auth-code-hint');
-
-        const openBot = (startPayload) => {
-            window.open('https://t.me/shedulefep_bot?start=' + encodeURIComponent(startPayload), '_blank');
-        };
-
-        const formatCode = (c) => (c && c.length === 6) ? (c.slice(0,3) + '-' + c.slice(3)) : c;
-
-        // Спосіб 1: через посилання (як було)
-        if (linkBtn) {
-            linkBtn.onclick = () => {
-                const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
-                localStorage.setItem('_pending_tg_token', token);
-                localStorage.setItem('_pending_tg_token_ts', String(Date.now()));
-                openBot('link_' + token);
-
-                // UI
-                linkBtn.textContent = '⏳ Очікуємо...';
-                linkBtn.disabled = true;
-
-                const poll = setInterval(() => {
-                    try {
-                        const c = JSON.parse(localStorage.getItem('tg_user_cache') || 'null');
-                        if (c && c.id) {
-                            clearInterval(poll);
-                            localStorage.removeItem('_pending_tg_token');
-                            localStorage.removeItem('_pending_tg_token_ts');
-                            if (banner) banner.classList.remove('visible');
-                            window.renderProfileBar && window.renderProfileBar();
-                        }
-                    } catch{}
-                }, 2000);
-
-                setTimeout(() => {
-                    clearInterval(poll);
-                    if (linkBtn.disabled) { linkBtn.textContent = "Через посилання"; linkBtn.disabled = false; }
-                }, 180000);
-            };
-        }
-
-        // Спосіб 2: через код
-        if (codeBtn) {
-            codeBtn.onclick = async () => {
-                if (panel) panel.style.display = 'block';
-                if (hint) hint.innerHTML = '<span style="color:var(--text-muted)">⏳ Генеруємо код…</span>';
-                codeBtn.disabled = true;
-
-                // Генеруємо 6-значний код
-                const code = String(Math.floor(100000 + Math.random()*900000));
-
-                // Відкриваємо бота ОДРАЗУ (до будь-якого await, бо браузер блокує window.open після async)
-                const botUrl = 'https://t.me/shedulefep_bot?start=code_' + code;
-                const win = window.open(botUrl, '_blank');
-                // Якщо popup заблоковано — показуємо пряме посилання
-                if (!win || win.closed || typeof win.closed === 'undefined') {
-                    if (hint) hint.innerHTML = `<a href="${botUrl}" target="_blank" style="color:var(--primary);font-weight:700;text-decoration:underline;">👉 Відкрити бота (натисни тут)</a>`;
-                }
-
-                // Реєструємо код у Worker у фоні
-                try {
-                    const res = await fetch(`${workerBase}/gen-code`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ code })
-                    });
-                    if (!res.ok) {
-                        const t = await res.text().catch(()=>'');
-                        if (hint) hint.innerHTML = `<span style="color:#ef4444">Помилка реєстрації коду: ${t||''}</span>`;
-                        codeBtn.disabled = false;
-                        return;
-                    }
-                    if (hint) hint.innerHTML = `Код: <strong>${formatCode(code)}</strong> — <a href="${botUrl}" target="_blank" style="color:var(--primary);font-weight:700;">Відкрити бота ↗</a><br><span style="color:var(--text-muted);font-size:11px;">Введи код нижче після підтвердження в боті (діє 10 хв)</span>`;
-                    if (input) { input.value = code; input.focus(); }
-                } catch(e) {
-                    console.error('gen-code error:', e);
-                    if (hint) hint.innerHTML = `<a href="${botUrl}" target="_blank" style="color:var(--primary);font-weight:700;">👉 Відкрити бота ↗</a><br><span style="color:#ef4444;font-size:11px;">Помилка мережі — але бот вже відкрито</span>`;
-                    if (input) { input.value = code; }
-                }
-                codeBtn.disabled = false;
-            };
-        }
-
-        // Підтвердження коду на сайті (без редіректа)
-        if (confirm) {
-            confirm.onclick = async () => {
-                const raw = (input ? input.value : '').replace(/\D/g,'').slice(0,6);
-                if (!/^\d{6}$/.test(raw)) {
-                    if (hint) hint.textContent = 'Введіть 6 цифр.';
-                    return;
-                }
-
-                try {
-                    const res = await fetch(`${workerBase}/auth-code?code=${encodeURIComponent(raw)}`);
-                    if (!res.ok) {
-                        if (hint) hint.textContent = 'Код не знайдено або ще не підтверджено в боті.';
-                        return;
-                    }
-                    const data = await res.json();
-                    if (!data.id) {
-                        if (hint) hint.textContent = 'Не вдалося отримати дані користувача.';
-                        return;
-                    }
-
-                    localStorage.setItem('tg_user_cache', JSON.stringify(data));
-
-                    // Банер успіху (як у handleTgAuthFromUrl)
-                    if (banner) {
-                        banner.classList.add('visible', 'success');
-                        const icon = banner.querySelector('.tg-connect-icon');
-                        const strong = banner.querySelector('.tg-connect-text strong');
-                        const span = banner.querySelector('.tg-connect-text span');
-                        const actions2 = banner.querySelector('.tg-connect-actions');
-                        if (icon) icon.textContent = '✅';
-                        if (strong) strong.textContent = 'Telegram прив\'язано!';
-                        if (span) span.textContent = `Вітаємо, ${data.first_name}!`;
-                        if (actions2) actions2.innerHTML = '';
-                        setTimeout(() => banner.classList.remove('visible', 'success'), 4000);
-                    }
-
-                    window.renderProfileBar && window.renderProfileBar();
-                } catch(e) {
-                    console.error('auth-code error:', e);
-                    if (hint) hint.textContent = 'Помилка мережі під час перевірки коду.';
-                }
-            };
-        }
-    });
-}
-});
 })();
-
 // ===== EXTRA SETTINGS LOGIC =====
 (function() {
     document.addEventListener('DOMContentLoaded', () => {
@@ -3538,6 +3384,354 @@ if (btn) {
     });
 })();
 
+
+// ===== PULL-TO-REFRESH =====
+(function() {
+    const indicator = document.getElementById('ptr-indicator');
+    if (!indicator) return;
+
+    const THRESHOLD = 72;   // px to trigger
+    const MAX_PULL  = 100;  // max visual travel
+    let startY = 0, pulling = false, currentY = 0, triggered = false;
+
+    function atTop() {
+        return (window.scrollY || document.documentElement.scrollTop) <= 0;
+    }
+
+    async function doRefresh() {
+        indicator.classList.add('ptr-refreshing');
+        try {
+            const waitFB = () => new Promise(r => {
+                if (window.firebaseReady) r();
+                else window.addEventListener('firebase-ready', r, {once: true});
+            });
+            await waitFB();
+            await window.loadAdminData ? window.loadAdminData() : Promise.resolve();
+            if (window.render) window.render();
+            if (window.initAnnouncement) window.initAnnouncement();
+        } catch(e) { console.warn('PTR refresh error:', e); }
+        // small pause so spinner is visible
+        await new Promise(r => setTimeout(r, 600));
+        finishPull();
+    }
+
+    function finishPull() {
+        indicator.classList.add('ptr-animate');
+        indicator.classList.remove('ptr-refreshing', 'ptr-visible', 'ptr-ready');
+        indicator.style.transform = '';
+        setTimeout(() => indicator.classList.remove('ptr-animate'), 400);
+        pulling = false; triggered = false;
+    }
+
+    document.addEventListener('touchstart', e => {
+        if (!atTop()) return;
+        if (e.touches.length !== 1) return;
+        startY = e.touches[0].clientY;
+        pulling = true;
+        triggered = false;
+        indicator.classList.remove('ptr-animate');
+    }, {passive: true});
+
+    document.addEventListener('touchmove', e => {
+        if (!pulling) return;
+        currentY = e.touches[0].clientY;
+        const dy = Math.max(0, currentY - startY);
+        if (dy <= 0) return;
+        if (!atTop()) { pulling = false; return; }
+
+        // Rubber-band damping
+        const pull = Math.min(MAX_PULL, dy * 0.45);
+        const offsetY = -THRESHOLD + pull;
+        indicator.style.transform = `translateX(-50%) translateY(${offsetY}px)`;
+        indicator.classList.toggle('ptr-visible', pull > 8);
+        indicator.classList.toggle('ptr-ready', pull >= THRESHOLD * 0.55);
+
+        // Rotate arrow proportionally
+        const arrow = indicator.querySelector('.ptr-arrow');
+        if (arrow && !indicator.classList.contains('ptr-ready')) {
+            const deg = Math.min(180, (pull / (THRESHOLD * 0.55)) * 180);
+            arrow.style.transform = `rotate(${deg}deg)`;
+        }
+
+        if (pull >= THRESHOLD * 0.55 && !triggered) {
+            triggered = true;
+            if (navigator.vibrate) navigator.vibrate(10);
+        }
+    }, {passive: true});
+
+    document.addEventListener('touchend', () => {
+        if (!pulling) return;
+        if (triggered) {
+            doRefresh();
+        } else {
+            finishPull();
+        }
+    }, {passive: true});
+
+    document.addEventListener('touchcancel', () => {
+        if (pulling) finishPull();
+    }, {passive: true});
+})();
+
+// ===== TG AUTH BOTTOM SHEET =====
+(function() {
+    document.addEventListener('DOMContentLoaded', () => {
+        const overlay  = document.getElementById('tg-auth-overlay');
+        const sheet    = document.getElementById('tg-auth-sheet');
+        const closeBtn = document.getElementById('tg-auth-close');
+        const banner   = document.getElementById('tg-connect-banner');
+        const connectBtn = document.getElementById('tg-connect-btn');
+        const workerBase = localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
+
+        if (!overlay) return;
+
+        const tgWA = window.Telegram && window.Telegram.WebApp;
+        const isMiniApp = !!(tgWA && tgWA.initDataUnsafe && tgWA.initDataUnsafe.user);
+
+        function hasCachedUser() {
+            try { const u = JSON.parse(localStorage.getItem('tg_user_cache') || 'null'); return !!(u && u.id); } catch { return false; }
+        }
+
+        function openSheet() {
+            overlay.style.opacity = '0';
+            overlay.style.pointerEvents = 'all';
+            overlay.style.display = 'flex';
+            sheet.style.transform = 'translateY(100%)';
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    overlay.style.transition = 'opacity 0.3s ease';
+                    overlay.style.opacity = '1';
+                    sheet.style.transition = 'transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275)';
+                    sheet.style.transform = 'translateY(0)';
+                });
+            });
+            document.body.style.overflow = 'hidden';
+
+            const miniNote   = document.getElementById('tg-auth-miniapp-note');
+            const browserUI  = document.getElementById('tg-auth-browser-ui');
+            if (isMiniApp) {
+                if (miniNote)  miniNote.style.display  = 'block';
+                if (browserUI) browserUI.style.display = 'none';
+            } else {
+                if (miniNote)  miniNote.style.display  = 'none';
+                if (browserUI) browserUI.style.display = 'block';
+            }
+        }
+
+        function closeSheet() {
+            stopAutoPoll();
+            sheet.style.transition = 'transform 0.3s ease';
+            sheet.style.transform = 'translateY(100%)';
+            overlay.style.transition = 'opacity 0.3s ease';
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.pointerEvents = 'none';
+                overlay.style.display = 'flex';
+                // Reset code box for next open
+                const cb = document.getElementById('tg-code-box');
+                if (cb) cb.style.display = 'none';
+                const ci = document.getElementById('tg-code-input');
+                if (ci) ci.value = '';
+                const ch = document.getElementById('tg-code-hint');
+                if (ch) ch.textContent = '';
+            }, 300);
+            document.body.style.overflow = '';
+        }
+
+        function showSuccessBanner(firstName) {
+            if (!banner) return;
+            banner.classList.add('visible', 'success');
+            const icon   = banner.querySelector('.tg-connect-icon');
+            const strong = banner.querySelector('.tg-connect-text strong');
+            const span   = banner.querySelector('.tg-connect-text span');
+            const acts   = banner.querySelector('.tg-connect-actions');
+            if (icon)   icon.textContent   = '\u2705';
+            if (strong) strong.textContent = "Telegram прив'язано!";
+            if (span)   span.textContent   = 'Вітаємо, ' + firstName + '!';
+            if (acts)   acts.innerHTML     = '';
+            setTimeout(() => banner.classList.remove('visible', 'success'), 4000);
+        }
+
+        // Banner button → open sheet
+        if (connectBtn) connectBtn.addEventListener('click', openSheet);
+        if (closeBtn)   closeBtn.addEventListener('click', closeSheet);
+        overlay.addEventListener('click', e => { if (e.target === overlay) closeSheet(); });
+
+        // ── Method 1: via link ──
+        const linkBtn     = document.getElementById('tg-method-link');
+        const linkWaiting = document.getElementById('tg-link-waiting');
+
+        if (linkBtn) {
+            linkBtn.addEventListener('click', () => {
+                const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+                localStorage.setItem('_pending_tg_token', token);
+                const botUrl = 'https://t.me/shedulefep_bot?start=link_' + encodeURIComponent(token);
+                window.open(botUrl, '_blank');
+
+                linkBtn.style.opacity = '0.5';
+                linkBtn.style.pointerEvents = 'none';
+                if (linkWaiting) linkWaiting.style.display = 'flex';
+
+                const poll = setInterval(() => {
+                    if (hasCachedUser()) {
+                        clearInterval(poll);
+                        localStorage.removeItem('_pending_tg_token');
+                        closeSheet();
+                        const u = JSON.parse(localStorage.getItem('tg_user_cache') || '{}');
+                        showSuccessBanner(u.first_name || 'Студент');
+                        window.renderProfileBar && window.renderProfileBar();
+                    }
+                }, 1500);
+                setTimeout(() => {
+                    clearInterval(poll);
+                    linkBtn.style.opacity = '';
+                    linkBtn.style.pointerEvents = '';
+                    if (linkWaiting) linkWaiting.style.display = 'none';
+                }, 180000);
+            });
+        }
+
+        // ── Method 2: via code — з авто-поллінгом ──
+        // Як тільки бот підтверджує → воркер зберігає юзера → сайт ловить автоматично
+        const codeBtn    = document.getElementById('tg-method-code');
+        const codeBox    = document.getElementById('tg-code-box');
+        const codeInput  = document.getElementById('tg-code-input');
+        const confirmBtn = document.getElementById('tg-code-confirm');
+        const codeHint   = document.getElementById('tg-code-hint');
+        const botLinkEl  = document.getElementById('tg-bot-link');
+        let autoPollTimer = null;
+
+        function stopAutoPoll() {
+            if (autoPollTimer) { clearInterval(autoPollTimer); autoPollTimer = null; }
+        }
+
+        async function tryAuthCode(code) {
+            try {
+                const res = await fetch(workerBase + '/auth-code?code=' + encodeURIComponent(code));
+                if (!res.ok) return null;
+                const data = await res.json();
+                return (data && data.id) ? data : null;
+            } catch(e) { return null; }
+        }
+
+        function startAutoPoll(code) {
+            stopAutoPoll();
+            let dots = 0;
+            // Перший запит через 1.5с, потім кожні 2с
+            const doCheck = async () => {
+                const data = await tryAuthCode(code);
+                if (data) {
+                    stopAutoPoll();
+                    localStorage.setItem('tg_user_cache', JSON.stringify(data));
+                    closeSheet();
+                    showSuccessBanner(data.first_name || 'Студент');
+                    window.renderProfileBar && window.renderProfileBar();
+                } else {
+                    dots = (dots + 1) % 4;
+                    if (codeHint && !codeInput.value) {
+                        codeHint.style.color = 'var(--text-muted)';
+                        codeHint.textContent = 'Очікуємо підтвердження в боті' + '.'.repeat(dots + 1);
+                    }
+                }
+            };
+            setTimeout(doCheck, 1500);
+            autoPollTimer = setInterval(doCheck, 2000);
+            // Зупиняємо через 5 хв
+            setTimeout(stopAutoPoll, 300000);
+        }
+
+        if (codeBtn) {
+            codeBtn.addEventListener('click', async () => {
+                codeBtn.style.opacity = '0.5';
+                codeBtn.style.pointerEvents = 'none';
+                stopAutoPoll();
+
+                const code   = String(Math.floor(100000 + Math.random() * 900000));
+                const botUrl = 'https://t.me/shedulefep_bot?start=code_' + code;
+                if (botLinkEl) botLinkEl.href = botUrl;
+
+                // Відкриваємо бота ДО await (браузер блокує window.open після async)
+                window.open(botUrl, '_blank');
+
+                if (codeBox)  { codeBox.style.display = 'block'; }
+                if (codeInput) { codeInput.value = ''; }
+                if (codeHint) { codeHint.style.color = 'var(--text-muted)'; codeHint.textContent = 'Реєструємо код...'; }
+
+                try {
+                    const res = await fetch(workerBase + '/gen-code', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({code})
+                    });
+                    if (res.ok) {
+                        // Запускаємо авто-поллінг — як тільки бот підтвердить, вхід автоматичний
+                        startAutoPoll(code);
+                        if (codeHint) {
+                            codeHint.style.color = 'var(--text-muted)';
+                            codeHint.textContent = 'Очікуємо підтвердження в боті...';
+                        }
+                    } else {
+                        if (codeHint) { codeHint.style.color = '#ef4444'; codeHint.textContent = 'Помилка реєстрації коду. Спробуй ще.'; }
+                    }
+                } catch(e) {
+                    if (codeHint) { codeHint.style.color = '#ef4444'; codeHint.textContent = 'Помилка мережі — але бот вже відкрито.'; }
+                }
+
+                codeBtn.style.opacity = '';
+                codeBtn.style.pointerEvents = '';
+            });
+        }
+
+        // Ручне підтвердження — якщо юзер хоче ввести код сам (резервний варіант)
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', async () => {
+                const raw = (codeInput ? codeInput.value : '').replace(/\D/g, '').slice(0, 6);
+                if (!/^\d{6}$/.test(raw)) {
+                    if (codeHint) { codeHint.style.color = '#ef4444'; codeHint.textContent = 'Введи рівно 6 цифр.'; }
+                    if (codeInput) codeInput.focus();
+                    return;
+                }
+                stopAutoPoll();
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = '...';
+                if (codeHint) { codeHint.style.color = 'var(--text-muted)'; codeHint.textContent = 'Перевіряємо...'; }
+                const data = await tryAuthCode(raw);
+                if (data) {
+                    localStorage.setItem('tg_user_cache', JSON.stringify(data));
+                    closeSheet();
+                    showSuccessBanner(data.first_name || 'Студент');
+                    window.renderProfileBar && window.renderProfileBar();
+                } else {
+                    if (codeHint) { codeHint.style.color = '#ef4444'; codeHint.textContent = 'Код не знайдено або ще не підтверджено в боті.'; }
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = 'Підтвердити';
+                    // Відновлюємо авто-поллінг
+                    startAutoPoll(raw);
+                }
+            });
+        }
+
+        if (codeInput) {
+            codeInput.addEventListener('input', () => {
+                codeInput.value = codeInput.value.replace(/\D/g, '').slice(0, 6);
+                if (codeHint) codeHint.textContent = '';
+            });
+            codeInput.addEventListener('keydown', e => { if (e.key === 'Enter' && confirmBtn) confirmBtn.click(); });
+        }
+
+
+        // Show banner if not linked and not dismissed recently
+        function shouldShowBanner() {
+            if (isMiniApp) return false;
+            if (hasCachedUser()) return false;
+            const d = localStorage.getItem('tg_banner_dismissed');
+            if (d && Date.now() - parseInt(d) < 86400000) return false;
+            return true;
+        }
+        setTimeout(() => { if (banner && shouldShowBanner()) banner.classList.add('visible'); }, 1200);
+    });
+})();
+
 // ===== SERVICE WORKER REGISTRATION =====
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -3595,5 +3789,69 @@ if ('serviceWorker' in navigator) {
     if (!navigator.onLine) showOffline();
 })();
 </script>
+
+<!-- Pull-to-Refresh Indicator -->
+<div class="ptr-indicator" id="ptr-indicator">
+    <svg class="ptr-arrow" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+    <div class="ptr-spinner"></div>
+</div>
+
+<!-- TG Auth Bottom Sheet -->
+<div class="tg-auth-overlay" id="tg-auth-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:150;opacity:0;pointer-events:none;transition:opacity 0.3s ease;display:flex;align-items:flex-end;justify-content:center;">
+    <div id="tg-auth-sheet" style="background:var(--modal-bg);width:100%;max-width:600px;border-radius:24px 24px 0 0;padding:24px 24px calc(40px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275);border-top:2px solid #2AABEE;box-shadow:0 -10px 40px rgba(0,0,0,0.3);overflow-y:auto;max-height:90vh;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#2AABEE,#229ED9);display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 14px rgba(42,171,238,0.4);flex-shrink:0;">✈️</div>
+                <div>
+                    <div style="font-size:19px;font-weight:800;color:var(--text-main);">Прив'язати Telegram</div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Аватарка, ім'я та синхронізація</div>
+                </div>
+            </div>
+            <button class="close-btn" id="tg-auth-close">✕</button>
+        </div>
+
+        <div id="tg-auth-miniapp-note" style="display:none;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:14px;padding:14px 16px;font-size:13px;color:var(--text-main);line-height:1.5;">
+            ✅ <strong>Ти відкрив застосунок прямо в Telegram</strong> — акаунт вже прив'язано автоматично!
+        </div>
+
+        <div id="tg-auth-browser-ui">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Обери зручний спосіб прив'язки:</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;">
+                <button id="tg-method-link" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 12px;border:1.5px solid var(--border);border-radius:18px;background:var(--bg-body);cursor:pointer;transition:all 0.2s;font-family:inherit;text-align:center;">
+                    <span style="font-size:28px;">🔗</span>
+                    <span style="font-size:14px;font-weight:700;color:var(--text-main);">Через посилання</span>
+                    <span style="font-size:11px;color:var(--text-muted);line-height:1.35;">Перейдеш до бота — він поверне назад</span>
+                </button>
+                <button id="tg-method-code" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 12px;border:1.5px solid var(--border);border-radius:18px;background:var(--bg-body);cursor:pointer;transition:all 0.2s;font-family:inherit;text-align:center;">
+                    <span style="font-size:28px;">🔢</span>
+                    <span style="font-size:14px;font-weight:700;color:var(--text-main);">Через код</span>
+                    <span style="font-size:11px;color:var(--text-muted);line-height:1.35;">Отримаєш код у боті та введеш тут</span>
+                </button>
+            </div>
+
+            <div id="tg-link-waiting" style="display:none;align-items:center;gap:10px;padding:14px;background:var(--bg-body);border:1px solid var(--border);border-radius:14px;margin-top:14px;font-size:13px;color:var(--text-muted);">
+                <div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--border);border-top-color:#2AABEE;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>
+                <div><strong style="color:var(--text-main);">Очікуємо підтвердження…</strong><br><span style="font-size:12px;">Перейди до бота і натисни <strong>«Підтвердити»</strong></span></div>
+            </div>
+
+            <div id="tg-code-box" style="display:none;background:var(--bg-body);border:1px solid var(--border);border-radius:16px;padding:16px;margin-top:14px;">
+                <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;font-size:13px;color:var(--text-muted);line-height:1.5;">
+                    <div style="min-width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px;">1</div>
+                    <div>Відкрий бота — посилання вже відкрито. Якщо ні: <a id="tg-bot-link" href="https://t.me/shedulefep_bot" target="_blank" style="color:#2AABEE;font-weight:700;">натисни тут ↗</a></div>
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;font-size:13px;color:var(--text-muted);line-height:1.5;">
+                    <div style="min-width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px;">2</div>
+                    <div>Підтверди в боті — сайт автоматично увійде. Або введи код нижче вручну.</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <input type="tel" id="tg-code-input" inputmode="numeric" maxlength="6" placeholder="——————" autocomplete="one-time-code" style="flex:1;padding:13px 14px;border-radius:12px;border:2px solid var(--border);background:var(--bg-card);color:var(--text-main);font-size:20px;font-weight:800;letter-spacing:5px;text-align:center;font-family:inherit;outline:none;transition:border-color 0.2s;"/>
+                    <button id="tg-code-confirm" style="padding:13px 18px;background:linear-gradient(135deg,#2AABEE,#229ED9);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(42,171,238,0.3);transition:all 0.2s;font-family:inherit;flex-shrink:0;">Підтвердити</button>
+                </div>
+                <div id="tg-code-hint" style="margin-top:10px;font-size:12px;color:var(--text-muted);line-height:1.5;min-height:18px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>
