@@ -4,13 +4,14 @@
 //            Network First для Firebase/даних
 // =============================================
 
-const CACHE_NAME = 'fep-schedule-v1';
+const CACHE_NAME = 'fep-schedule-v3';
 const OFFLINE_PAGE = './index.html';
 
 // Ресурси, які кешуємо одразу при встановленні
 const PRECACHE_URLS = [
     './index.html',
     './manifest.json',
+    './script.js',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
     'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
 ];
@@ -21,6 +22,7 @@ const NETWORK_ONLY_PATTERNS = [
     'firestore.googleapis.com',
     'firebase.googleapis.com',
     'gstatic.com/firebasejs',
+    'workers.dev',
 ];
 
 // ── Install ──────────────────────────────────
