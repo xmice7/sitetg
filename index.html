@@ -1741,13 +1741,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                 <div>
                     <label style="font-size:12px;font-weight:700;margin-bottom:6px;display:block;">Пара (час)</label>
                     <select id="cl-slot" class="admin-input" style="width:100%;box-sizing:border-box;">
-                        <option value="1">1 пара (08:30–10:05)</option>
-                        <option value="2">2 пара (10:20–11:55)</option>
-                        <option value="3">3 пара (12:10–13:45)</option>
-                        <option value="4">4 пара (14:00–15:35)</option>
-                        <option value="5">5 пара (15:50–17:25)</option>
-                        <option value="6">6 пара (17:40–19:15)</option>
-                        <option value="7">7 пара (19:30–21:05)</option>
+                        <option value="1">1 пара (08:30–09:50)</option>
+                        <option value="2">2 пара (10:10–11:30)</option>
+                        <option value="3">3 пара (11:50–13:10)</option>
+                        <option value="4">4 пара (13:30–14:50)</option>
+                        <option value="5">5 пара (15:05–16:25)</option>
+                        <option value="6">6 пара (16:40–18:00)</option>
+                        <option value="7">7 пара (18:10–19:30)</option>
                         <option value="custom">⏱ Власний час</option>
                     </select>
                 </div>
@@ -1760,7 +1760,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                 </div>
                 <div>
                     <label style="font-size:12px;font-weight:700;margin-bottom:6px;display:block;">Кінець</label>
-                    <input type="time" id="cl-end-time" class="admin-input" value="10:05" style="width:100%;box-sizing:border-box;" />
+                    <input type="time" id="cl-end-time" class="admin-input" value="09:50" style="width:100%;box-sizing:border-box;" />
                 </div>
             </div>
 
@@ -1858,6 +1858,7 @@ const ADMIN_PASS_HASH = '42f4190f765a004bdcfe6ed4616d6ca1342e1d20c1030fd0169d071
 let gScheduleMods = [];
 let gLessonAnns = [];
 let gDeadlines = [];
+let gAdminCustomLessons = [];
 const CloudSync = {
     _workerUrl: () => localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev',
     _getUid: () => {
@@ -2752,13 +2753,13 @@ function updateWeekTabBadges() {
     if (bNext) bNext.textContent = ` · ${nextParity.name}`;
 }
 const STANDARD_PAIR_SLOTS = {
-    '1': { start: '08:30', end: '10:05', label: '1 пара (08:30 – 10:05)' },
-    '2': { start: '10:20', end: '11:55', label: '2 пара (10:20 – 11:55)' },
-    '3': { start: '12:10', end: '13:45', label: '3 пара (12:10 – 13:45)' },
-    '4': { start: '14:00', end: '15:35', label: '4 пара (14:00 – 15:35)' },
-    '5': { start: '15:50', end: '17:25', label: '5 пара (15:50 – 17:25)' },
-    '6': { start: '17:40', end: '19:15', label: '6 пара (17:40 – 19:15)' },
-    '7': { start: '19:30', end: '21:05', label: '7 пара (19:30 – 21:05)' }
+    '1': { start: '08:30', end: '09:50', label: '1 пара (08:30 – 09:50)' },
+    '2': { start: '10:10', end: '11:30', label: '2 пара (10:10 – 11:30)' },
+    '3': { start: '11:50', end: '13:10', label: '3 пара (11:50 – 13:10)' },
+    '4': { start: '13:30', end: '14:50', label: '4 пара (13:30 – 14:50)' },
+    '5': { start: '15:05', end: '16:25', label: '5 пара (15:05 – 16:25)' },
+    '6': { start: '16:40', end: '18:00', label: '6 пара (16:40 – 18:00)' },
+    '7': { start: '18:10', end: '19:30', label: '7 пара (18:10 – 19:30)' }
 };
 
 function escapeHtml(str) {
@@ -2838,7 +2839,7 @@ function renderDayBlock(targetDate, showHeader=true) {
         typeLabel: cl.type || 'Практична',
         group: (cl.group && cl.group !== 'all') ? cl.group : null,
         start: cl.start || '08:30',
-        end: cl.end || '10:05',
+        end: cl.end || '09:50',
         potik: false,
         isCollective: false,
         isEng: false,
@@ -3070,8 +3071,39 @@ function applyPinnedMsg(text) {
     else{el.classList.remove('active');}
 }
 
+const waitForFirebase = (timeoutMs = 6000) => new Promise(resolve => {
+    if (window.firebaseReady) return resolve(true);
+    let timer;
+    const handler = () => { clearTimeout(timer); resolve(true); };
+    timer = setTimeout(() => {
+        window.removeEventListener('firebase-ready', handler);
+        resolve(false);
+    }, timeoutMs);
+    window.addEventListener('firebase-ready', handler, { once: true });
+});
+
+async function saveAdminField(updates) {
+    await waitForFirebase();
+    try {
+        const current = (typeof window.fbGetAdmin === 'function')
+            ? await window.fbGetAdmin(state.scheduleGroup)
+            : {};
+        const merged = Object.assign({}, current || {}, updates);
+        const ok = (typeof window.fbSetAdmin === 'function')
+            ? await window.fbSetAdmin(state.scheduleGroup, merged)
+            : false;
+        if (ok) {
+            gset(state.scheduleGroup, 'admin_cache', JSON.stringify(merged));
+        }
+        return ok ? merged : null;
+    } catch (e) {
+        console.error('saveAdminField error:', e);
+        return null;
+    }
+}
+window.saveAdminField = saveAdminField;
+
 window.loadAdminData = async function loadAdminData() {
-    const waitForFirebase=()=>new Promise(r=>{if(window.firebaseReady)r();else window.addEventListener('firebase-ready',r,{once:true});});
     await waitForFirebase();
     const countedKey = `${state.scheduleGroup}_counted`;
     if(!sessionStorage.getItem(countedKey)){sessionStorage.setItem(countedKey,'1');window.fbIncrementView(state.scheduleGroup);}
@@ -3088,6 +3120,7 @@ window.loadAdminData = async function loadAdminData() {
     gScheduleMods = (modsData.mods || []).filter(m => m.date >= new Date().toISOString().slice(0,10));
     gLessonAnns = lannData.items || [];
     gDeadlines = data.deadlines || [];
+    renderAdminCustomLessons();
     render();
     renderDeadlines();
 }
@@ -3291,18 +3324,6 @@ function initAdminPanel() {
     });
     closeBtn.addEventListener('click',()=>overlay.classList.remove('active'));
     overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.classList.remove('active');});
-
-    async function saveAdminField(updates) {
-        const waitForFirebase=()=>new Promise(r=>{if(window.firebaseReady)r();else window.addEventListener('firebase-ready',r,{once:true});});
-        await waitForFirebase();
-        try {
-            const current=await window.fbGetAdmin(state.scheduleGroup);
-            const merged=Object.assign({},current||{},updates);
-            const ok=await window.fbSetAdmin(state.scheduleGroup, merged);
-            if(ok)gset(state.scheduleGroup,'admin_cache',JSON.stringify(merged));
-            return ok?merged:null;
-        } catch(e){console.error('saveAdminField error:',e);return null;}
-    }
 
     async function loadAdminStats() {
         document.getElementById('stat-today').textContent='…';
@@ -3840,13 +3861,19 @@ function deleteLocalCustomLesson(id) {
 
 async function deleteAdminCustomLesson(id) {
     if (!confirm('Видалити цю пару для всієї групи? Вона зникне у всіх студентів.')) return;
-    gAdminCustomLessons = gAdminCustomLessons.filter(l => l.id !== id);
-    const result = await saveAdminField({ customLessons: gAdminCustomLessons });
-    if (result) {
-        renderAdminCustomLessons();
-        render();
-    } else {
-        alert('Помилка видалення в Firebase');
+    const nextList = (gAdminCustomLessons || []).filter(l => l.id !== id);
+    try {
+        const result = await saveAdminField({ customLessons: nextList });
+        if (result) {
+            gAdminCustomLessons = nextList;
+            renderAdminCustomLessons();
+            render();
+        } else {
+            alert('Помилка видалення в Firebase');
+        }
+    } catch (e) {
+        console.error('deleteAdminCustomLesson error:', e);
+        alert('Помилка видалення: ' + (e.message || e));
     }
 }
 
@@ -3876,13 +3903,14 @@ function openCustomLessonModal({ scope = 'local', lesson = null }) {
         typeSelect.value = lesson.type || 'ДВВС';
         daySelect.value = String(lesson.dayOfWeek ?? 1);
         periodicitySelect.value = lesson.periodicity || 'both';
-        slotSelect.value = lesson.slot || '1';
+        const isCustom = lesson.slot === 'custom' || (!STANDARD_PAIR_SLOTS[lesson.slot] && lesson.start);
+        slotSelect.value = isCustom ? 'custom' : (lesson.slot || '1');
         startTimeInput.value = lesson.start || '08:30';
-        endTimeInput.value = lesson.end || '10:05';
+        endTimeInput.value = lesson.end || '09:50';
         roomInput.value = lesson.room || '';
         teacherInput.value = lesson.teacher || '';
         subgroupSelect.value = lesson.group || 'all';
-        if (customTimeRow) customTimeRow.style.display = lesson.slot === 'custom' ? 'grid' : 'none';
+        if (customTimeRow) customTimeRow.style.display = isCustom ? 'grid' : 'none';
     } else {
         titleEl.textContent = scope === 'admin' ? 'Додати пару для всієї групи' : 'Додати власну пару';
         editIdEl.value = '';
@@ -3892,7 +3920,7 @@ function openCustomLessonModal({ scope = 'local', lesson = null }) {
         periodicitySelect.value = 'both';
         slotSelect.value = '1';
         startTimeInput.value = '08:30';
-        endTimeInput.value = '10:05';
+        endTimeInput.value = '09:50';
         roomInput.value = '';
         teacherInput.value = '';
         subgroupSelect.value = 'all';
@@ -3948,6 +3976,8 @@ function initCustomLessonsUI() {
         slotSelect.addEventListener('change', () => {
             if (slotSelect.value === 'custom') {
                 if (customTimeRow) customTimeRow.style.display = 'grid';
+                if (startTimeInput && !startTimeInput.value) startTimeInput.value = '08:30';
+                if (endTimeInput && !endTimeInput.value) endTimeInput.value = '09:50';
             } else {
                 if (customTimeRow) customTimeRow.style.display = 'none';
                 const slotData = STANDARD_PAIR_SLOTS[slotSelect.value];
@@ -3976,11 +4006,16 @@ function initCustomLessonsUI() {
             const dayOfWeek = parseInt(document.getElementById('cl-day').value, 10);
             const periodicity = document.getElementById('cl-periodicity').value;
             const slot = document.getElementById('cl-slot').value;
-            let start = startTimeInput ? startTimeInput.value : '08:30';
-            let end = endTimeInput ? endTimeInput.value : '10:05';
+            let start = startTimeInput ? startTimeInput.value.trim() : '08:30';
+            let end = endTimeInput ? endTimeInput.value.trim() : '09:50';
             if (slot !== 'custom' && STANDARD_PAIR_SLOTS[slot]) {
                 start = STANDARD_PAIR_SLOTS[slot].start;
                 end = STANDARD_PAIR_SLOTS[slot].end;
+            } else {
+                if (!start || !end) {
+                    alert('Вкажіть час початку та завершення пари');
+                    return;
+                }
             }
             const room = document.getElementById('cl-room').value.trim();
             const teacher = document.getElementById('cl-teacher').value.trim();
@@ -4016,24 +4051,30 @@ function initCustomLessonsUI() {
             } else if (scope === 'admin') {
                 saveBtn.disabled = true;
                 saveBtn.textContent = '…';
-                let nextAdminList = [...gAdminCustomLessons];
-                if (editId) {
-                    const idx = nextAdminList.findIndex(l => l.id === editId);
-                    if (idx >= 0) nextAdminList[idx] = lessonObj;
-                    else nextAdminList.push(lessonObj);
-                } else {
-                    nextAdminList.push(lessonObj);
-                }
-                const res = await saveAdminField({ customLessons: nextAdminList });
-                saveBtn.disabled = false;
-                saveBtn.textContent = 'Зберегти';
-                if (res) {
-                    gAdminCustomLessons = nextAdminList;
-                    renderAdminCustomLessons();
-                    render();
-                    closeCustomLessonModal();
-                } else {
-                    alert('Помилка збереження в Firebase');
+                try {
+                    let nextAdminList = [...(gAdminCustomLessons || [])];
+                    if (editId) {
+                        const idx = nextAdminList.findIndex(l => l.id === editId);
+                        if (idx >= 0) nextAdminList[idx] = lessonObj;
+                        else nextAdminList.push(lessonObj);
+                    } else {
+                        nextAdminList.push(lessonObj);
+                    }
+                    const res = await saveAdminField({ customLessons: nextAdminList });
+                    if (res) {
+                        gAdminCustomLessons = nextAdminList;
+                        renderAdminCustomLessons();
+                        render();
+                        closeCustomLessonModal();
+                    } else {
+                        alert('Помилка збереження в Firebase');
+                    }
+                } catch (err) {
+                    console.error('Error saving admin custom lesson:', err);
+                    alert('Помилка збереження: ' + (err.message || err));
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Зберегти';
                 }
             }
         });
