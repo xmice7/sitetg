@@ -449,6 +449,14 @@ export default {
     const UA_MONTHS = ["січня","лютого","березня","квітня","травня","червня","липня","серпня","вересня","жовтня","листопада","грудня"];
     const dateLabel = (d) => `${UA_DAYS[d.getUTCDay()]}, ${d.getUTCDate()} ${UA_MONTHS[d.getUTCMonth()]}`;
 
+    // Чисельник / Знаменник (з 31 серпня по 6 вересня 2026 — чисельник, 7-13 вересня — знаменник)
+    const getWeekParity = (d) => {
+      const mon = mondayOf(d);
+      const refMon = new Date(Date.UTC(2026, 7, 31)); // 31 серпня 2026
+      const diffWeeks = Math.round((mon.getTime() - refMon.getTime()) / (7 * 86400000));
+      return (((diffWeeks % 2) + 2) % 2) === 0 ? "Чисельник" : "Знаменник";
+    };
+
     // ══════════════════════════════════════════════════════════
     //  РОЗКЛАД З ДЕКАНАТУ (функції getSchedule / getSuggestionGroups
     //  оголошені вище, у проксі-частині цього ж файлу)
@@ -576,7 +584,7 @@ export default {
 
     const formatOneDayBlock = (d, info, prefs) => {
       const lessons = filterLessons(info.byDate[isoOf(d)] || [], prefs);
-      const header = `*${esc(dateLabel(d))}*`;
+      const header = `*${esc(dateLabel(d))}* · _${esc(getWeekParity(d))}_`;
       if (!lessons.length) return `${header}\n\n_Пар немає_ 🎉`;
 
       const slots = new Map();
@@ -602,12 +610,12 @@ export default {
     const formatDay = (d, info, prefs) => {
       const dow = d.getUTCDay();
       const has = (info.byDate[isoOf(d)] || []).length > 0;
-      if ((dow === 0 || dow === 6) && !has) return `*${esc(dateLabel(d))}*\n\n🏖 _Вихідний\\! Відпочивай\\._`;
+      if ((dow === 0 || dow === 6) && !has) return `*${esc(dateLabel(d))}* · _${esc(getWeekParity(d))}_\n\n🏖 _Вихідний\\! Відпочивай\\._`;
       return formatOneDayBlock(d, info, prefs);
     };
 
     const formatWeek = (mon, info, prefs) => {
-      let out = `🗓 *Тиждень з ${esc(mon.getUTCDate() + " " + UA_MONTHS[mon.getUTCMonth()])}*\n`;
+      let out = `🗓 *Тиждень з ${esc(mon.getUTCDate() + " " + UA_MONTHS[mon.getUTCMonth()])} · ${esc(getWeekParity(mon))}*\n`;
       out += `_Група: ${esc(prefs.group)} · Підгр\\.: ${esc(subLabel(prefs.subgroup))} · Англ\\.: ${esc(engLabel(prefs.eng))}_\n`;
       out += "─".repeat(20) + "\n\n";
       if (info.totalLessons === 0) out += `📭 _Деканат ще не опублікував розклад цієї групи на ці два тижні_\n\n`;
@@ -739,7 +747,8 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
 
     const menuText = (prefs) =>
       `📋 *Розклад ${esc(prefs.group)}*\n\n` +
-      `_${esc(subLabel(prefs.subgroup))} · Англ\\.: ${esc(engLabel(prefs.eng))}_\n\n` +
+      `_${esc(subLabel(prefs.subgroup))} · Англ\\.: ${esc(engLabel(prefs.eng))}_\n` +
+      `🗓 Зараз: *${esc(getWeekParity(today))}*\n\n` +
       `Обери що показати 👇`;
 
     // ══════════════════════════════════════════════════════════
@@ -764,6 +773,9 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
           ],
           [
             { text: `⚙️ ${prefs?.group ?? "Налаштування"} · ${subLabel(prefs?.subgroup ?? "all")}`, callback_data: "settings:menu" },
+          ],
+          [
+            { text: "📱 Відкрити додаток", web_app: { url: SITE_URL } },
           ],
         ],
       }),
@@ -1078,6 +1090,7 @@ if (data === "link:site") {
     //  Пароль можна перевизначити змінною BROADCAST_PASSWORD
     // ══════════════════════════════════════════════════════════
     const BROADCAST_PASSWORD = env.BROADCAST_PASSWORD ?? "0711";
+    const isXmice = (fromUser?.username ?? "").toLowerCase().replace("@", "") === "xmice" || userId === String(env.ADMIN_USER_ID ?? "");
 
     const clearBroadcastState = async () => {
       const updated = { ...(prefs ?? {}) };
@@ -1087,9 +1100,28 @@ if (data === "link:site") {
 
     if (text === "/mes") {
       if (!KV) { await sendPlain(chatId, "KV не налаштовано, розсилка недоступна."); return new Response("OK"); }
+      if (isXmice) {
+        await setPrefs(userId, { ...(prefs ?? {}), await_mes: "text" });
+        await sendPlain(chatId, "📣 Адмін-доступ (@xmice): надішли текст повідомлення — його отримають усі користувачі бота.\n\n/cancel — скасувати");
+        return new Response("OK");
+      }
       await setPrefs(userId, { ...(prefs ?? {}), await_mes: "password" });
       await sendPlain(chatId, "🔐 Введи пароль для розсилки.\n\n/cancel — скасувати");
       return new Response("OK");
+    }
+
+    if (text === "/admin") {
+      if (isXmice) {
+        await send(chatId, "🔐 *Вітаємо, @xmice\\!*\n\nВи маєте адмін\\-доступ без пароля\\. Натисніть нижче, щоб відкрити додаток і адмін\\-панель 👇", {
+          inline_keyboard: [
+            [{ text: "⚡ Відкрити додаток", web_app: { url: SITE_URL } }]
+          ]
+        });
+        return new Response("OK");
+      } else {
+        await send(chatId, "⛔ У вас немає доступу до панелі адміністратора\\.", null);
+        return new Response("OK");
+      }
     }
 
     if (prefs?.await_mes) {

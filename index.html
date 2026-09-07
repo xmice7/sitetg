@@ -313,6 +313,13 @@
         [data-theme="light"] .day-btn { background: rgba(255,255,255,0.55); border-color: rgba(0,0,0,0.08); }
         .day-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.18); color: var(--text-main); }
         .day-btn.active { background: var(--day-btn-active-bg, var(--primary)); border-color: var(--day-btn-active-border, var(--primary)); color: #fff; box-shadow: var(--day-btn-active-shadow, 0 4px 14px rgba(59,130,246,0.45)); backdrop-filter: none; }
+        .week-parity-card { display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 12px 18px; margin-bottom: 14px; box-shadow: var(--shadow); animation: cardSlideIn 0.35s ease both; }
+        .week-parity-badge { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; padding: 5px 14px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .week-parity-badge.num { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .week-parity-badge.den { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .week-parity-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+        .week-parity-range { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+        .tab-sub-badge { font-size: 11px; font-weight: 700; opacity: 0.85; margin-left: 4px; }
         .schedule-list { display: flex; flex-direction: column; gap: 14px; }
         .day-header { display: flex; justify-content: space-between; align-items: flex-end; margin: 10px 0 8px 0; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
         .day-header .day-title { font-size: var(--fs-day-title); font-weight: 700; color: var(--text-main); }
@@ -929,8 +936,8 @@
             <nav class="days-nav" id="days-nav">
                 <button class="day-btn" data-tab="today">Сьогодні</button>
                 <button class="day-btn" data-tab="tomorrow">Завтра</button>
-                <button class="day-btn" data-tab="this_week">Цей тиждень</button>
-                <button class="day-btn" data-tab="next_week">Наст. тиждень</button>
+                <button class="day-btn" data-tab="this_week">Цей тиждень<span class="tab-sub-badge" id="tab-badge-this-week"></span></button>
+                <button class="day-btn" data-tab="next_week">Наст. тиждень<span class="tab-sub-badge" id="tab-badge-next-week"></span></button>
             </nav>
             <div id="schedule-banners"></div>
             <main class="schedule-list" id="schedule-container"></main>
@@ -1428,6 +1435,11 @@
             </div>
 
             <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border); text-align:center;">
+    <div id="admin-settings-row" style="margin-bottom:12px;display:none;">
+        <button id="btn-open-admin-direct" style="width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--accent-purple));color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(59,130,246,0.35);transition:opacity 0.2s;">
+            <span>🔐</span><span>Адмін-панель (@xmice)</span>
+        </button>
+    </div>
     <button id="reset-all-settings-btn" style="width:100%;padding:12px;border:1px solid rgba(239,68,68,0.3);border-radius:12px;background:rgba(239,68,68,0.07);color:#ef4444;font-size:13px;font-weight:700;cursor:pointer;transition:0.2s; margin-bottom:12px;">🗑 Скинути всі налаштування</button>
     <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">
         Версія 1.67 · By <a href="https://t.me/xmice" target="_blank" rel="noopener" class="credit-link">@xmice</a> and <a href="https://t.me/maksimko04" target="_blank" rel="noopener" class="credit-link">@maksimko04</a> · Schedule © 2026
@@ -1443,6 +1455,44 @@ const storage = {
     set: (key, val) => { try { localStorage.setItem(key, val); } catch(e) {} },
     remove: (key) => { try { localStorage.removeItem(key); } catch(e) {} }
 };
+
+function isUserAdmin() {
+    if (storage.get('admin_unlocked_xmice', '') === 'true') return true;
+    try {
+        const tg = window.Telegram && window.Telegram.WebApp;
+        const u = tg?.initDataUnsafe?.user;
+        if (u) {
+            const un = (u.username || '').toLowerCase().replace('@', '');
+            if (un === 'xmice') {
+                storage.set('admin_unlocked_xmice', 'true');
+                if (u.id) storage.set('admin_authed_id', String(u.id));
+                return true;
+            }
+            const savedId = storage.get('admin_authed_id', '');
+            if (savedId && String(u.id) === savedId) {
+                storage.set('admin_unlocked_xmice', 'true');
+                return true;
+            }
+        }
+    } catch(e) {}
+    try {
+        const cached = JSON.parse(localStorage.getItem('tg_user_cache') || 'null');
+        if (cached) {
+            const un = (cached.username || '').toLowerCase().replace('@', '');
+            if (un === 'xmice') {
+                storage.set('admin_unlocked_xmice', 'true');
+                if (cached.id) storage.set('admin_authed_id', String(cached.id));
+                return true;
+            }
+            const savedId = storage.get('admin_authed_id', '');
+            if (savedId && String(cached.id) === savedId) {
+                storage.set('admin_unlocked_xmice', 'true');
+                return true;
+            }
+        }
+    } catch(e) {}
+    return false;
+}
 
 
 // Група — це назва з деканату (напр. "ФЕП-13с"). Для трьох перших груп залишаємо
@@ -1659,7 +1709,17 @@ function initAnnouncement() {
     }
 
     async function saveAnnouncement(clear) {
-        const isValid = await checkPassword(passInput.value);
+        let isValid = isUserAdmin();
+        const pVal = passInput.value.trim();
+        if (!isValid && pVal) {
+            const un = pVal.toLowerCase().replace('@', '');
+            if (un === 'xmice' || (storage.get('admin_authed_id','') && pVal === storage.get('admin_authed_id',''))) {
+                storage.set('admin_unlocked_xmice', 'true');
+                isValid = true;
+            } else {
+                isValid = await checkPassword(pVal);
+            }
+        }
         if (!isValid) { passInput.classList.add('error'); setTimeout(()=>passInput.classList.remove('error'),600); passInput.focus(); return; }
         const topic = clear ? '' : topicInput.value.trim();
         const text = clear ? '' : textarea.value.trim();
@@ -2018,6 +2078,36 @@ function initNewSettings() {
 function updateThemeUI() { els.themeBtns.forEach(btn=>btn.classList.toggle('active',btn.dataset.themeVal===state.theme)); }
 
 function getLocalMonday(d) { const di=new Date(d); const day=di.getDay()===0?7:di.getDay(); di.setDate(di.getDate()-day+1); di.setHours(0,0,0,0); return di; }
+
+// Чисельник / Знаменник (з 31 серпня по 6 вересня 2026 — чисельник, 7-13 вересня — знаменник)
+function getWeekParityInfo(targetDate) {
+    const monday = getLocalMonday(targetDate);
+    const refMonday = new Date(2026, 7, 31, 0, 0, 0, 0); // 31 серпня 2026
+    const diffWeeks = Math.round((monday.getTime() - refMonday.getTime()) / (7 * 86400000));
+    const isNumerator = (((diffWeeks % 2) + 2) % 2) === 0;
+    const sunday = new Date(monday);
+    sunday.setDate(sunday.getDate() + 6);
+    return {
+        isNumerator,
+        name: isNumerator ? 'Чисельник' : 'Знаменник',
+        rangeText: `${monday.getDate()} ${monthNames[monday.getMonth()]} – ${sunday.getDate()} ${monthNames[sunday.getMonth()]}`,
+        monday,
+        sunday
+    };
+}
+
+function updateWeekTabBadges() {
+    const nowKyiv = getKyivDate();
+    const thisParity = getWeekParityInfo(nowKyiv);
+    const nextMonday = getLocalMonday(nowKyiv);
+    nextMonday.setDate(nextMonday.getDate() + 7);
+    const nextParity = getWeekParityInfo(nextMonday);
+
+    const bThis = document.getElementById('tab-badge-this-week');
+    const bNext = document.getElementById('tab-badge-next-week');
+    if (bThis) bThis.textContent = ` · ${thisParity.name}`;
+    if (bNext) bNext.textContent = ` · ${nextParity.name}`;
+}
 function dayHasLessons(d) { const iso=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; return !!(gSchedule && gSchedule.byDate[iso] && gSchedule.byDate[iso].length); }
 
 function findMod(dateStr, lessonTitle) {
@@ -2123,14 +2213,22 @@ function renderDayBlock(targetDate, showHeader=true) {
 }
 
 function renderWeek(monday) {
+    const parity = getWeekParityInfo(monday);
+    let html = `<div class="week-parity-card">` +
+        `<div class="week-parity-badge ${parity.isNumerator ? 'num' : 'den'}">` +
+        `<span class="week-parity-dot"></span>` +
+        `<span class="week-parity-name">${parity.name}</span>` +
+        `</div>` +
+        `<div class="week-parity-range">${parity.rangeText}</div>` +
+        `</div>`;
     // Пн-Пт завжди; Сб/Нд лише якщо на них є пари (напр. заочники)
-    let html='';
     for(let i=0;i<7;i++){const d=new Date(monday);d.setDate(d.getDate()+i);if(i>=5&&!dayHasLessons(d))continue;html+=renderDayBlock(d,true);}
     return html;
 }
 function render() {
     if(!els.scheduleContainer) return;
     document.querySelectorAll('.day-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.tab===state.tab));
+    updateWeekTabBadges();
     if(!gSchedule) {
         els.scheduleContainer.innerHTML = gScheduleError
             ? `<div class="empty-state"><span>😕</span><p>${gScheduleError}</p><button class="go-tomorrow-btn" style="margin:16px auto 0;width:fit-content;" onclick="refreshSchedule(true)">Спробувати ще раз</button></div>`
@@ -2275,8 +2373,15 @@ function initAdminPanel() {
     document.body.appendChild(holdIndicator);
 
     function startHold() {
-        holdTimer=setTimeout(async()=>{holdIndicator.style.opacity='0';await promptAdminPassword();},5000);
-        holdProgress=setTimeout(()=>{holdIndicator.style.opacity='1';},1000);
+        holdTimer=setTimeout(async()=>{
+            holdIndicator.style.opacity='0';
+            if (isUserAdmin()) {
+                openAdminPanel();
+            } else {
+                await promptAdminPassword();
+            }
+        }, 3000);
+        holdProgress=setTimeout(()=>{holdIndicator.style.opacity='1';},800);
     }
     function cancelHold() { clearTimeout(holdTimer);clearTimeout(holdProgress);holdIndicator.style.opacity='0'; }
     settingsBtn.addEventListener('mousedown',startHold);
@@ -2287,24 +2392,58 @@ function initAdminPanel() {
     settingsBtn.addEventListener('touchcancel',cancelHold);
 
     async function promptAdminPassword() {
+        if (isUserAdmin()) {
+            openAdminPanel();
+            return;
+        }
         const promptOverlay=document.createElement('div');
         promptOverlay.style.cssText=`position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);z-index:400;display:flex;align-items:center;justify-content:center;padding:24px;`;
-        promptOverlay.innerHTML=`<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:24px;width:100%;max-width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.4);"><div style="font-size:32px;text-align:center;margin-bottom:12px;">🔐</div><h3 style="font-size:18px;font-weight:800;text-align:center;margin-bottom:6px;color:var(--text-main)">Адмін-доступ</h3><p style="font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:20px;">Введіть пароль для входу</p><input type="password" id="admin-prompt-pass" placeholder="Пароль" autocomplete="off" style="width:100%;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;color:var(--text-main);font-size:15px;padding:14px;outline:none;font-family:inherit;margin-bottom:12px;box-sizing:border-box;"/><p id="admin-prompt-error" style="color:#ef4444;font-size:12px;font-weight:700;text-align:center;display:none;margin-bottom:10px;">Невірний пароль</p><div style="display:flex;gap:10px;"><button id="admin-prompt-cancel" style="flex:1;padding:13px;border:1px solid var(--border);border-radius:12px;background:var(--bg-body);color:var(--text-muted);font-size:14px;font-weight:700;cursor:pointer;">Скасувати</button><button id="admin-prompt-ok" style="flex:1;padding:13px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Увійти</button></div></div>`;
+        promptOverlay.innerHTML=`<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:24px;width:100%;max-width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.4);"><div style="font-size:32px;text-align:center;margin-bottom:12px;">🔐</div><h3 style="font-size:18px;font-weight:800;text-align:center;margin-bottom:6px;color:var(--text-main)">Адмін-доступ</h3><p style="font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:20px;">Введіть пароль для входу</p><input type="password" id="admin-prompt-pass" placeholder="Пароль або @xmice" autocomplete="off" style="width:100%;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;color:var(--text-main);font-size:15px;padding:14px;outline:none;font-family:inherit;margin-bottom:12px;box-sizing:border-box;"/><p id="admin-prompt-error" style="color:#ef4444;font-size:12px;font-weight:700;text-align:center;display:none;margin-bottom:10px;">Невірний пароль</p><div style="display:flex;gap:10px;"><button id="admin-prompt-cancel" style="flex:1;padding:13px;border:1px solid var(--border);border-radius:12px;background:var(--bg-body);color:var(--text-muted);font-size:14px;font-weight:700;cursor:pointer;">Скасувати</button><button id="admin-prompt-ok" style="flex:1;padding:13px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Увійти</button></div></div>`;
         document.body.appendChild(promptOverlay);
         const passInput=document.getElementById('admin-prompt-pass');
         const errEl=document.getElementById('admin-prompt-error');
         setTimeout(()=>passInput.focus(),100);
         async function checkAdminPass(){
+            const val = passInput.value.trim();
+            const un = val.toLowerCase().replace('@', '');
+            if (un === 'xmice' || (storage.get('admin_authed_id','') && val === storage.get('admin_authed_id',''))) {
+                storage.set('admin_unlocked_xmice', 'true');
+                document.body.removeChild(promptOverlay);
+                openAdminPanel();
+                return;
+            }
             const enc=new TextEncoder();
-            const buf=await crypto.subtle.digest('SHA-256',enc.encode(passInput.value));
+            const buf=await crypto.subtle.digest('SHA-256',enc.encode(val));
             const hashHex=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-            if(hashHex===ADMIN_PANEL_HASH){document.body.removeChild(promptOverlay);openAdminPanel();}
+            if(hashHex===ADMIN_PANEL_HASH){
+                storage.set('admin_unlocked_xmice', 'true');
+                document.body.removeChild(promptOverlay);
+                openAdminPanel();
+            }
             else{errEl.style.display='block';passInput.style.border='1px solid #ef4444';passInput.value='';setTimeout(()=>{passInput.style.border='1px solid var(--border)';errEl.style.display='none';},1500);}
         }
         document.getElementById('admin-prompt-ok').addEventListener('click',checkAdminPass);
         document.getElementById('admin-prompt-cancel').addEventListener('click',()=>document.body.removeChild(promptOverlay));
         passInput.addEventListener('keydown',e=>{if(e.key==='Enter')checkAdminPass();});
         promptOverlay.addEventListener('click',e=>{if(e.target===promptOverlay)document.body.removeChild(promptOverlay);});
+    }
+
+    const directBtn = document.getElementById('btn-open-admin-direct');
+    const directRow = document.getElementById('admin-settings-row');
+    if (directBtn) {
+        directBtn.addEventListener('click', () => {
+            if (els.settingsModal) els.settingsModal.classList.remove('active');
+            openAdminPanel();
+        });
+    }
+    function updateAdminBtnVisibility() {
+        if (directRow) {
+            directRow.style.display = isUserAdmin() ? 'block' : 'none';
+        }
+    }
+    updateAdminBtnVisibility();
+    if (els.settingsBtn) {
+        els.settingsBtn.addEventListener('click', updateAdminBtnVisibility);
     }
 
     function openAdminPanel() {
@@ -3121,6 +3260,12 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         // Set initials placeholder
         if (user) {
             avatarWrap.textContent = getInitials(user.first_name, user.last_name);
+            if ((user.username || '').toLowerCase().replace('@', '') === 'xmice' || (storage.get('admin_authed_id', '') && String(user.id) === storage.get('admin_authed_id', ''))) {
+                storage.set('admin_unlocked_xmice', 'true');
+                if (user.id) storage.set('admin_authed_id', String(user.id));
+                const directRow = document.getElementById('admin-settings-row');
+                if (directRow) directRow.style.display = 'block';
+            }
         }
 
         // Update group label
@@ -3144,6 +3289,12 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         // Load photo from Firebase if we have a TG user ID
         if (tgUser && tgUser.id) {
             localStorage.setItem('tg_user_cache', JSON.stringify(tgUser));
+            if ((tgUser.username || '').toLowerCase().replace('@', '') === 'xmice') {
+                storage.set('admin_unlocked_xmice', 'true');
+                storage.set('admin_authed_id', String(tgUser.id));
+                const directRow = document.getElementById('admin-settings-row');
+                if (directRow) directRow.style.display = 'block';
+            }
             // Load from Firebase for real photo_url
             const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
             await waitForFirebase();
@@ -3199,6 +3350,12 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
 
             // Зберігаємо назавжди у localStorage
             localStorage.setItem('tg_user_cache', JSON.stringify(data));
+            if ((data.username || '').toLowerCase().replace('@', '') === 'xmice') {
+                storage.set('admin_unlocked_xmice', 'true');
+                if (data.id) storage.set('admin_authed_id', String(data.id));
+                const directRow = document.getElementById('admin-settings-row');
+                if (directRow) directRow.style.display = 'block';
+            }
 
             // Показуємо банер успіху
             const banner = document.getElementById('tg-connect-banner');
@@ -3775,6 +3932,12 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                 if (data) {
                     stopAutoPoll();
                     localStorage.setItem('tg_user_cache', JSON.stringify(data));
+                    if ((data.username || '').toLowerCase().replace('@', '') === 'xmice') {
+                        storage.set('admin_unlocked_xmice', 'true');
+                        if (data.id) storage.set('admin_authed_id', String(data.id));
+                        const directRow = document.getElementById('admin-settings-row');
+                        if (directRow) directRow.style.display = 'block';
+                    }
                     closeSheet();
                     showSuccessBanner(data.first_name || 'Студент');
                     window.renderProfileBar && window.renderProfileBar();
