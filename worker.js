@@ -632,29 +632,51 @@ export default {
 
     // ══════════════════════════════════════════════════════════
     //  TELEGRAM API
-    // ══════════════════════════════════════════════════════════
     const api = async (method, body) => {
       const r = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
       });
-      try { return await r.json(); } catch { return null; }
+      try {
+        const json = await r.json();
+        if (!json.ok) console.error("Telegram API error:", method, json);
+        return json;
+      } catch { return null; }
     };
 
     const send = (chatId, text, reply_markup) =>
-      api("sendMessage", { chat_id: chatId, text, parse_mode: "MarkdownV2", reply_markup });
+      api("sendMessage", {
+        chat_id: chatId,
+        text,
+        parse_mode: "MarkdownV2",
+        ...(reply_markup ? { reply_markup } : {}),
+      });
 
     const edit = (chatId, msgId, text, reply_markup) =>
-      api("editMessageText", { chat_id: chatId, message_id: msgId, text, parse_mode: "MarkdownV2", reply_markup });
-
+      api("editMessageText", {
+        chat_id: chatId,
+        message_id: msgId,
+        text,
+        parse_mode: "MarkdownV2",
+        ...(reply_markup ? { reply_markup } : {}),
+      });
 
 // Plain text helpers (no MarkdownV2)
 const sendPlain = (chatId, text, reply_markup) =>
-  api("sendMessage", { chat_id: chatId, text, reply_markup });
+  api("sendMessage", {
+    chat_id: chatId,
+    text,
+    ...(reply_markup ? { reply_markup } : {}),
+  });
 
 const editPlain = (chatId, msgId, text, reply_markup) =>
-  api("editMessageText", { chat_id: chatId, message_id: msgId, text, reply_markup });
+  api("editMessageText", {
+    chat_id: chatId,
+    message_id: msgId,
+    text,
+    ...(reply_markup ? { reply_markup } : {}),
+  });
 
     const answer = (id) => api("answerCallbackQuery", { callback_query_id: id });
 
@@ -994,7 +1016,13 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       }
 
       if (data === "settings:group") {
-        await askGroupSearch(prefs, `⚙️ *Зміна групи*\n\n_Поточна: ${esc(prefs.group)}_\n\n` + ONBOARD.askGroup);
+        await setPrefs(userId, { ...(prefs ?? {}), await_group: true, group_options: undefined });
+        const text = `⚙️ *Зміна групи*\n\n_Поточна: ${esc(prefs.group)}_\n\n` + ONBOARD.askGroup;
+        await show(text, {
+          inline_keyboard: [
+            [{ text: "⬅️ Назад", callback_data: "settings:menu" }]
+          ]
+        });
         return new Response("OK");
       }
 

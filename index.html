@@ -320,6 +320,15 @@
         .week-parity-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
         .week-parity-range { font-size: 13px; font-weight: 600; color: var(--text-muted); }
         .tab-sub-badge { font-size: 11px; font-weight: 700; opacity: 0.85; margin-left: 4px; }
+        .saved-groups-container { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+        .saved-group-chip { display: inline-flex; align-items: center; background: var(--bg-card); border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+        .saved-group-chip:hover { border-color: var(--primary); }
+        .saved-group-chip.active { background: rgba(59, 130, 246, 0.12); border-color: var(--primary); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2); }
+        .saved-group-select-btn { background: transparent; border: none; color: var(--text-main); font-size: 14px; font-weight: 700; padding: 9px 13px; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 6px; transition: color 0.15s; }
+        .saved-group-chip.active .saved-group-select-btn { color: var(--primary); }
+        .saved-group-active-dot { font-size: 12px; font-weight: 900; color: var(--primary); }
+        .saved-group-del-btn { background: transparent; border: none; border-left: 1px solid var(--border); color: var(--text-muted); font-size: 13px; font-weight: 700; padding: 9px 10px; cursor: pointer; transition: all 0.15s ease; display: flex; align-items: center; justify-content: center; }
+        .saved-group-del-btn:hover { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
         .schedule-list { display: flex; flex-direction: column; gap: 14px; }
         .day-header { display: flex; justify-content: space-between; align-items: flex-end; margin: 10px 0 8px 0; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
         .day-header .day-title { font-size: var(--fs-day-title); font-weight: 700; color: var(--text-main); }
@@ -1342,10 +1351,15 @@
         <div class="modal-header"><h2>Налаштування</h2><button class="close-btn" id="close-settings">×</button></div>
         <div class="modal-body">
             <div class="setting-group" style="border-bottom:2px solid var(--border);padding-bottom:20px;margin-bottom:4px;">
-                <label style="font-size:15px;font-weight:700;color:var(--text-main);">🎓 Ваша група</label>
-                <div><span class="current-group-chip" id="current-group-chip">…</span></div>
-                <input type="text" id="settings-group-search" class="group-search-input" placeholder="Змінити групу: почніть вводити назву" autocomplete="off" autocapitalize="characters" spellcheck="false" />
-                <div id="settings-group-results" class="group-search-results"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                    <label style="font-size:15px;font-weight:700;color:var(--text-main);margin:0;">🎓 Збережені групи</label>
+                    <span style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Оберіть для переходу</span>
+                </div>
+                <div id="saved-groups-container" class="saved-groups-container"></div>
+                <div style="margin-top:12px;">
+                    <input type="text" id="settings-group-search" class="group-search-input" placeholder="+ Додати / змінити групу (почніть вводити)" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+                    <div id="settings-group-results" class="group-search-results"></div>
+                </div>
             </div>
             <div class="setting-group" id="eng-setting-group" style="display:none">
                 <label>Ваш викладач Англійської</label>
@@ -2803,20 +2817,118 @@ function createGroupSearch({ input, results, onPick }) {
     });
 }
 
+const SAVED_GROUPS_KEY = 'app_saved_groups_list';
+
+function getSavedGroups() {
+    try {
+        const raw = storage.get(SAVED_GROUPS_KEY, '');
+        let list = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(list)) list = [];
+        if (state.groupName && !list.includes(state.groupName)) {
+            list.unshift(state.groupName);
+        }
+        return list.filter(Boolean);
+    } catch(e) {
+        return [state.groupName].filter(Boolean);
+    }
+}
+
+function saveSavedGroups(groups) {
+    try {
+        storage.set(SAVED_GROUPS_KEY, JSON.stringify(groups));
+    } catch(e) {}
+}
+
+function addSavedGroup(groupName) {
+    if (!groupName) return;
+    const list = getSavedGroups();
+    if (!list.includes(groupName)) {
+        list.push(groupName);
+        saveSavedGroups(list);
+    }
+}
+
+function removeSavedGroup(groupName) {
+    let list = getSavedGroups();
+    list = list.filter(g => g !== groupName);
+    saveSavedGroups(list);
+    if (groupName === state.groupName) {
+        const nextGroup = list.length > 0 ? list[0] : 'ФЕП-13с';
+        switchGroup(nextGroup);
+    } else {
+        renderSavedGroupsUI();
+    }
+}
+
+function renderSavedGroupsUI() {
+    const container = document.getElementById('saved-groups-container');
+    if (!container) return;
+    const groups = getSavedGroups();
+    container.innerHTML = groups.map(g => {
+        const isActive = g === state.groupName;
+        return `
+            <div class="saved-group-chip ${isActive ? 'active' : ''}">
+                <button type="button" class="saved-group-select-btn" data-group="${g.replace(/"/g, '&quot;')}" title="${isActive ? 'Поточна активна група' : 'Переключитися на ' + g}">
+                    ${isActive ? '<span class="saved-group-active-dot">✓</span>' : ''}<span>${g}</span>
+                </button>
+                <button type="button" class="saved-group-del-btn" data-del-group="${g.replace(/"/g, '&quot;')}" title="Видалити групу ${g}">✕</button>
+            </div>
+        `;
+    }).join('');
+
+    container.querySelectorAll('.saved-group-select-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const g = btn.dataset.group;
+            if (g && g !== state.groupName) {
+                switchGroup(g);
+            }
+        });
+    });
+
+    container.querySelectorAll('.saved-group-del-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const g = btn.dataset.delGroup;
+            if (!g) return;
+            if (confirm(`Видалити групу ${g} зі збережених?`)) {
+                removeSavedGroup(g);
+            }
+        });
+    });
+}
+
 // Зміна групи з налаштувань: після перезавантаження вітальне вікно добере підгрупу й англійську
 function switchGroup(groupName) {
     if (!groupName) return;
+    addSavedGroup(groupName);
     storage.set(APP_ACTIVE_GROUP_KEY, groupName);
     if (groupName !== state.groupName) storage.set(APP_SETUP_PENDING_KEY, '1');
     location.reload();
 }
 
 function initGroupPicker() {
-    const chip = document.getElementById('current-group-chip');
-    if (chip) chip.textContent = state.groupName;
+    renderSavedGroupsUI();
     const input = document.getElementById('settings-group-search');
     const results = document.getElementById('settings-group-results');
-    if (input && results) createGroupSearch({ input, results, onPick: switchGroup });
+    if (input && results) {
+        createGroupSearch({
+            input,
+            results,
+            onPick: (picked) => {
+                addSavedGroup(picked);
+                switchGroup(picked);
+            }
+        });
+    }
+
+    const grpLabel = document.getElementById('user-group-label');
+    if (grpLabel) {
+        grpLabel.style.cursor = 'pointer';
+        grpLabel.title = 'Натисніть для вибору іншої групи';
+        grpLabel.addEventListener('click', () => {
+            if (els.settingsModal) els.settingsModal.classList.add('active');
+        });
+    }
 }
 
 function initWelcomeModal() {
@@ -2901,6 +3013,7 @@ function initWelcomeModal() {
     }
 
     function finishSetup(engValue) {
+        addSavedGroup(chosenGroup);
         const gid = toGroupId(chosenGroup);
         storage.set(APP_ACTIVE_GROUP_KEY, chosenGroup);
         storage.set(gid + '_saved_group', chosenSub);
