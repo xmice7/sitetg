@@ -130,14 +130,19 @@ function parseScheduleHtml(html) {
   };
 }
 
-async function fetchWin1251(url, init) {
-  const response = await fetch(url, init);
-  if (!response.ok) throw new Error(`dekanat responded ${response.status}`);
-  return win1251Decoder.decode(await response.arrayBuffer());
+async function fetchWin1251(url, init = {}, timeoutMs = 7000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error('timeout')), timeoutMs);
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    if (!response.ok) throw new Error(`dekanat responded ${response.status}`);
+    return win1251Decoder.decode(await response.arrayBuffer());
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function getSuggestionGroups(title) {
-  
   const query = new URLSearchParams({ n: 701, lev: 142, faculty: 0, course: 0, query: title }).toString();
   const json = JSON.parse(await fetchWin1251(`${DEKANAT}?${query}`));
   return json.suggestions || [];
@@ -162,7 +167,7 @@ function json(data, status = 200, extraHeaders = {}) {
 
 const DATE_RE = /^\d{2}\.\d{2}\.\d{4}$/;
 
-async function handleScheduleRoutes(request) {
+async function handleScheduleRoutes(request, env, ctx) {
   const url = new URL(request.url);
   if (url.pathname !== '/groups' && url.pathname !== '/schedule') return null;
 
@@ -187,7 +192,78 @@ async function handleScheduleRoutes(request) {
         ? { sdate, edate }
         : getTwoWeekRange();
 
-      return json(await getSchedule(group, range), 200, { 'Cache-Control': 'public, max-age=600' });
+      const kv = env?.PREFS_KV;
+      const cleanGroup = String(group).trim();
+      const cacheKey = `sched_cache:${cleanGroup}:${range.sdate}_${range.edate}`;
+      const fallbackKey = `sched_fallback:${cleanGroup}`;
+
+      let cachedEntry = null;
+      if (kv) {
+        try {
+          const raw = await kv.get(cacheKey);
+          if (raw) cachedEntry = JSON.parse(raw);
+        } catch {}
+      }
+
+      const FRESH_TTL_MS = 900000;
+      if (cachedEntry && cachedEntry.schedule && (Date.now() - (cachedEntry.ts || 0) < FRESH_TTL_MS)) {
+        return json(cachedEntry.schedule, 200, {
+          'Cache-Control': 'public, max-age=600',
+          'X-Cache-Status': 'HIT'
+        });
+      }
+
+      try {
+        const fresh = await getSchedule(cleanGroup, range);
+        if (fresh && Array.isArray(fresh.days) && fresh.days.length > 0) {
+          if (kv) {
+            const entry = JSON.stringify({ ts: Date.now(), schedule: fresh });
+            const saveTask = Promise.all([
+              kv.put(cacheKey, entry, { expirationTtl: 1209600 }),
+              kv.put(fallbackKey, entry, { expirationTtl: 1209600 })
+            ]);
+            if (ctx?.waitUntil) ctx.waitUntil(saveTask); else await saveTask.catch(() => {});
+          }
+          return json(fresh, 200, {
+            'Cache-Control': 'public, max-age=600',
+            'X-Cache-Status': 'MISS'
+          });
+        }
+      } catch (err) {
+        console.warn('Dekanat fetch failed, trying fallback cache:', err.message);
+      }
+
+      if (cachedEntry && cachedEntry.schedule) {
+        return json({
+          ...cachedEntry.schedule,
+          _isStaleFallback: true,
+          _cachedAt: cachedEntry.ts || null
+        }, 200, {
+          'Cache-Control': 'public, max-age=60',
+          'X-Cache-Status': 'STALE-FALLBACK'
+        });
+      }
+
+      if (kv) {
+        try {
+          const rawFb = await kv.get(fallbackKey);
+          if (rawFb) {
+            const fb = JSON.parse(rawFb);
+            if (fb && fb.schedule) {
+              return json({
+                ...fb.schedule,
+                _isStaleFallback: true,
+                _cachedAt: fb.ts || null
+              }, 200, {
+                'Cache-Control': 'public, max-age=60',
+                'X-Cache-Status': 'STALE-FALLBACK'
+              });
+            }
+          }
+        } catch {}
+      }
+
+      return json({ error: 'Сервер деканату тимчасово недоступний, резервна копія для цієї групи ще не збережена' }, 502);
     }
   } catch (error) {
     return json({ error: error.message }, 502);
@@ -198,9 +274,6 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    
-    
-    
     if (request.method === "OPTIONS") {
       return new Response(null, {
         headers: {
@@ -211,11 +284,7 @@ export default {
       });
     }
 
-    
-    
-    
-    
-    const scheduleResponse = await handleScheduleRoutes(request);
+    const scheduleResponse = await handleScheduleRoutes(request, env, ctx);
     if (scheduleResponse) return scheduleResponse;
 
     
@@ -398,6 +467,148 @@ export default {
     
     
     
+    if (url.pathname === "/user-sync") {
+      const kv = env.PREFS_KV;
+      const jsonRes = (data, status = 200) => new Response(JSON.stringify(data), {
+        status,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        }
+      });
+      if (!kv) return jsonRes({ error: "KV not configured" }, 500);
+
+      if (request.method === "GET") {
+        const uid = url.searchParams.get("uid");
+        if (!uid) return jsonRes({ error: "Missing uid" }, 400);
+        try {
+          const raw = await kv.get(`user_sync:${uid}`);
+          const parsed = raw ? JSON.parse(raw) : null;
+          return jsonRes({ ok: true, data: parsed });
+        } catch (e) {
+          return jsonRes({ error: e.message }, 500);
+        }
+      }
+
+      if (request.method === "POST") {
+        let body;
+        try { body = await request.json(); }
+        catch { return jsonRes({ error: "Bad JSON" }, 400); }
+
+        const { uid, data } = body || {};
+        if (!uid || !data) return jsonRes({ error: "Missing uid or data" }, 400);
+
+        try {
+          const payload = {
+            ...data,
+            updatedAt: Date.now()
+          };
+          await kv.put(`user_sync:${uid}`, JSON.stringify(payload), { expirationTtl: 15552000 });
+
+          if (data.activeGroup) {
+            try {
+              const currentBotPrefs = await kv.get(`u:${uid}`);
+              const p = currentBotPrefs ? JSON.parse(currentBotPrefs) : {};
+              const cleanG = String(data.activeGroup || "").trim().toLowerCase();
+              const normG = (cleanG === "fep11" || cleanG === "феп-11с" || cleanG === "феп11" || cleanG === "феп 11") ? "fep11"
+                : (cleanG === "fep12" || cleanG === "феп-12с" || cleanG === "феп12" || cleanG === "феп 12") ? "fep12"
+                : (cleanG === "fep13" || cleanG === "феп-13с" || cleanG === "феп13" || cleanG === "феп 13") ? "fep13"
+                : cleanG.replace(/[\s\-_с]/g, "");
+              const gKey = data.activeGroupId || normG;
+              const groupConf = (data.groupConfigs && (data.groupConfigs[gKey] || data.groupConfigs[normG] || data.groupConfigs[data.activeGroup])) || {};
+              const updatedBot = {
+                ...p,
+                group: data.activeGroup,
+                subgroup: groupConf.subgroup || p.subgroup || "all",
+                eng: groupConf.eng || p.eng || "all",
+                step: "done"
+              };
+              await kv.put(`u:${uid}`, JSON.stringify(updatedBot));
+            } catch {}
+          }
+
+          return jsonRes({ ok: true, updatedAt: payload.updatedAt });
+        } catch (e) {
+          return jsonRes({ error: e.message }, 500);
+        }
+      }
+
+      return jsonRes({ error: "Method not allowed" }, 405);
+    }
+
+    if (url.pathname === "/donations" && request.method === "GET") {
+      const kv = env.PREFS_KV;
+      const jsonRes = (data, status = 200) => new Response(JSON.stringify(data), {
+        status,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        }
+      });
+
+      let list = [];
+      if (kv) {
+        try {
+          const raw = await kv.get("stars_leaderboard");
+          if (raw) list = JSON.parse(raw);
+        } catch {}
+      }
+
+      if (!list || list.length === 0) {
+        list = [
+          { name: "Олекса (@xmice)", group: "ФЕП-13с", stars: 50, badge: "👑 Автор / Топ-1" },
+          { name: "Максим (@maksimko04)", group: "ФЕП-13с", stars: 25, badge: "🥈 Співавтор" },
+          { name: "Студент ФЕП", group: "ФЕП-11с", stars: 15, badge: "🥉 Меценат" },
+          { name: "Староста", group: "ФЕП-12с", stars: 10, badge: "⭐️ Друг розкладу" }
+        ];
+      }
+
+      return jsonRes({ ok: true, donors: list });
+    }
+
+    if (url.pathname === "/create-stars-invoice" && request.method === "POST") {
+      const token = env.BOT_TOKEN;
+      const jsonRes = (data, status = 200) => new Response(JSON.stringify(data), {
+        status,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        }
+      });
+      if (!token) return jsonRes({ error: "BOT_TOKEN not configured" }, 500);
+
+      let body;
+      try { body = await request.json(); } catch { return jsonRes({ error: "Bad JSON" }, 400); }
+
+      const stars = Number(body?.stars) || 5;
+      const uid = String(body?.uid || "").trim();
+
+      const title = stars === 1 ? "Кава для розкладу" : stars <= 5 ? "Піца для розкладу" : stars <= 15 ? "Меценат ФЕП" : "Легенда факультету";
+      const desc = `${stars} ⭐️ на підтримку хостингу та розробки розкладу ФЕП`;
+      const payload = JSON.stringify({ uid, stars, ts: Date.now() });
+
+      try {
+        const r = await fetch(`https://api.telegram.org/bot${token}/createInvoiceLink`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            description: desc,
+            payload,
+            currency: "XTR",
+            prices: [{ label: `${stars} Stars`, amount: stars }]
+          })
+        });
+        const res = await r.json();
+        if (!res.ok) {
+          return jsonRes({ error: res.description || "Failed to create invoice link" }, 400);
+        }
+        return jsonRes({ ok: true, invoiceLink: res.result });
+      } catch (e) {
+        return jsonRes({ error: e.message }, 500);
+      }
+    }
+
     if (url.pathname === "/broadcast" && request.method === "POST") {
       const kv = env.PREFS_KV;
       const token = env.BOT_TOKEN;
@@ -542,6 +753,18 @@ export default {
     const token = env.BOT_TOKEN;
     if (!token) return new Response("Missing BOT_TOKEN", { status: 500 });
 
+    if (update.pre_checkout_query) {
+      await fetch(`https://api.telegram.org/bot${token}/answerPreCheckoutQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pre_checkout_query_id: update.pre_checkout_query.id,
+          ok: true
+        })
+      });
+      return new Response("OK");
+    }
+
     
     
     
@@ -631,12 +854,33 @@ export default {
     
     const loadGroupSchedule = async (group) => {
       const key = `sched:${group}`;
+      const fallbackKey = `sched_fallback:${group}`;
       if (KV) { try { const c = await KV.get(key); if (c) return JSON.parse(c); } catch {} }
-      const raw = await getSchedule(group, getTwoWeekRange());
-      if (!raw || !Array.isArray(raw.days)) throw new Error("bad schedule");
-      const info = normalizeSchedule(raw);
-      if (KV) { try { await KV.put(key, JSON.stringify(info), { expirationTtl: 1800 }); } catch {} }
-      return info;
+      try {
+        const raw = await getSchedule(group, getTwoWeekRange());
+        if (raw && Array.isArray(raw.days) && raw.days.length > 0) {
+          const info = normalizeSchedule(raw);
+          if (KV) {
+            try {
+              await KV.put(key, JSON.stringify(info), { expirationTtl: 1800 });
+              await KV.put(fallbackKey, JSON.stringify({ ts: Date.now(), schedule: raw }), { expirationTtl: 1209600 });
+            } catch {}
+          }
+          return info;
+        }
+      } catch (e) {
+        console.warn('Bot dekanat fetch failed, checking fallback:', e.message);
+      }
+      if (KV) {
+        try {
+          const fb = await KV.get(fallbackKey);
+          if (fb) {
+            const parsed = JSON.parse(fb);
+            if (parsed?.schedule) return normalizeSchedule(parsed.schedule);
+          }
+        } catch {}
+      }
+      throw new Error("bad schedule");
     };
 
     
@@ -991,6 +1235,40 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
     const fromUser = msg?.from ?? cb?.from;
     if (fromUser) await saveUserToFirebase(fromUser);
 
+    if (msg?.successful_payment) {
+      const sp = msg.successful_payment;
+      const stars = sp.total_amount;
+      const donorName = fromUser?.first_name ? `${fromUser.first_name}${fromUser.last_name ? ' ' + fromUser.last_name : ''}` : (fromUser?.username ? `@${fromUser.username}` : "Студент");
+
+      if (KV) {
+        try {
+          let list = [];
+          const raw = await KV.get("stars_leaderboard");
+          if (raw) list = JSON.parse(raw);
+          const existing = list.find(d => String(d.id) === userId);
+          if (existing) {
+            existing.stars = (existing.stars || 0) + stars;
+          } else {
+            const p = await getPrefs(userId);
+            list.push({
+              id: userId,
+              name: donorName,
+              group: p?.group || "ФЕП",
+              stars,
+              badge: stars >= 25 ? "👑 Легенда" : stars >= 10 ? "🌟 Меценат" : "⭐️ Друг розкладу"
+            });
+          }
+          list.sort((a, b) => (b.stars || 0) - (a.stars || 0));
+          await KV.put("stars_leaderboard", JSON.stringify(list));
+        } catch (e) {
+          console.error("Failed to save donation to leaderboard:", e);
+        }
+      }
+
+      await sendPlain(chatId, `⭐️ Щиро дякуємо за підтримку розкладу (${stars} Stars)!\n\nВи додані на Дошку пошани на сайті у розділі «Корисне». Бажаємо успішного семестру та високих оцінок! 🎉`);
+      return new Response("OK");
+    }
+
     const today    = nowKyiv();
     const tomorrow = addDays(today, 1);
 
@@ -1216,16 +1494,47 @@ if (data === "link:site") {
         return new Response("OK");
       }
 
+      if (data.startsWith("stars:")) {
+        const amount = Number(data.split(":")[1]) || 5;
+        const title = amount === 1 ? "Кава для розкладу" : amount <= 5 ? "Піца для розкладу" : amount <= 15 ? "Меценат ФЕП" : "Легенда факультету";
+        await api("sendInvoice", {
+          chat_id: chatId,
+          title,
+          description: `${amount} ⭐️ на підтримку хостингу та розробки розкладу ФЕП`,
+          payload: JSON.stringify({ uid: userId, stars: amount, ts: Date.now() }),
+          currency: "XTR",
+          prices: [{ label: `${amount} Stars`, amount }]
+        });
+        return new Response("OK");
+      }
+
       return new Response("OK");
     }
 
-    
-    
-    
     if (!msg?.text) return new Response("OK");
     const text = msg.text.trim();
 
     const prefs = await getPrefs(userId);
+
+    if (text === "/donate" || text.startsWith("/start donate")) {
+      const textIntro = "*⭐️ Підтримка розкладу ФЕП*\n\nОберіть кількість зірочок Telegram Stars для підтримки проєкту:";
+      await send(chatId, textIntro, {
+        inline_keyboard: [
+          [
+            { text: "☕ 1 Star", callback_data: "stars:1" },
+            { text: "🍕 5 Stars", callback_data: "stars:5" },
+          ],
+          [
+            { text: "🌟 15 Stars", callback_data: "stars:15" },
+            { text: "👑 25 Stars", callback_data: "stars:25" },
+          ],
+          [
+            { text: "📱 Відкрити на сайті", web_app: { url: SITE_URL } }
+          ]
+        ]
+      });
+      return new Response("OK");
+    }
 
     
     
