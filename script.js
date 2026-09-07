@@ -1,17 +1,17 @@
-// =============================================
-// Клієнт розкладу для браузера
-//
-// dekanat.lnu.edu.ua не віддає CORS і працює у windows-1251,
-// тому браузер ходить не напряму, а через Cloudflare Worker (див. worker.js),
-// який перекодовує відповідь і повертає готовий JSON.
-//
-// Використання:
-//   const groups = await getSuggestionGroups('ФЕП');   // ['ФЕП-11с', ...]
-//   const schedule = await getSchedule('ФЕП-13с');       // цей + наступний тиждень
-//   const schedule = await getSchedule('ФЕП-13с', { sdate: '01.09.2026', edate: '07.09.2026' });
-// =============================================
+/*
+      ██╗          ██╗     ██╗
+      ██║          ╚██╗   ██╔╝
+      ██║           ╚██╗ ██╔╝ 
+      ██║            ╚████╔╝  
+      ██║             ╚██╔╝   
+      ██║             ██╔██╗  
+      ██║            ██╔╝ ╚██╗ 
+      ██║           ██╔╝   ╚██╗
+      ██████████╗  ██╔╝     ╚██╗
+      ██████████║  ╚═╝       ╚═╝
+      ╚═════════╝               
+*/
 
-// Адреса задеплоєного worker.js (без слеша в кінці)
 const SCHEDULE_API = 'https://telegram2.korglosa.workers.dev';
 
 function formatDate(date) {
@@ -20,10 +20,9 @@ function formatDate(date) {
   return `${dd}.${mm}.${date.getFullYear()}`;
 }
 
-// Понеділок поточного тижня та неділя наступного
 function getTwoWeekRange(now = new Date()) {
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // Нд=0 -> 6, Пн=1 -> 0
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); 
   const end = new Date(start);
   end.setDate(start.getDate() + 13);
   return { sdate: formatDate(start), edate: formatDate(end) };
@@ -37,7 +36,6 @@ async function apiGet(path, params) {
   return data;
 }
 
-// Підказки назв груп за початком назви
 async function getSuggestionGroups(title) {
   try {
     return await apiGet('/groups', { q: title });
@@ -47,8 +45,6 @@ async function getSuggestionGroups(title) {
   }
 }
 
-// Розклад групи у вигляді JSON:
-// { group, from, to, days: [{ date, weekday, slots: [{ number, start, end, lessons: [...] }] }] }
 async function getSchedule(group, range=getTwoWeekRange()) {
   try {
     return await apiGet('/schedule', { group, ...(range || {}) });

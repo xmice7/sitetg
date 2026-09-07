@@ -1,16 +1,16 @@
-// ╔══════════════════════════════════════════════════════════════╗
-// ║          Розклад ФЕП — Telegram Bot (Cloudflare Worker)      ║
-// ║          Бот у Telegram + JSON-проксі розкладу для сайту      ║
-// ╚══════════════════════════════════════════════════════════════╝
-
-// ══════════════════════════════════════════════════════════════
-//  ПРОКСІ ДО РОЗКЛАДУ ДЕКАНАТУ ЛНУ (для сайту)
-//  dekanat.lnu.edu.ua не віддає CORS і працює у windows-1251,
-//  тому сайт ходить сюди, а worker перекодовує і парсить у JSON.
-//    GET /groups?q=ФЕП                          -> ["ФЕП-11с", ...]
-//    GET /schedule?group=ФЕП-13с                -> цей + наступний тиждень
-//    GET /schedule?group=...&sdate=..&edate=..  -> довільний діапазон (dd.mm.yyyy)
-// ══════════════════════════════════════════════════════════════
+/*
+      ██╗          ██╗     ██╗
+      ██║          ╚██╗   ██╔╝
+      ██║           ╚██╗ ██╔╝ 
+      ██║            ╚████╔╝  
+      ██║             ╚██╔╝   
+      ██║             ██╔██╗  
+      ██║            ██╔╝ ╚██╗ 
+      ██║           ██╔╝   ╚██╗
+      ██████████╗  ██╔╝     ╚██╗
+      ██████████║  ╚═╝       ╚═╝
+      ╚═════════╝               
+*/
 
 const DEKANAT = 'https://dekanat.lnu.edu.ua/cgi-bin/timetable.cgi';
 
@@ -20,11 +20,8 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-// ---------- windows-1251 ----------
-
 const win1251Decoder = new TextDecoder('windows-1251');
 
-// Таблиця символ -> байт, побудована з декодера (TextEncoder вміє лише UTF-8)
 const win1251Table = (() => {
   const map = new Map();
   for (let b = 0x80; b <= 0xff; b++) {
@@ -38,7 +35,7 @@ function encodeWin1251Param(value) {
   for (const ch of String(value)) {
     const code = ch.charCodeAt(0);
     const byte = code < 0x80 ? code : win1251Table.get(ch);
-    if (byte === undefined) continue; // символу немає у win1251
+    if (byte === undefined) continue; 
     out += '%' + byte.toString(16).toUpperCase().padStart(2, '0');
   }
   return out;
@@ -50,15 +47,12 @@ function encodeForm(params) {
     .join('&');
 }
 
-// ---------- Дати ----------
-
 function formatDate(date) {
   const dd = String(date.getDate()).padStart(2, '0');
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   return `${dd}.${mm}.${date.getFullYear()}`;
 }
 
-// Понеділок поточного тижня та неділя наступного (за київським часом)
 function getTwoWeekRange() {
   const kyiv = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Kyiv' }));
   const start = new Date(kyiv.getFullYear(), kyiv.getMonth(), kyiv.getDate());
@@ -67,8 +61,6 @@ function getTwoWeekRange() {
   end.setDate(start.getDate() + 13);
   return { sdate: formatDate(start), edate: formatDate(end) };
 }
-
-// ---------- Парсинг HTML ----------
 
 function decodeEntities(str) {
   return str
@@ -89,7 +81,6 @@ function firstMatch(html, regex) {
   return m ? stripTags(m[1]) : null;
 }
 
-// Одна комірка може містити кілька занять (підгрупи / збірні групи), розділених <br><br>
 function parseLessonCell(cellHtml) {
   const lessons = [];
   for (const chunk of cellHtml.split(/<br>\s*<br>/i)) {
@@ -105,7 +96,7 @@ function parseLessonCell(cellHtml) {
       teacher: firstMatch(chunk, /<span class="t_name">([\s\S]*?)<\/span>/),
       room: firstMatch(chunk, /<span class="room_name">([\s\S]*?)<\/span>/),
       subgroup: subgroupMatch ? Number(subgroupMatch[1]) : null,
-      groupInfo: groupInfo || null, // "Потік", "Збірна група", "(підгр. 1)"
+      groupInfo: groupInfo || null, 
     });
   }
   return lessons;
@@ -139,8 +130,6 @@ function parseScheduleHtml(html) {
   };
 }
 
-// ---------- Запити до деканату ----------
-
 async function fetchWin1251(url, init) {
   const response = await fetch(url, init);
   if (!response.ok) throw new Error(`dekanat responded ${response.status}`);
@@ -148,7 +137,7 @@ async function fetchWin1251(url, init) {
 }
 
 async function getSuggestionGroups(title) {
-  // Цей ендпоінт приймає query в UTF-8
+  
   const query = new URLSearchParams({ n: 701, lev: 142, faculty: 0, course: 0, query: title }).toString();
   const json = JSON.parse(await fetchWin1251(`${DEKANAT}?${query}`));
   return json.suggestions || [];
@@ -164,8 +153,6 @@ async function getSchedule(group, range) {
   return parseScheduleHtml(html);
 }
 
-// ---------- HTTP ----------
-
 function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
@@ -175,7 +162,6 @@ function json(data, status = 200, extraHeaders = {}) {
 
 const DATE_RE = /^\d{2}\.\d{2}\.\d{4}$/;
 
-// Повертає Response для /groups та /schedule, або null, якщо шлях не наш
 async function handleScheduleRoutes(request) {
   const url = new URL(request.url);
   if (url.pathname !== '/groups' && url.pathname !== '/schedule') return null;
@@ -212,32 +198,32 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // ══════════════════════════════════════════════════════════
-    //  CORS PREFLIGHT (для /auth — щоб сайт міг читати відповідь)
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
     if (request.method === "OPTIONS") {
       return new Response(null, {
         headers: {
           "Access-Control-Allow-Origin": "*",
           "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
         },
       });
     }
 
-    // ══════════════════════════════════════════════════════════
-    //  РОЗКЛАД ДЛЯ САЙТУ: GET /groups та GET /schedule
-    //  Має стояти ДО перевірки request.method !== "POST"
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
+    
     const scheduleResponse = await handleScheduleRoutes(request);
     if (scheduleResponse) return scheduleResponse;
 
-    // ══════════════════════════════════════════════════════════
-    //  ЕНДПОІНТ /auth?token=XXX
-    //  Сайт викликає після повернення з бота:
-    //    GET https://your-worker.workers.dev/auth?token=abc123
-    //  Worker повертає JSON з даними юзера або 404
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
+    
+    
+    
     if (url.pathname === "/auth" && request.method === "GET") {
       const token = url.searchParams.get("token");
       const kv = env.PREFS_KV;
@@ -256,13 +242,13 @@ export default {
           });
         }
 
-        // Токен одноразовий — видаляємо одразу після першого читання
+        
         await kv.delete(`link_token:${token}`);
 
         return new Response(raw, {
           headers: {
             "Content-Type": "application/json",
-            // Дозволяємо сайту читати відповідь (CORS)
+            
             "Access-Control-Allow-Origin": "*",
           },
         });
@@ -272,16 +258,16 @@ export default {
       }
     }
 
-    // ══════════════════════════════════════════════════════════
-    //  ПРОКСІ ДЛЯ АВАТАРОК /avatar/:userId
-    //  Приклад: https://your-worker.workers.dev/avatar/123456789
-    //  Це потрібно бо Telegram file URLs протухають через ~1 годину
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
+    
+    
 
-    // ══════════════════════════════════════════════════════════
-    //  ENDPOINT POST /gen-code  { code: "123456" }
-    //  Site registers a 6-digit code in KV for 10 minutes (one-time).
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
+    
     if (url.pathname === "/gen-code" && request.method === "POST") {
       const kv = env.PREFS_KV;
       if (!kv) return new Response("KV not configured", { status: 500 });
@@ -328,10 +314,10 @@ export default {
       }
     }
 
-    // ══════════════════════════════════════════════════════════
-    //  ENDPOINT GET /auth-code?code=123456
-    //  Site polls this to fetch confirmed user data (one-time).
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
+    
     if (url.pathname === "/auth-code" && request.method === "GET") {
       const code = url.searchParams.get("code");
       const kv = env.PREFS_KV;
@@ -352,7 +338,7 @@ export default {
           });
         }
 
-        // one-time
+        
         await kv.delete(key);
 
         return new Response(raw, {
@@ -387,7 +373,7 @@ export default {
         const filePath = fileData?.result?.file_path;
         if (!filePath) return new Response("No file path", { status: 404 });
 
-        // Завантажуємо фото і повертаємо напряму — без проміжного збереження URL
+        
         const imgRes = await fetch(
           `https://api.telegram.org/file/bot${token}/${filePath}`
         );
@@ -397,7 +383,7 @@ export default {
         return new Response(imgBuffer, {
           headers: {
             "Content-Type": imgRes.headers.get("Content-Type") || "image/jpeg",
-            // Кешуємо на 1 годину в браузері, 6 годин в Cloudflare CDN
+            
             "Cache-Control": "public, max-age=3600, s-maxage=21600",
           },
         });
@@ -407,9 +393,146 @@ export default {
       }
     }
 
-    // ══════════════════════════════════════════════════════════
-    //  ОСНОВНИЙ ОБРОБНИК TELEGRAM WEBHOOK
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
+    
+    
+    if (url.pathname === "/broadcast" && request.method === "POST") {
+      const kv = env.PREFS_KV;
+      const token = env.BOT_TOKEN;
+      const jsonRes = (data, status = 200) => new Response(JSON.stringify(data), {
+        status,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        }
+      });
+
+      if (!token) return jsonRes({ error: "BOT_TOKEN not configured" }, 500);
+      if (!kv) return jsonRes({ error: "KV not configured" }, 500);
+
+      let body;
+      try { body = await request.json(); }
+      catch { return jsonRes({ error: "Bad JSON" }, 400); }
+
+      const { adminPass, adminUser, group = "all", text } = body || {};
+      const broadcastPass = env.BROADCAST_PASSWORD ?? "0711";
+      const adminPassHash = "d16e394090d88753b438e3285c7843113a67729ff93f0994d30cd80faa36f6ee";
+
+      
+      let isAuthed = false;
+      if (adminUser) {
+        const u = String(adminUser).toLowerCase().replace("@", "");
+        if (u === "xmice" || String(adminUser) === String(env.ADMIN_USER_ID ?? "")) {
+          isAuthed = true;
+        }
+      }
+      if (!isAuthed && adminPass) {
+        if (String(adminPass) === broadcastPass) {
+          isAuthed = true;
+        } else {
+          try {
+            const enc = new TextEncoder();
+            const buf = await crypto.subtle.digest("SHA-256", enc.encode(String(adminPass)));
+            const hashHex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+            if (hashHex === adminPassHash) isAuthed = true;
+          } catch {}
+        }
+      }
+
+      if (!isAuthed) {
+        return jsonRes({ error: "Unauthorized" }, 403);
+      }
+
+      const cleanText = String(text || "").trim();
+      if (!cleanText) {
+        return jsonRes({ error: "Повідомлення не може бути порожнім" }, 400);
+      }
+
+      const targetGroup = String(group || "all").trim();
+      const isAll = !targetGroup || targetGroup.toLowerCase() === "all";
+
+      const normGroup = (g) => {
+        if (!g) return "";
+        const s = String(g).trim().toLowerCase();
+        if (s === "fep11" || s === "феп-11с" || s === "феп11" || s === "феп 11") return "fep11";
+        if (s === "fep12" || s === "феп-12с" || s === "феп12" || s === "феп 12") return "fep12";
+        if (s === "fep13" || s === "феп-13с" || s === "феп13" || s === "феп 13") return "fep13";
+        return s.replace(/[\s\-_]/g, "");
+      };
+
+      const headerPrefix = !isAll
+        ? `📢 *Оголошення для групи ${targetGroup}:*\n\n`
+        : `📢 *Загальне оголошення:*\n\n`;
+      const fullMessage = `${headerPrefix}${cleanText}`;
+
+      const sendTg = async (chatId, msg) => {
+        try {
+          let r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: "Markdown" }),
+          });
+          let res = await r.json();
+          if (!res.ok) {
+            
+            r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ chat_id: chatId, text: msg }),
+            });
+            res = await r.json();
+          }
+          return !!res.ok;
+        } catch {
+          return false;
+        }
+      };
+
+      try {
+        const result = { total: 0, sent: 0, failed: 0 };
+        let cursor;
+        do {
+          const page = await kv.list({ prefix: "u:", cursor });
+          for (const key of page.keys) {
+            const uid = key.name.slice(2);
+            if (!uid) continue;
+
+            if (!isAll) {
+              try {
+                const rawPrefs = await kv.get(key.name);
+                if (rawPrefs) {
+                  const p = JSON.parse(rawPrefs);
+                  const userGroup = (p && p.group) || "";
+                  if (normGroup(userGroup) !== normGroup(targetGroup)) {
+                    continue;
+                  }
+                } else {
+                  continue;
+                }
+              } catch {
+                continue;
+              }
+            }
+
+            result.total++;
+            const ok = await sendTg(uid, fullMessage);
+            if (ok) result.sent++; else result.failed++;
+          }
+          cursor = page.list_complete ? undefined : page.cursor;
+        } while (cursor);
+
+        return jsonRes({ ok: true, ...result });
+      } catch (e) {
+        console.error("broadcast error:", e);
+        return jsonRes({ error: e.message || "Failed to broadcast" }, 500);
+      }
+    }
+
+    
+    
+    
     if (request.method !== "POST") return new Response("OK");
 
     let update;
@@ -419,19 +542,19 @@ export default {
     const token = env.BOT_TOKEN;
     if (!token) return new Response("Missing BOT_TOKEN", { status: 500 });
 
-    // ── env ────────────────────────────────────────────────────
-    // PREFS_KV           : Cloudflare KV binding (налаштування юзерів, кеш розкладу)
-    // FIREBASE_API_KEY   : ключ Firebase для збереження юзерів
-    // WORKER_URL         : URL цього воркера (для проксі аватарок)
-    // SITE_URL           : URL сайту розкладу
-    // BROADCAST_PASSWORD : пароль для /mes (за замовчуванням 0711)
+    
+    
+    
+    
+    
+    
     const KV         = env.PREFS_KV ?? null;
     const WORKER_URL = env.WORKER_URL ?? "";
     const SITE_URL   = env.SITE_URL ?? "https://xmice7.github.io/sitetg/";
 
-    // ══════════════════════════════════════════════════════════
-    //  ДАТА / ЧАС (усі дати — UTC-північ київського дня)
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
     const nowKyiv = () => {
       const k = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Kyiv" }));
       return new Date(Date.UTC(k.getFullYear(), k.getMonth(), k.getDate()));
@@ -449,23 +572,23 @@ export default {
     const UA_MONTHS = ["січня","лютого","березня","квітня","травня","червня","липня","серпня","вересня","жовтня","листопада","грудня"];
     const dateLabel = (d) => `${UA_DAYS[d.getUTCDay()]}, ${d.getUTCDate()} ${UA_MONTHS[d.getUTCMonth()]}`;
 
-    // Чисельник / Знаменник (з 31 серпня по 6 вересня 2026 — чисельник, 7-13 вересня — знаменник)
+    
     const getWeekParity = (d) => {
       const mon = mondayOf(d);
-      const refMon = new Date(Date.UTC(2026, 7, 31)); // 31 серпня 2026
+      const refMon = new Date(Date.UTC(2026, 7, 31)); 
       const diffWeeks = Math.round((mon.getTime() - refMon.getTime()) / (7 * 86400000));
       return (((diffWeeks % 2) + 2) % 2) === 0 ? "Чисельник" : "Знаменник";
     };
 
-    // ══════════════════════════════════════════════════════════
-    //  РОЗКЛАД З ДЕКАНАТУ (функції getSchedule / getSuggestionGroups
-    //  оголошені вище, у проксі-частині цього ж файлу)
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
+    
     const LEGACY_GROUP_NAMES = { fep11: "ФЕП-11с", fep12: "ФЕП-12с", fep13: "ФЕП-13с" };
     const LESSON_TYPE_LABELS = { "Л": "Лекція", "Лаб": "Лабораторна", "ПрС": "Практична", "Сем": "Семінар", "Конс": "Консультація", "Екз": "Екзамен", "Зал": "Залік" };
     const TEACHER_RANKS = [["старший викладач", "ст. викл."], ["професор", "проф."], ["доцент", "доц."], ["асистент", "ас."], ["викладач", "викл."]];
 
-    // "доцент Цибуляк Богдан Зіновійович" -> "доц. Цибуляк Б.З."
+    
     const shortTeacher = (full) => {
       if (!full) return "";
       let s = String(full).trim(), rank = "";
@@ -477,7 +600,7 @@ export default {
       return (rank ? rank + " " : "") + s;
     };
 
-    // JSON проксі -> заняття по датах, список викладачів англійської, чи є підгрупи
+    
     const normalizeSchedule = (raw) => {
       const byDate = {}, engSet = new Set();
       let hasSubgroups = false, totalLessons = 0;
@@ -505,7 +628,7 @@ export default {
       return { byDate, engTeachers: [...engSet], hasSubgroups, totalLessons };
     };
 
-    // Розклад групи на цей і наступний тиждень; кеш у KV на 30 хв
+    
     const loadGroupSchedule = async (group) => {
       const key = `sched:${group}`;
       if (KV) { try { const c = await KV.get(key); if (c) return JSON.parse(c); } catch {} }
@@ -516,10 +639,10 @@ export default {
       return info;
     };
 
-    // ══════════════════════════════════════════════════════════
-    //  KV — налаштування користувача
-    //  prefs: { step, group, subgroup, eng, await_group, group_options, eng_options, ... }
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
+    
     const kvKey  = (uid) => `u:${uid}`;
 
     const getPrefs = async (uid) => {
@@ -527,7 +650,7 @@ export default {
       try {
         const raw = await KV.get(kvKey(uid));
         const p = raw ? JSON.parse(raw) : null;
-        if (p && LEGACY_GROUP_NAMES[p.group]) p.group = LEGACY_GROUP_NAMES[p.group]; // старі id -> назви з деканату
+        if (p && LEGACY_GROUP_NAMES[p.group]) p.group = LEGACY_GROUP_NAMES[p.group]; 
         return p;
       } catch { return null; }
     };
@@ -537,7 +660,7 @@ export default {
       try { await KV.put(kvKey(uid), JSON.stringify(data)); } catch {}
     };
 
-    // Розсилка всім, хто хоч раз писав боту (у KV є ключ u:<userId>)
+    
     const broadcastToAll = async (messageText) => {
       const result = { total: 0, sent: 0, failed: 0 };
       if (!KV) return result;
@@ -555,7 +678,7 @@ export default {
       return result;
     };
 
-    // Розклад групи юзера + міграція старого вибору викладача (прізвище -> повне ім'я)
+    
     const getInfoFor = async (uid, prefs) => {
       const info = await loadGroupSchedule(prefs.group);
       if (prefs.eng && prefs.eng !== "all" && !info.engTeachers.includes(prefs.eng)) {
@@ -566,10 +689,10 @@ export default {
       return info;
     };
 
-    // ══════════════════════════════════════════════════════════
-    //  ФОРМАТУВАННЯ РОЗКЛАДУ
-    // ══════════════════════════════════════════════════════════
-    // MarkdownV2: екрануємо лише спецсимволи Telegram (діапазон "+-=" у старій версії ловив ще й цифри)
+    
+    
+    
+    
     const esc = (s) => String(s ?? "").replace(/[_*\[\]()~`>#+\-=|{}.!\\]/g, "\\$&");
 
     const subLabel = (s) => s === "1" ? "Підгрупа 1" : s === "2" ? "Підгрупа 2" : "Всі";
@@ -621,7 +744,7 @@ export default {
       if (info.totalLessons === 0) out += `📭 _Деканат ще не опублікував розклад цієї групи на ці два тижні_\n\n`;
       for (let i = 0; i < 7; i++) {
         const day = addDays(mon, i);
-        if (i >= 5 && !(info.byDate[isoOf(day)] || []).length) continue; // Сб/Нд лише якщо є пари
+        if (i >= 5 && !(info.byDate[isoOf(day)] || []).length) continue; 
         out += formatOneDayBlock(day, info, prefs) + "\n\n";
       }
       out = out.trim();
@@ -630,8 +753,8 @@ export default {
 
     const SCHEDULE_ERROR = "😕 Не вдалося завантажити розклад з деканату\\. Спробуй трохи пізніше\\.";
 
-    // ══════════════════════════════════════════════════════════
-    //  TELEGRAM API
+    
+    
     const api = async (method, body) => {
       const r = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
         method: "POST",
@@ -662,7 +785,6 @@ export default {
         ...(reply_markup ? { reply_markup } : {}),
       });
 
-// Plain text helpers (no MarkdownV2)
 const sendPlain = (chatId, text, reply_markup) =>
   api("sendMessage", {
     chat_id: chatId,
@@ -680,15 +802,12 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
 
     const answer = (id) => api("answerCallbackQuery", { callback_query_id: id });
 
-    // ══════════════════════════════════════════════════════════
-    //  FIREBASE — збереження профілю юзера
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
 
-    /**
-     * ФІЧ 1: Замість зберігання тимчасового Telegram URL,
-     * зберігаємо стабільний URL через наш проксі /avatar/:userId
-     * Проксі кожен раз свіжо підтягує фото з Telegram → жодних протухлих посилань
-     */
+    
+
     const getStableAvatarUrl = (userId) => {
       if (!WORKER_URL) return "";
       return `${WORKER_URL}/avatar/${userId}`;
@@ -728,9 +847,9 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       }
     };
 
-    // ══════════════════════════════════════════════════════════
-    //  ОНБОРДИНГ — тексти
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
     const ONBOARD = {
       welcome: (name) =>
         `👋 Привіт, *${esc(name || "студенте")}\\!*\n\n` +
@@ -773,10 +892,10 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       `🗓 Зараз: *${esc(getWeekParity(today))}*\n\n` +
       `Обери що показати 👇`;
 
-    // ══════════════════════════════════════════════════════════
-    //  КЛАВІАТУРИ (варіанти груп/викладачів ідуть індексами,
-    //  бо callback_data обмежена 64 байтами)
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
+    
     const backRow = (to) => [{ text: "⬅️ Назад", callback_data: to }];
 
     const kb = {
@@ -847,7 +966,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       }),
     };
 
-    // Показати повідомлення: редагуємо, якщо є що редагувати, інакше шлемо нове
+    
     const show = async (text, markup) => {
       if (msgId) {
         const r = await edit(chatId, msgId, text, markup);
@@ -856,9 +975,9 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       await send(chatId, text, markup);
     };
 
-    // ══════════════════════════════════════════════════════════
-    //  КОНТЕКСТ ЗАПИТУ
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
     const msg = update.message;
     const cb  = update.callback_query;
 
@@ -875,17 +994,17 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
     const today    = nowKyiv();
     const tomorrow = addDays(today, 1);
 
-    // ══════════════════════════════════════════════════════════
-    //  СПІЛЬНІ КРОКИ НАЛАШТУВАННЯ
-    //  Після вибору групи розклад визначає, які кроки потрібні:
-    //  підгрупа — лише якщо є підгрупи, англійська — лише якщо є
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
+    
+    
     const askGroupSearch = async (prefs, intro) => {
       await setPrefs(userId, { ...(prefs ?? {}), await_group: true, group_options: undefined });
       await show(intro, null);
     };
 
-    // Юзер написав назву групи -> показуємо варіанти з деканату
+    
     const handleGroupQuery = async (prefs, query) => {
       let options = [];
       try { options = (await getSuggestionGroups(query)).slice(0, 12); } catch {}
@@ -897,7 +1016,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       await send(chatId, ONBOARD.pickGroup(query), kb.groupOptions(options));
     };
 
-    // Крок після групи: підгрупа -> англійська -> готово
+    
     const continueAfterGroup = async (prefs, info) => {
       if (info.hasSubgroups) {
         await setPrefs(userId, { ...prefs, step: "subgroup" });
@@ -923,7 +1042,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       await show(ONBOARD.done(final), kb.main(final));
     };
 
-    // Обрана група (індекс у group_options): вантажимо розклад і йдемо далі
+    
     const chooseGroup = async (prefs, group) => {
       await show(ONBOARD.loading(group), null);
       let info;
@@ -941,15 +1060,15 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       await continueAfterGroup(next, info);
     };
 
-    // ══════════════════════════════════════════════════════════
-    //  CALLBACK QUERY
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
     if (cb) {
       await answer(cb.id);
       const prefs = await getPrefs(userId) ?? {};
       const data  = cb.data ?? "";
 
-      // ── онбординг: група ─────────────────────────────────
+      
       if (data === "onboard:group:again") {
         await askGroupSearch(prefs, ONBOARD.askGroup);
         return new Response("OK");
@@ -961,7 +1080,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
         return new Response("OK");
       }
 
-      // ── онбординг: підгрупа ──────────────────────────────
+      
       if (data.startsWith("onboard:sub:")) {
         const subgroup = data.split(":")[2];
         if (!prefs.group) { await askGroupSearch(prefs, ONBOARD.askGroup); return new Response("OK"); }
@@ -972,7 +1091,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
         return new Response("OK");
       }
 
-      // ── онбординг: англійська ────────────────────────────
+      
       if (data.startsWith("onboard:eng:")) {
         const v = data.split(":")[2];
         const eng = v === "all" ? "all" : (prefs.eng_options ?? [])[Number(v)];
@@ -981,13 +1100,13 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
         return new Response("OK");
       }
 
-      // ── далі все потребує завершеного налаштування ───────
+      
       if (prefs.step !== "done" || !prefs.group) {
         await askGroupSearch(prefs, ONBOARD.welcome(userName));
         return new Response("OK");
       }
 
-      // ── розклад ──────────────────────────────────────────
+      
       if (data.startsWith("sched:")) {
         let info;
         try { info = await getInfoFor(userId, prefs); }
@@ -1002,7 +1121,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
         return new Response("OK");
       }
 
-      // ── налаштування ─────────────────────────────────────
+      
       if (data === "settings:menu") {
         let info = null;
         try { info = await getInfoFor(userId, prefs); } catch {}
@@ -1066,7 +1185,6 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
         return new Response("OK");
       }
 
-// ── прив'язка до сайту через код ───────────────────────
 if (data === "link:site") {
   if (!KV) {
     await sendPlain(chatId, "KV не налаштовано.");
@@ -1101,22 +1219,22 @@ if (data === "link:site") {
       return new Response("OK");
     }
 
-    // ══════════════════════════════════════════════════════════
-    //  TEXT / COMMANDS
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
     if (!msg?.text) return new Response("OK");
     const text = msg.text.trim();
 
     const prefs = await getPrefs(userId);
 
-    // ══════════════════════════════════════════════════════════
-    //  /mes — розсилка всім користувачам бота (з паролем)
-    //  1) /mes            -> бот просить пароль
-    //  2) пароль          -> бот просить текст
-    //  3) текст           -> розсилка у фоні, потім звіт
-    //  /cancel на будь-якому кроці скасовує
-    //  Пароль можна перевизначити змінною BROADCAST_PASSWORD
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
+    
+    
+    
+    
+    
     const BROADCAST_PASSWORD = env.BROADCAST_PASSWORD ?? "0711";
     const isXmice = (fromUser?.username ?? "").toLowerCase().replace("@", "") === "xmice" || userId === String(env.ADMIN_USER_ID ?? "");
 
@@ -1160,7 +1278,7 @@ if (data === "link:site") {
       }
 
       if (prefs.await_mes === "password") {
-        await clearBroadcastState(); // одна спроба: після невірного пароля треба знову /mes
+        await clearBroadcastState(); 
         if (text !== BROADCAST_PASSWORD) {
           await sendPlain(chatId, "❌ Невірний пароль.");
           return new Response("OK");
@@ -1173,8 +1291,8 @@ if (data === "link:site") {
       if (prefs.await_mes === "text") {
         await clearBroadcastState();
         await sendPlain(chatId, "📣 Розсилка запущена, звіт надійде після завершення.");
-        // Відповідаємо Telegram одразу, а розсилку доробляємо у фоні,
-        // інакше вебхук перевищить таймаут і Telegram надішле апдейт ще раз
+        
+        
         const job = broadcastToAll(text).then(
           (r) => sendPlain(chatId, `📣 Розсилку завершено.\n\n✅ Доставлено: ${r.sent}\n❌ Не доставлено: ${r.failed}\n👥 Всього: ${r.total}`),
           (e) => sendPlain(chatId, "❌ Помилка розсилки: " + (e?.message ?? e))
@@ -1184,7 +1302,6 @@ if (data === "link:site") {
       }
     }
 
-// Якщо бот очікує 6-значний код для прив'язки
 if (prefs?.await_link_code) {
   if (!KV) {
     await sendPlain(chatId, "KV не налаштовано.");
@@ -1234,7 +1351,6 @@ if (prefs?.await_link_code) {
   }
 }
 
-// /start code_123456 — прив'язка через 6-значний код (з deep-link)
 if (text.startsWith("/start code_")) {
   const code = text.replace("/start code_", "").trim();
   if (!/^[0-9]{6}$/.test(code) || !KV) {
@@ -1275,40 +1391,40 @@ if (text.startsWith("/start code_")) {
   }
 }
 
-    // ══════════════════════════════════════════════════════════
-    //  /start link_TOKEN — прив'язка акаунту з сайту
-    //  Спрацьовує коли юзер переходить за посиланням з сайту:
-    //    https://t.me/shedulefep_bot?start=link_abc123
-    //  Ми зберігаємо дані юзера в KV під токеном на 10 хвилин,
-    //  потім надсилаємо юзеру посилання назад на сайт.
-    //  Сайт забирає дані через GET /auth?token=abc123
-    // ══════════════════════════════════════════════════════════
+    
+    
+    
+    
+    
+    
+    
+    
     if (text.startsWith("/start link_")) {
       const linkToken = text.replace("/start link_", "").trim();
 
       if (linkToken && KV) {
-        // Дані юзера для передачі на сайт
+        
         const userData = JSON.stringify({
           id:         String(msg.from.id),
           first_name: msg.from.first_name ?? "",
           last_name:  msg.from.last_name  ?? "",
           username:   msg.from.username   ?? "",
-          // Стабільний URL аватарки через проксі (не протухає)
+          
           photo_url:  WORKER_URL ? `${WORKER_URL}/avatar/${msg.from.id}` : "",
         });
 
-        // Зберігаємо токен на 10 хвилин
+        
         await KV.put(`link_token:${linkToken}`, userData, { expirationTtl: 600 });
 
-        // Також зберігаємо юзера в Firebase
+        
         await saveUserToFirebase(msg.from);
 
-        // Формуємо URL повернення на сайт (якщо SITE_URL задано)
+        
         const returnUrl = SITE_URL
           ? `${SITE_URL.replace(/\/$/, "")}?tg_token=${linkToken}`
           : null;
 
-        // Відповідь юзеру
+        
         const successText = returnUrl
           ? `✅ *Готово\!* Telegram прив'язано до сайту розкладу\\.\n\n` +
             `👉 [Повернутись на сайт](${returnUrl})\n\n` +
@@ -1320,7 +1436,7 @@ if (text.startsWith("/start code_")) {
           chat_id: chatId,
           text: successText,
           parse_mode: "MarkdownV2",
-          // Якщо є URL — додаємо кнопку для зручності
+          
           ...(returnUrl ? {
             reply_markup: {
               inline_keyboard: [[
@@ -1339,20 +1455,20 @@ if (text.startsWith("/start code_")) {
       return new Response("OK");
     }
 
-    // /start — завжди запускає налаштування заново
+    
     if (text.startsWith("/start")) {
       await setPrefs(userId, { step: "group", await_group: true });
       await send(chatId, ONBOARD.welcome(userName), null);
       return new Response("OK");
     }
 
-    // /cancel поза сценаріями — просто меню
+    
     if (text === "/cancel" && prefs?.step === "done") {
       await send(chatId, menuText(prefs), kb.main(prefs));
       return new Response("OK");
     }
 
-    // Бот чекає назву групи (онбординг або зміна групи в налаштуваннях)
+    
     if (prefs?.await_group) {
       if (text.startsWith("/")) {
         await send(chatId, ONBOARD.askGroup, null);
@@ -1362,14 +1478,14 @@ if (text.startsWith("/start code_")) {
       return new Response("OK");
     }
 
-    // якщо ще не пройшов налаштування
+    
     if (!prefs?.step || prefs.step !== "done" || !prefs.group) {
       await setPrefs(userId, { ...(prefs ?? {}), step: "group", await_group: true });
       await send(chatId, ONBOARD.welcome(userName), null);
       return new Response("OK");
     }
 
-    // команди розкладу
+    
     if (/^\/(today|tomorrow|week|nextweek)\b/.test(text)) {
       let info;
       try { info = await getInfoFor(userId, prefs); }
@@ -1383,7 +1499,7 @@ if (text.startsWith("/start code_")) {
       return new Response("OK");
     }
 
-    // будь-яке інше повідомлення — показуємо головне меню
+    
     await send(chatId, menuText(prefs), kb.main(prefs));
     return new Response("OK");
   },

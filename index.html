@@ -1,3 +1,17 @@
+<!--
+      ██╗          ██╗     ██╗
+      ██║          ╚██╗   ██╔╝
+      ██║           ╚██╗ ██╔╝ 
+      ██║            ╚████╔╝  
+      ██║             ╚██╔╝   
+      ██║             ██╔██╗  
+      ██║            ██╔╝ ╚██╗ 
+      ██║           ██╔╝   ╚██╗
+      ██████████╗  ██╔╝     ╚██╗
+      ██████████║  ╚═╝       ╚═╝
+      ╚═════════╝               
+-->
+
 <!DOCTYPE html>
 <html lang="uk" data-theme="dark">
 <head>
@@ -13,7 +27,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="./script.js"></script>
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
         const firebaseConfig = {
             apiKey: "AIzaSyBH8JKNOBWTjxSIiHNVI8LiwK8u9sPyVTo",
@@ -132,7 +146,7 @@
                 if (!data.documents) return [];
                 return data.documents.map(doc => {
                     const f = doc.fields || {};
-                    // Parse devices array from Firestore REST format
+                    
                     let devices = [];
                     if (f.devices?.arrayValue?.values) {
                         devices = f.devices.arrayValue.values.map(v => {
@@ -158,7 +172,7 @@
             } catch(e) { console.error('fbGetUsers error:', e); return []; }
         };
 
-        // ── Визначення девайсу ──────────────────────────────────────────────
+        
         function detectDevice() {
             const ua = navigator.userAgent;
             let hw = 'Невідомий';
@@ -182,7 +196,7 @@
             return { hw, br, label: hw + (br ? ' · ' + br : '') };
         }
 
-        // Унікальний ID цього браузера/девайсу (генерується один раз і зберігається)
+        
         function getDeviceId() {
             let id = localStorage.getItem('_fep_device_id');
             if (!id) {
@@ -200,11 +214,11 @@
                 const now = Date.now();
                 const userRef = doc(db, 'users', String(userId));
 
-                // Читаємо поточний стан — щоб оновити last_seen конкретного девайсу
+                
                 const snap = await getDoc(userRef);
                 const existingDevices = snap.exists() ? (snap.data().devices || []) : [];
 
-                // Оновлюємо або додаємо поточний девайс
+                
                 const otherDevices = existingDevices.filter(d => d.id !== deviceId);
                 const updatedDevices = [
                     ...otherDevices,
@@ -219,7 +233,7 @@
             } catch(e) { console.error('fbUpdateUserLastSeen error:', e); }
         };
 
-        // Відключити конкретний девайс
+        
         window.fbUnlinkDevice = async (userId, deviceId) => {
             try {
                 const snap = await getDoc(doc(db, 'users', String(userId)));
@@ -240,7 +254,7 @@
 
         window.firebaseReady = true;
         window.dispatchEvent(new Event("firebase-ready"));
-    </script>
+</script>
     <style>
         :root {
             --fs-title: 15px; --fs-meta: 13px; --fs-time: 18px; --fs-time-end: 13px; --fs-day-title: 18px;
@@ -265,6 +279,48 @@
             --shadow: none; --shadow-hover: 0 0 15px rgba(255,255,255,0.05);
             --modal-bg: rgba(15,15,15,0.98); --orb-opacity: 0.12;
         }
+        [data-theme="cyber"] {
+            --bg-body: #080915; --bg-card: rgba(13, 17, 34, 0.88); --text-main: #f0f6fc; --text-muted: #8b9bb4;
+            --border: rgba(0, 240, 255, 0.28); --accent-green: #00ffaa; --bg-green: rgba(0, 255, 170, 0.15);
+            --accent-purple: #ff007f; --bg-purple: rgba(255, 0, 127, 0.15); --bg-blue: rgba(0, 240, 255, 0.15);
+            --primary: #00f0ff; --shadow: 0 4px 20px rgba(0, 240, 255, 0.12);
+            --shadow-hover: 0 0 25px rgba(0, 240, 255, 0.25);
+            --modal-bg: rgba(10, 14, 28, 0.96); --orb-opacity: 0.35;
+        }
+        [data-theme="cyber"] .lesson-card {
+            border-color: rgba(0, 240, 255, 0.2);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+        [data-theme="cyber"] .lesson-card:hover {
+            border-color: #00f0ff;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.25);
+        }
+        [data-theme="cyber"] .bg-orb-1 { background: #00f0ff; }
+        [data-theme="cyber"] .bg-orb-2 { background: #ff007f; }
+        [data-theme="cyber"] .bg-orb-3 { background: #7928ca; }
+        [data-theme="cyber"] .bg-orb-4 { background: #00f0ff; }
+
+        [data-theme="aurora"] {
+            --bg-body: #06141d; --bg-card: rgba(11, 28, 41, 0.88); --text-main: #e6f7f8; --text-muted: #7ca3b5;
+            --border: rgba(16, 231, 170, 0.25); --accent-green: #10e7aa; --bg-green: rgba(16, 231, 170, 0.15);
+            --accent-purple: #a855f7; --bg-purple: rgba(168, 85, 247, 0.15); --bg-blue: rgba(56, 189, 248, 0.15);
+            --primary: #10e7aa; --shadow: 0 4px 20px rgba(16, 231, 170, 0.1);
+            --shadow-hover: 0 0 25px rgba(16, 231, 170, 0.22);
+            --modal-bg: rgba(7, 24, 35, 0.96); --orb-opacity: 0.35;
+        }
+        [data-theme="aurora"] .lesson-card {
+            border-color: rgba(16, 231, 170, 0.2);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+        [data-theme="aurora"] .lesson-card:hover {
+            border-color: #10e7aa;
+            box-shadow: 0 0 20px rgba(16, 231, 170, 0.25);
+        }
+        [data-theme="aurora"] .bg-orb-1 { background: #10e7aa; }
+        [data-theme="aurora"] .bg-orb-2 { background: #6366f1; }
+        [data-theme="aurora"] .bg-orb-3 { background: #a855f7; }
+        [data-theme="aurora"] .bg-orb-4 { background: #38bdf8; }
+
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background-color: var(--bg-body); color: var(--text-main); line-height: 1.5; padding-bottom: calc(80px + env(safe-area-inset-bottom)); transition: background-color 0.3s ease,color 0.3s ease; overflow-x: hidden; }
         .bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
@@ -295,7 +351,7 @@
         .select-wrapper select { width: 100%; appearance: none; background-color: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 14px 18px; border-radius: 14px; font-size: 15px; font-weight: 600; outline: none; cursor: pointer; transition: all 0.2s ease; box-shadow: var(--shadow); }
         .select-wrapper select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
         .select-wrapper::after { content: "▼"; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text-muted); pointer-events: none; }
-        /* Пошук групи (вітальне вікно + налаштування) */
+        
         .group-search-input { width:100%; background:var(--bg-body); border:2px solid var(--border); color:var(--text-main); padding:14px 16px; border-radius:14px; font-size:15px; font-weight:600; outline:none; font-family:inherit; transition:border-color 0.2s; box-sizing:border-box; }
         .group-search-input:focus { border-color:var(--primary); }
         .group-search-input:disabled { opacity:0.6; }
@@ -329,6 +385,16 @@
         .saved-group-active-dot { font-size: 12px; font-weight: 900; color: var(--primary); }
         .saved-group-del-btn { background: transparent; border: none; border-left: 1px solid var(--border); color: var(--text-muted); font-size: 13px; font-weight: 700; padding: 9px 10px; cursor: pointer; transition: all 0.15s ease; display: flex; align-items: center; justify-content: center; }
         .saved-group-del-btn:hover { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .custom-lessons-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+        .custom-lesson-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px; display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+        .custom-lesson-info { flex: 1; min-width: 0; }
+        .custom-lesson-title { font-size: 13.5px; font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .custom-lesson-meta { font-size: 11.5px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 3px; font-weight: 500; }
+        .custom-lesson-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+        .custom-lesson-badge { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .custom-lesson-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 7px; transition: 0.18s; font-size: 13px; }
+        .custom-lesson-btn:hover { background: var(--bg-body); color: var(--text-main); }
+        .custom-lesson-btn.danger:hover { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
         .schedule-list { display: flex; flex-direction: column; gap: 14px; }
         .day-header { display: flex; justify-content: space-between; align-items: flex-end; margin: 10px 0 8px 0; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
         .day-header .day-title { font-size: var(--fs-day-title); font-weight: 700; color: var(--text-main); }
@@ -393,7 +459,7 @@
         .pinned-msg-label { font-size: 10px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
         .pinned-msg-text { font-size: 14px; font-weight: 500; color: var(--text-main); line-height: 1.5; white-space: pre-wrap; }
 
-        /* ANNOUNCEMENT */
+        
         .announcement-wrap { margin-bottom: 20px; }
         .announcement-board { border-radius: 20px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.18); position: relative; cursor: default; }
         .ann-stripe-top { background: linear-gradient(135deg,var(--primary) 0%,var(--accent-purple) 100%); background-size:cover; background-position:center; padding:14px 18px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; overflow:hidden; min-height:160px; }
@@ -441,7 +507,7 @@
 
         .useful-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding-top:10px; }
         
-        /* === Install App Card & Modal === */
+        
         .install-app-card { background:linear-gradient(135deg,rgba(59,130,246,0.12),rgba(139,92,246,0.12)); border-color:rgba(59,130,246,0.3); position:relative; overflow:hidden; }
         .install-app-card:hover { border-color:var(--primary); }
         .install-app-card::after { content:''; position:absolute; top:-30px; right:-30px; width:80px; height:80px; background:radial-gradient(circle,rgba(59,130,246,0.25),transparent 70%); border-radius:50%; pointer-events:none; }
@@ -484,7 +550,7 @@
         #pwa-android-install-btn:hover { opacity:0.9; transform:translateY(-1px); }
         #pwa-android-install-btn.visible { display:flex; }
 
-        /* ── Offline Banner ── */
+        
         .offline-banner { position:fixed; top:0; left:50%; transform:translateX(-50%) translateY(-100%); width:100%; max-width:600px; background:linear-gradient(135deg,#1e293b,#0f172a); border-bottom:2px solid #f59e0b; padding:12px 20px; display:flex; align-items:center; gap:12px; z-index:500; transition:transform 0.4s cubic-bezier(0.175,0.885,0.32,1.275); box-shadow:0 8px 24px rgba(0,0,0,0.4); }
         .offline-banner.show { transform:translateX(-50%) translateY(0); }
         .offline-banner-icon { font-size:20px; flex-shrink:0; }
@@ -530,10 +596,209 @@
         .color-circle.active { border-color:var(--text-main); transform:scale(1.1); }
         .color-circle::after { content:"✓"; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:white; font-size:14px; opacity:0; font-weight:bold; }
         .color-circle.active::after { opacity: 1; }
-        .theme-switch { display:flex; background:var(--bg-body); border-radius:12px; padding:4px; border:1px solid var(--border); gap:4px; }
-        .theme-btn { flex:1; padding:10px 4px; border:none; background:transparent; color:var(--text-muted); font-size:13px; font-weight:600; border-radius:8px; cursor:pointer; transition:0.2s; display:flex; align-items:center; justify-content:center; gap:6px; }
+        .theme-switch { display:flex; flex-wrap:wrap; background:var(--bg-body); border-radius:12px; padding:4px; border:1px solid var(--border); gap:4px; }
+        .theme-btn { flex:1 1 calc(20% - 4px); min-width:58px; padding:8px 4px; border:none; background:transparent; color:var(--text-muted); font-size:12px; font-weight:600; border-radius:8px; cursor:pointer; transition:0.2s; display:flex; align-items:center; justify-content:center; gap:5px; white-space:nowrap; }
         .theme-btn.active { background:var(--bg-card); color:var(--text-main); box-shadow:var(--shadow); }
-        .theme-btn svg { width:14px; height:14px; fill:currentColor; stroke:none; }
+        .theme-btn svg { width:13px; height:13px; fill:currentColor; stroke:none; flex-shrink:0; }
+
+        
+        .dynamic-island-wrap {
+            position: sticky;
+            top: 10px;
+            z-index: 85;
+            margin-bottom: 16px;
+            display: none; 
+            animation: fadeIn 0.4s ease;
+        }
+        .dynamic-island {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 0 1px 1px rgba(0,0,0,0.04);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+            user-select: none;
+        }
+        .dynamic-island:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 28px -4px rgba(0,0,0,0.15), 0 0 1px 1px rgba(0,0,0,0.06);
+            border-color: var(--primary);
+        }
+        .dynamic-island:active {
+            transform: scale(0.985);
+        }
+        .di-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+        }
+        .di-pulse-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .di-pulse-dot.dot-green {
+            background: #10b981;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: diPulseGreen 2s infinite;
+        }
+        .di-pulse-dot.dot-amber {
+            background: #f59e0b;
+            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+            animation: diPulseAmber 2s infinite;
+        }
+        .di-pulse-dot.dot-blue {
+            background: #3b82f6;
+            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            animation: diPulseBlue 2s infinite;
+        }
+        .di-pulse-dot.dot-purple {
+            background: #a855f7;
+            box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7);
+            animation: diPulsePurple 2s infinite;
+        }
+        .di-pulse-dot.dot-gray {
+            background: var(--text-muted);
+            opacity: 0.6;
+        }
+        @keyframes diPulseGreen {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        @keyframes diPulseAmber {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+        @keyframes diPulseBlue {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        @keyframes diPulsePurple {
+            0% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(168, 85, 247, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
+        }
+
+        .di-icon {
+            font-size: 18px;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .di-details {
+            min-width: 0;
+            flex: 1;
+        }
+        .di-badge-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+        }
+        .di-badge {
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .di-badge.badge-green { background: rgba(16,185,129,0.18); color: #10b981; }
+        .di-badge.badge-amber { background: rgba(245,158,11,0.18); color: #f59e0b; }
+        .di-badge.badge-blue  { background: rgba(59,130,246,0.18); color: #3b82f6; }
+        .di-badge.badge-purple{ background: rgba(168,85,247,0.18); color: #a855f7; }
+        .di-badge.badge-gray  { background: rgba(100,116,139,0.18); color: var(--text-muted); }
+
+        .di-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+        }
+        .di-subtext {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 1px;
+        }
+        .di-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        .di-timer-col {
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .di-timer-val {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--primary);
+            font-variant-numeric: tabular-nums;
+            line-height: 1.1;
+        }
+        .di-timer-sub {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+        .di-ring-wrap {
+            width: 28px;
+            height: 28px;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .di-ring-svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+        .di-ring-bg {
+            fill: none;
+            stroke: var(--border);
+            stroke-width: 3.5;
+        }
+        .di-ring-progress {
+            fill: none;
+            stroke: var(--primary);
+            stroke-width: 3.5;
+            stroke-linecap: round;
+            transition: stroke-dasharray 0.4s ease;
+        }
+        .card-highlight {
+            animation: cardPulseGlow 1.2s ease-out;
+        }
+        @keyframes cardPulseGlow {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 var(--primary); }
+            30% { transform: scale(1.02); box-shadow: 0 0 0 8px rgba(59,130,246,0.35); }
+            100% { transform: scale(1); box-shadow: var(--shadow); }
+        }
         .size-switch { display:flex; background:var(--bg-body); border-radius:12px; padding:4px; border:1px solid var(--border); gap:4px; }
         .size-btn { flex:1; padding:10px 4px; border:none; background:transparent; color:var(--text-muted); font-weight:700; border-radius:8px; cursor:pointer; transition:0.2s; }
         .size-btn.active { background:var(--bg-card); color:var(--text-main); box-shadow:var(--shadow); }
@@ -618,7 +883,7 @@
         .quick-link-name { font-size:16px; font-weight:800; }
         .quick-link-arrow { margin-left:auto; font-size:20px; opacity:0.8; }
         body.holiday-mode .bg-orb-1{background:#ff6b6b!important} body.holiday-mode .bg-orb-2{background:#ffd93d!important} body.holiday-mode .bg-orb-3{background:#6bcb77!important} body.holiday-mode .bg-orb-4{background:#ff6b6b!important}
-        /* Holiday mode selector cards */
+        
         .holiday-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
         .holiday-card {
             border: 2px solid var(--border);
@@ -642,13 +907,13 @@
         .holiday-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
         .holiday-card-label { font-size: 12px; font-weight: 700; color: var(--text-main); line-height: 1.3; }
         .holiday-card-sub { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
-        /* New-year card */
+        
         .holiday-card[data-mode="new-year"].selected { background: linear-gradient(135deg, #8b0000, #b8860b); }
-        /* UA card */
+        
         .holiday-card[data-mode="ua"].selected { background: linear-gradient(135deg, #003f8a, #c8a200); }
-        /* Spring card */
+        
         .holiday-card[data-mode="spring"].selected { background: linear-gradient(135deg, #c2185b, #6a1b9a); }
-        /* Off card */
+        
         .holiday-card[data-mode="off"].selected { background: linear-gradient(135deg, #374151, #1f2937); border-color: transparent; }
         .holiday-card.selected .holiday-card-label,
         .holiday-card.selected .holiday-card-sub { color: rgba(255,255,255,0.9); }
@@ -671,9 +936,9 @@
         .deadline-timer.urgent { color:#ef4444; }
         .deadline-timer.soon { color:#f59e0b; }
         .deadline-timer.ok { color:var(--accent-green); }
-        /* ── USER PROFILE BAR ── */
         
-        /* ── Telegram Connect Banner ── */
+        
+        
         .tg-connect-banner { display:none; align-items:center; gap:12px; background:linear-gradient(135deg,rgba(42,171,238,0.1),rgba(42,171,238,0.05)); border:1.5px solid rgba(42,171,238,0.35); border-radius:16px; padding:12px 14px; margin-bottom:16px; position:relative; animation:fadeIn 0.4s ease; }
         .tg-connect-banner.visible { display:flex; }
         .tg-connect-icon { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#2AABEE,#229ED9); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; box-shadow:0 3px 10px rgba(42,171,238,0.3); }
@@ -694,7 +959,7 @@
         .user-name { font-size:15px; font-weight:700; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .user-sub-info { font-size:11px; font-weight:600; color:var(--text-muted); margin-top:1px; display:flex; align-items:center; gap:5px; }
         .user-streak { display:flex; align-items:center; gap:4px; font-size:12px; font-weight:700; color:#f59e0b; background:rgba(245,158,11,0.1); padding:5px 10px; border-radius:20px; flex-shrink:0; white-space:nowrap; }
-        /* ── ADMIN USERS ── */
+        
         .admin-users-search { width:100%; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; color:var(--text-main); font-size:14px; font-family:inherit; padding:10px 14px; outline:none; margin-bottom:10px; transition:0.2s; box-sizing:border-box; }
         .admin-users-search:focus { border-color:var(--primary); }
         .admin-users-filter { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
@@ -718,14 +983,14 @@
         .admin-users-stat { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:10px; text-align:center; }
         .admin-users-stat-val { font-size:22px; font-weight:800; color:var(--primary); }
         .admin-users-stat-label { font-size:10px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
-        /* ── EXTRA SETTINGS ── */
+        
         .setting-section-title { font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin:20px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:6px; }
         .name-display-input { width:100%; background:var(--bg-body); border:1px solid var(--border); border-radius:12px; color:var(--text-main); font-size:14px; font-family:inherit; padding:11px 14px; outline:none; transition:0.2s; box-sizing:border-box; margin-top:6px; }
         .name-display-input:focus { border-color:var(--primary); }
         @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
         .loading-skeleton { background:linear-gradient(90deg,var(--border) 25%,var(--bg-body) 50%,var(--border) 75%); background-size:200%; animation:shimmer 1.2s infinite; border-radius:8px; height:14px; }
 
-        /* ── Redesigned admin user cards ── */
+        
         .admin-user-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -753,7 +1018,7 @@
         .admin-user-username { font-size: 12px; color: var(--text-muted); }
         .admin-user-lastseen { font-size: 12px; color: var(--text-muted); }
 
-        /* Devices section */
+        
         .admin-devices-section {
             margin-top: 10px;
             border-top: 1px solid var(--border);
@@ -810,8 +1075,7 @@
         }
         .admin-unlink-btn:hover { background: rgba(239,68,68,0.16); }
 
-
-        /* ── Pull-to-Refresh ── */
+        
         .ptr-indicator {
             position: fixed; top: 0; left: 50%;
             transform: translateX(-50%) translateY(-72px);
@@ -845,7 +1109,7 @@
         .ptr-indicator.ptr-refreshing .ptr-arrow { display: none; }
         .ptr-indicator.ptr-refreshing .ptr-spinner { display: block; }
 
-        /* ── Custom hue slider ── */
+        
         .hue-slider-wrap { margin-top:12px; }
         .hue-slider-label { font-size:11px; color:var(--text-muted); font-weight:600; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; }
         .hue-slider-label span { font-size:11px; color:var(--text-muted); }
@@ -888,6 +1152,35 @@
 <div class="app-wrapper">
     <div id="page-schedule" class="page active">
         <div class="container">
+            
+            <div class="dynamic-island-wrap" id="dynamic-island-wrap" role="button" tabindex="0" title="Натисніть, щоб перейти до поточної або наступної пари">
+                <div class="dynamic-island" id="dynamic-island">
+                    <div class="di-left">
+                        <span class="di-pulse-dot dot-gray" id="di-pulse-dot"></span>
+                        <span class="di-icon" id="di-icon">📚</span>
+                        <div class="di-details">
+                            <div class="di-badge-row">
+                                <span class="di-badge badge-gray" id="di-badge">Розклад</span>
+                                <span class="di-title" id="di-title">Завантаження…</span>
+                            </div>
+                            <div class="di-subtext" id="di-subtext">Пошук активних занять</div>
+                        </div>
+                    </div>
+                    <div class="di-right">
+                        <div class="di-timer-col">
+                            <span class="di-timer-val" id="di-timer-val">--:--</span>
+                            <span class="di-timer-sub" id="di-timer-sub">час</span>
+                        </div>
+                        <div class="di-ring-wrap">
+                            <svg class="di-ring-svg" viewBox="0 0 36 36">
+                                <path class="di-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                <path class="di-ring-progress" id="di-ring-progress" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <header>
                 <div class="header-logo-row">
                     <img src="https://image2url.com/r2/default/images/1772730855081-a7e47bc5-e094-4349-96fa-caccfcd436c9.jpeg" alt="Логотип" class="site-logo" loading="lazy" onerror="this.style.display='none'"/>
@@ -921,7 +1214,7 @@
 
             </div>
 
-            <!-- ── Банер прив'язки Telegram ── -->
+            
             <div class="tg-connect-banner" id="tg-connect-banner">
                 <div class="tg-connect-icon">✈️</div>
                 <div class="tg-connect-text">
@@ -1096,6 +1389,43 @@
 
                 <div class="admin-section">
                     <div class="admin-section-header">
+                        <div class="admin-section-icon" style="background:rgba(59,130,246,0.18)">📢</div>
+                        <div>
+                            <div class="admin-section-title">Розсилка в Telegram-бота</div>
+                            <div class="admin-section-desc">Миттєве сповіщення студентам через Telegram-бота</div>
+                        </div>
+                    </div>
+                    <label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px;">Отримувачі розсилки:</label>
+                    <select class="admin-input" id="broadcast-target-select">
+                        <option value="current">👥 Тільки студентам поточної групи (<span id="broadcast-group-name">ФЕП-13с</span>)</option>
+                        <option value="all">📢 Усім користувачам бота (всі групи)</option>
+                    </select>
+                    <label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px;">Текст повідомлення:</label>
+                    <textarea class="admin-input" id="broadcast-text-input" placeholder="Введіть текст оголошення для студентів…" rows="4" maxlength="800" style="resize:vertical;"></textarea>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:12px;color:var(--text-muted);">
+                        <span>Підтримується Markdown (*жирний*, _курсив_)</span>
+                        <span id="broadcast-char-count">0 / 800</span>
+                    </div>
+                    <button type="button" class="admin-btn admin-btn-primary" id="broadcast-send-btn">
+                        <span id="broadcast-btn-icon">✈️</span>
+                        <span id="broadcast-btn-text">Надіслати розсилку</span>
+                    </button>
+                    <div id="broadcast-result-msg" style="display:none;margin-top:10px;padding:12px;border-radius:12px;font-size:13px;font-weight:600;text-align:center;"></div>
+                </div>
+
+                <div class="admin-section">
+                    <div class="admin-section-header">
+                        <div class="admin-section-icon" style="background:rgba(99,102,241,0.18)">👥</div>
+                        <div><div class="admin-section-title">Групові кастомні пари</div><div class="admin-section-desc">Відображаються у всіх студентів цієї групи (тільки адмін може їх редагувати чи видалити)</div></div>
+                    </div>
+                    <div class="custom-lessons-list" id="admin-custom-lessons-list"></div>
+                    <button type="button" class="admin-btn admin-btn-primary" id="btn-add-admin-custom-lesson" style="margin-top:10px;">
+                        ➕ Додати пару для всієї групи
+                    </button>
+                </div>
+
+                <div class="admin-section">
+                    <div class="admin-section-header">
                         <div class="admin-section-icon" style="background:rgba(100,116,139,0.18)">📢</div>
                         <div><div class="admin-section-title">Історія оголошень</div><div class="admin-section-desc">Видалення старих записів</div></div>
                     </div>
@@ -1217,7 +1547,7 @@
                     <button class="admin-btn admin-btn-success" id="holiday-save-btn">Застосувати для всіх</button>
                 </div>
 
-                <!-- USERS SECTION -->
+                
                 <div class="admin-section">
                     <div class="admin-section-header">
                         <div class="admin-section-icon" style="background:rgba(139,92,246,0.18)">👥</div>
@@ -1269,7 +1599,7 @@
 <div id="welcome-modal" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0.72);backdrop-filter:blur(10px);">
     <div id="welcome-inner" style="background:var(--bg-card);border:1px solid var(--border);border-radius:28px;padding:32px 26px;max-width:380px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.45);animation:fadeIn 0.4s ease;overflow:hidden;">
 
-        <!-- ── КРОК: пошук групи ── -->
+        
         <div id="welcome-step-group">
             <div style="text-align:center;margin-bottom:18px;">
                 <div style="font-size:46px;margin-bottom:8px;line-height:1;">🎓</div>
@@ -1281,14 +1611,14 @@
             <p style="text-align:center;color:var(--text-muted);font-size:11px;margin-top:15px;">⚙️ Завжди можна змінити в <strong style="color:var(--text-main);">Налаштуваннях</strong></p>
         </div>
 
-        <!-- ── КРОК: завантаження розкладу ── -->
+        
         <div id="welcome-step-loading" style="display:none;text-align:center;padding:24px 0;">
             <div style="font-size:46px;margin-bottom:10px;line-height:1;">⏳</div>
             <h2 style="font-size:18px;font-weight:800;color:var(--text-main);margin-bottom:5px;">Завантажуємо розклад</h2>
             <p id="welcome-loading-text" style="color:var(--text-muted);font-size:13px;line-height:1.5;">Секунду…</p>
         </div>
 
-        <!-- ── КРОК: вибір підгрупи ── -->
+        
         <div id="welcome-step-sub" style="display:none;">
             <div style="text-align:center;margin-bottom:22px;">
                 <div style="font-size:46px;margin-bottom:8px;line-height:1;">👥</div>
@@ -1312,7 +1642,7 @@
             <p style="text-align:center;color:var(--text-muted);font-size:11px;margin-top:15px;">📋 Змінити можна на <strong style="color:var(--text-main);">головному екрані</strong></p>
         </div>
 
-        <!-- ── КРОК: викладач англійської (список береться з розкладу) ── -->
+        
         <div id="welcome-step-eng" style="display:none;">
             <div style="text-align:center;margin-bottom:22px;">
                 <div style="font-size:46px;margin-bottom:8px;line-height:1;">🇬🇧</div>
@@ -1323,7 +1653,7 @@
             <p style="text-align:center;color:var(--text-muted);font-size:11px;margin-top:15px;">⚙️ Завжди можна змінити в <strong style="color:var(--text-main);">Налаштуваннях</strong></p>
         </div>
 
-        <!-- ── індикатор кроків ── -->
+        
         <div id="welcome-dots" style="display:flex;justify-content:center;align-items:center;gap:6px;margin-top:20px;"></div>
     </div>
 </div>
@@ -1369,6 +1699,18 @@
                     </select>
                 </div>
             </div>
+
+            <div class="setting-section-title">📚 Мої кастомні пари</div>
+            <div class="setting-group" style="border-bottom:2px solid var(--border);padding-bottom:16px;">
+                <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px 0;line-height:1.4;">
+                    Вибіркові предмети (ДВВС), факультативи та індивідуальні пари. Відображаються тільки у вашому розкладі.
+                </p>
+                <div id="local-custom-lessons-list" class="custom-lessons-list"></div>
+                <button type="button" id="btn-add-local-custom-lesson" style="margin-top:10px;width:100%;padding:12px;border:1.5px dashed var(--primary);background:var(--bg-blue);color:var(--primary);border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:0.2s;">
+                    <span>➕ Додати власну пару</span>
+                </button>
+            </div>
+
             <div class="setting-group">
                 <label>Колір додатку</label>
                 <div class="color-picker" id="color-picker"></div>
@@ -1386,6 +1728,8 @@
                     <button class="theme-btn" data-theme-val="light"><svg viewBox="0 0 24 24"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Світла</button>
                     <button class="theme-btn" data-theme-val="dark"><svg viewBox="0 0 24 24"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Темна</button>
                     <button class="theme-btn" data-theme-val="black"><svg viewBox="0 0 24 24"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" fill="currentColor"/></svg> Black</button>
+                    <button class="theme-btn" data-theme-val="cyber"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="currentColor"/></svg> Cyber</button>
+                    <button class="theme-btn" data-theme-val="aurora"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" fill="currentColor"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg> Aurora</button>
                 </div>
             </div>
             <div class="setting-group">
@@ -1463,6 +1807,109 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="custom-lesson-modal" style="z-index:9000;">
+    <div class="modal-content" style="max-width:440px;">
+        <div class="modal-header">
+            <h2 id="custom-lesson-modal-title">Додати пару</h2>
+            <button class="close-btn" id="close-custom-lesson-modal">×</button>
+        </div>
+        <div class="modal-body" style="padding-top:16px;">
+            <input type="hidden" id="cl-edit-id" value="" />
+            <input type="hidden" id="cl-scope" value="local" />
+
+            <div class="setting-group" style="margin-bottom:12px;">
+                <label style="font-size:12px;font-weight:700;margin-bottom:6px;display:block;">Назва пари / предмету *</label>
+                <input type="text" id="cl-title" class="admin-input" placeholder="напр. Основи хмарних технологій (ДВВС)" required style="width:100%;box-sizing:border-box;" />
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+                <div>
+                    <label style="font-size:12px;font-weight:700;margin-bottom:6px;display:block;">Тип заняття</label>
+                    <select id="cl-type" class="admin-input" style="width:100%;box-sizing:border-box;">
+                        <option value="ДВВС">ДВВС (Вибіркова)</option>
+                        <option value="Практична">Практична</option>
+                        <option value="Лекція">Лекція</option>
+                        <option value="Лабораторна">Лабораторна</option>
+                        <option value="Семінар">Семінар</option>
+                        <option value="Консультація">Консультація</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:12px;font-weight:700;margin-bottom:6px;display:block;">День тижня</label>
+                    <select id="cl-day" class="admin-input" style="width:100%;box-sizing:border-box;">
+                        <option value="1">Понеділок</option>
+                        <option value="2">Вівторок</option>
+                        <option value="3">Середа</option>
+                        <option value="4">Четвер</option>
+                        <option value="5">П'ятниця</option>
+                        <option value="6">Субота</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+                <div>
+                    <label style="font-size:12px;font-weight:700;margin-bottom:6px;display:block;">Періодичність</label>
+                    <select id="cl-periodicity" class="admin-input" style="width:100%;box-sizing:border-box;">
+                        <option value="both">Кожен тиждень</option>
+                        <option value="numerator">Тільки Чисельник</option>
+                        <option value="denominator">Тільки Знаменник</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:12px;font-weight:700;margin-bottom:6px;display:block;">Пара (час)</label>
+                    <select id="cl-slot" class="admin-input" style="width:100%;box-sizing:border-box;">
+                        <option value="1">1 пара (08:30–10:05)</option>
+                        <option value="2">2 пара (10:20–11:55)</option>
+                        <option value="3">3 пара (12:10–13:45)</option>
+                        <option value="4">4 пара (14:00–15:35)</option>
+                        <option value="5">5 пара (15:50–17:25)</option>
+                        <option value="6">6 пара (17:40–19:15)</option>
+                        <option value="7">7 пара (19:30–21:05)</option>
+                        <option value="custom">⏱ Власний час</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="cl-custom-time-row" style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+                <div>
+                    <label style="font-size:12px;font-weight:700;margin-bottom:6px;display:block;">Початок</label>
+                    <input type="time" id="cl-start-time" class="admin-input" value="08:30" style="width:100%;box-sizing:border-box;" />
+                </div>
+                <div>
+                    <label style="font-size:12px;font-weight:700;margin-bottom:6px;display:block;">Кінець</label>
+                    <input type="time" id="cl-end-time" class="admin-input" value="10:05" style="width:100%;box-sizing:border-box;" />
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+                <div>
+                    <label style="font-size:12px;font-weight:700;margin-bottom:6px;display:block;">Аудиторія / Посилання</label>
+                    <input type="text" id="cl-room" class="admin-input" placeholder="ауд. 312 або Zoom" style="width:100%;box-sizing:border-box;" />
+                </div>
+                <div>
+                    <label style="font-size:12px;font-weight:700;margin-bottom:6px;display:block;">Підгрупа</label>
+                    <select id="cl-subgroup" class="admin-input" style="width:100%;box-sizing:border-box;">
+                        <option value="all">Для всіх (вся група)</option>
+                        <option value="1">Підгрупа 1</option>
+                        <option value="2">Підгрупа 2</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="setting-group" style="margin-bottom:16px;">
+                <label style="font-size:12px;font-weight:700;margin-bottom:6px;display:block;">Викладач</label>
+                <input type="text" id="cl-teacher" class="admin-input" placeholder="напр. доц. Шевченко І.В." style="width:100%;box-sizing:border-box;" />
+            </div>
+
+            <div style="display:flex;gap:10px;">
+                <button type="button" id="cl-cancel-btn" style="flex:1;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--bg-body);color:var(--text-muted);font-weight:700;font-size:14px;cursor:pointer;">Скасувати</button>
+                <button type="button" id="cl-save-btn" style="flex:1;padding:12px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-weight:700;font-size:14px;cursor:pointer;">Зберегти</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const storage = {
     get: (key, def) => { try { return localStorage.getItem(key) || def; } catch(e) { return def; } },
@@ -1508,9 +1955,6 @@ function isUserAdmin() {
     return false;
 }
 
-
-// Група — це назва з деканату (напр. "ФЕП-13с"). Для трьох перших груп залишаємо
-// старі id (fep11/fep12/fep13), щоб не втратити дані у Firebase і localStorage.
 const APP_ACTIVE_GROUP_KEY = 'app_active_group';
 const APP_SETUP_PENDING_KEY = 'app_setup_pending';
 const LEGACY_GROUP_IDS = { 'ФЕП-11с': 'fep11', 'ФЕП-12с': 'fep12', 'ФЕП-13с': 'fep13' };
@@ -1532,6 +1976,7 @@ const ADMIN_PASS_HASH = '42f4190f765a004bdcfe6ed4616d6ca1342e1d20c1030fd0169d071
 let gScheduleMods = [];
 let gLessonAnns = [];
 let gDeadlines = [];
+let gAdminCustomLessons = [];
 
 function initAnnouncement() {
     const editor = document.getElementById('ann-editor');
@@ -1774,8 +2219,8 @@ const colors = {
     red:     { main:'#ef4444', hover:'#dc2626', light:'rgba(239,68,68,0.12)',   btnBg:'linear-gradient(135deg,#ef4444,#dc2626)', btnShadow:'0 4px 14px rgba(239,68,68,0.5)'  },
 };
 let state = {
-    scheduleGroup: ACTIVE_GROUP,       // id для ключів localStorage і Firebase
-    groupName: ACTIVE_GROUP_NAME,      // назва групи в деканаті
+    scheduleGroup: ACTIVE_GROUP,       
+    groupName: ACTIVE_GROUP_NAME,      
     tab: 'today',
     group: gget(ACTIVE_GROUP,'saved_group','all'),
     theme: gget(ACTIVE_GROUP,'theme','dark'),
@@ -1802,14 +2247,12 @@ function getKyivDate() { try { return new Date(new Date().toLocaleString("en-US"
 function timeToSeconds(t) { if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*3600+m*60; }
 function formatTimeLeft(s) { const h=Math.floor(s/3600); const m=Math.floor((s%3600)/60); const sc=s%60; return `${h>0?h+':':''}${m.toString().padStart(2,'0')}:${sc.toString().padStart(2,'0')}`; }
 
-// ===== РОЗКЛАД З ДЕКАНАТУ (через worker, функції у script.js) =====
 const SCHEDULE_CACHE_PREFIX = 'sched_cache_';
-const SCHEDULE_CACHE_TTL = 30 * 60 * 1000; // після 30 хв кеш показуємо одразу, але тихо оновлюємо з мережі
+const SCHEDULE_CACHE_TTL = 30 * 60 * 1000; 
 
 const LESSON_TYPE_LABELS = { 'Л': 'Лекція', 'Лаб': 'Лабораторна', 'ПрС': 'Практична', 'Сем': 'Семінар', 'Конс': 'Консультація', 'Екз': 'Екзамен', 'Зал': 'Залік' };
 const TEACHER_RANKS = [['старший викладач', 'ст. викл.'], ['професор', 'проф.'], ['доцент', 'доц.'], ['асистент', 'ас.'], ['викладач', 'викл.']];
 
-// "доцент Цибуляк Богдан Зіновійович" -> "доц. Цибуляк Б.З."
 function shortTeacher(full) {
     if (!full) return '';
     let s = String(full).trim(), rank = '';
@@ -1825,7 +2268,6 @@ const isEnglishSubject = (subject) => /іноземн|англійськ/i.test(
 const isoFromDekanat = (d) => { const [dd, mm, yyyy] = d.split('.'); return `${yyyy}-${mm}-${dd}`; };
 function pluralLessons(n) { const m10 = n % 10, m100 = n % 100; if (m10 === 1 && m100 !== 11) return 'пара'; if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'пари'; return 'пар'; }
 
-// JSON worker'а -> заняття по датах + список викладачів англійської + чи є підгрупи
 function normalizeSchedule(raw) {
     const byDate = {}, engSet = new Set();
     let hasSubgroups = false;
@@ -1853,8 +2295,8 @@ function normalizeSchedule(raw) {
     return { raw, byDate, engTeachers: [...engSet], hasSubgroups, totalLessons };
 }
 
-let gSchedule = null;       // normalizeSchedule(...) для активної групи
-let gScheduleError = null;  // текст помилки, коли нема ні мережі, ні кешу
+let gSchedule = null;       
+let gScheduleError = null;  
 
 function readScheduleCache(groupName) {
     try { const c = JSON.parse(localStorage.getItem(SCHEDULE_CACHE_PREFIX + groupName) || 'null'); return c && c.data ? c : null; } catch (e) { return null; }
@@ -1863,7 +2305,6 @@ function writeScheduleCache(groupName, data) {
     try { localStorage.setItem(SCHEDULE_CACHE_PREFIX + groupName, JSON.stringify({ ts: Date.now(), data })); } catch (e) {}
 }
 
-// Розклад будь-якої групи: свіжий кеш -> worker -> старий кеш -> помилка
 async function fetchGroupSchedule(groupName, force = false) {
     const cached = readScheduleCache(groupName);
     if (cached && !force && Date.now() - cached.ts < SCHEDULE_CACHE_TTL) return cached.data;
@@ -1878,7 +2319,7 @@ function applySchedule(raw) {
     gScheduleError = null;
     if (state.engTeacher !== 'all' && !gSchedule.engTeachers.includes(state.engTeacher)) {
         const legacyMatch = gSchedule.engTeachers.find(t => t.includes(state.engTeacher));
-        state.engTeacher = legacyMatch || 'all'; // старий запис прізвищем або викладача вже нема
+        state.engTeacher = legacyMatch || 'all'; 
         gset(state.scheduleGroup, 'eng_teacher', state.engTeacher);
     }
     populateEngSelect();
@@ -1886,12 +2327,11 @@ function applySchedule(raw) {
     if (subControls) subControls.closest('.controls').style.display = gSchedule.hasSubgroups ? '' : 'none';
 }
 
-// Розклад активної групи: спершу кеш (миттєво), потім оновлення з мережі
 async function refreshSchedule(force = false) {
     const cached = readScheduleCache(state.groupName);
     if (cached && !gSchedule) { applySchedule(cached.data); render(); }
     if (cached && !force && Date.now() - cached.ts < SCHEDULE_CACHE_TTL) return gSchedule;
-    if (!gSchedule) render(); // стан "завантаження"
+    if (!gSchedule) render(); 
     try {
         applySchedule(await fetchGroupSchedule(state.groupName, true));
     } catch (e) {
@@ -1902,7 +2342,6 @@ async function refreshSchedule(force = false) {
 }
 window.refreshSchedule = refreshSchedule;
 
-// Викладачі англійської у налаштуваннях беруться з розкладу; якщо англійської нема — блок схований
 function populateEngSelect() {
     const select = document.getElementById('eng-select');
     const wrap = document.getElementById('eng-setting-group');
@@ -1949,13 +2388,13 @@ function applyCustomHue(hue) {
     state.color = 'custom';
     gset(state.scheduleGroup, 'color', 'custom');
     applyColor('custom');
-    // Update dot and label
+    
     const cd = hueToColorData(hue);
     const dot = document.getElementById('hue-dot');
     const lbl = document.getElementById('hue-hex-label');
     if (dot) dot.style.background = cd.main;
     if (lbl) lbl.textContent = cd.main.toUpperCase();
-    // Deselect preset swatches
+    
     renderColorPicker();
 }
 function applyFontSize(size) {
@@ -2002,15 +2441,15 @@ function syncHueSliderUI() {
         if (dot) dot.style.background = cd.main;
         if (lbl) lbl.textContent = cd.main.toUpperCase();
     } else {
-        // Show preset color in dot
+        
         const cd = colors[state.color] || colors['blue'];
         if (dot) dot.style.background = cd.main;
         if (lbl) lbl.textContent = '';
-        // Set slider to approximate hue of preset for continuity
+        
         const hueMap = {blue:220,amber:38,rose:346,emerald:160,purple:263,pink:330,cyan:191,orange:25,lime:85,red:0};
         slider.value = hueMap[state.color] || 220;
     }
-    // Ensure listener attached only once
+    
     if (!slider._hueInited) {
         slider._hueInited = true;
         slider.addEventListener('input', () => applyCustomHue(parseInt(slider.value)));
@@ -2046,8 +2485,8 @@ function init() {
     initNewSettings();
     initAnnouncement();
 
-    els.groupSelect.addEventListener('change', e => { state.group=e.target.value; gset(state.scheduleGroup,'saved_group',state.group); render(); });
-    els.engSelect.addEventListener('change', e => { state.engTeacher=e.target.value; gset(state.scheduleGroup,'eng_teacher',state.engTeacher); render(); });
+    els.groupSelect.addEventListener('change', e => { state.group=e.target.value; gset(state.scheduleGroup,'saved_group',state.group); gset(state.scheduleGroup,'configured','1'); render(); });
+    els.engSelect.addEventListener('change', e => { state.engTeacher=e.target.value; gset(state.scheduleGroup,'eng_teacher',state.engTeacher); gset(state.scheduleGroup,'configured','1'); render(); });
     els.daysNav.addEventListener('click', e => { if(e.target.classList.contains('day-btn')) { state.tab=e.target.dataset.tab; render(); } });
 
     document.querySelectorAll('.nav-item').forEach(btn => {
@@ -2060,7 +2499,7 @@ function init() {
         });
     });
 
-    els.settingsBtn.addEventListener('click', () => { els.settingsModal.classList.add('active'); });
+    els.settingsBtn.addEventListener('click', () => { renderLocalCustomLessons(); renderSavedGroupsUI(); els.settingsModal.classList.add('active'); });
     els.closeSettingsBtn.addEventListener('click', () => els.settingsModal.classList.remove('active'));
     els.settingsModal.addEventListener('click', e => { if(e.target===els.settingsModal) els.settingsModal.classList.remove('active'); });
     if(els.moodleBtn) {
@@ -2069,8 +2508,24 @@ function init() {
         els.moodleModal.addEventListener('click', e => { if(e.target===els.moodleModal) els.moodleModal.classList.remove('active'); });
     }
     els.themeBtns.forEach(btn => { btn.addEventListener('click', () => { state.theme=btn.dataset.themeVal; htmlEl.setAttribute('data-theme',state.theme); gset(state.scheduleGroup,'theme',state.theme); updateThemeUI(); }); });
+    const diWrap = document.getElementById('dynamic-island-wrap');
+    if (diWrap) {
+        diWrap.addEventListener('click', () => {
+            const todayBtn = document.querySelector('[data-tab="today"]');
+            if (todayBtn) todayBtn.click();
+            setTimeout(() => {
+                const target = document.getElementById('tracked-current') || document.getElementById('tracked-next') || document.querySelector('.lesson-card');
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    target.classList.add('card-highlight');
+                    setTimeout(() => target.classList.remove('card-highlight'), 1200);
+                }
+            }, 120);
+        });
+    }
     render();
     refreshSchedule();
+    updateDynamicIsland();
     setInterval(updateLiveTimers, 1000);
     setInterval(renderDeadlines, 30000);
 }
@@ -2093,10 +2548,9 @@ function updateThemeUI() { els.themeBtns.forEach(btn=>btn.classList.toggle('acti
 
 function getLocalMonday(d) { const di=new Date(d); const day=di.getDay()===0?7:di.getDay(); di.setDate(di.getDate()-day+1); di.setHours(0,0,0,0); return di; }
 
-// Чисельник / Знаменник (з 31 серпня по 6 вересня 2026 — чисельник, 7-13 вересня — знаменник)
 function getWeekParityInfo(targetDate) {
     const monday = getLocalMonday(targetDate);
-    const refMonday = new Date(2026, 7, 31, 0, 0, 0, 0); // 31 серпня 2026
+    const refMonday = new Date(2026, 7, 31, 0, 0, 0, 0); 
     const diffWeeks = Math.round((monday.getTime() - refMonday.getTime()) / (7 * 86400000));
     const isNumerator = (((diffWeeks % 2) + 2) % 2) === 0;
     const sunday = new Date(monday);
@@ -2122,7 +2576,61 @@ function updateWeekTabBadges() {
     if (bThis) bThis.textContent = ` · ${thisParity.name}`;
     if (bNext) bNext.textContent = ` · ${nextParity.name}`;
 }
-function dayHasLessons(d) { const iso=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; return !!(gSchedule && gSchedule.byDate[iso] && gSchedule.byDate[iso].length); }
+const STANDARD_PAIR_SLOTS = {
+    '1': { start: '08:30', end: '10:05', label: '1 пара (08:30 – 10:05)' },
+    '2': { start: '10:20', end: '11:55', label: '2 пара (10:20 – 11:55)' },
+    '3': { start: '12:10', end: '13:45', label: '3 пара (12:10 – 13:45)' },
+    '4': { start: '14:00', end: '15:35', label: '4 пара (14:00 – 15:35)' },
+    '5': { start: '15:50', end: '17:25', label: '5 пара (15:50 – 17:25)' },
+    '6': { start: '17:40', end: '19:15', label: '6 пара (17:40 – 19:15)' },
+    '7': { start: '19:30', end: '21:05', label: '7 пара (19:30 – 21:05)' }
+};
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function getLocalCustomLessons(groupId = state.scheduleGroup) {
+    try {
+        const raw = storage.get('local_custom_lessons_' + groupId, '[]');
+        const list = JSON.parse(raw);
+        return Array.isArray(list) ? list : [];
+    } catch(e) {
+        return [];
+    }
+}
+
+function saveLocalCustomLessons(groupId, list) {
+    try {
+        storage.set('local_custom_lessons_' + groupId, JSON.stringify(list || []));
+    } catch(e) {}
+}
+
+function isCustomLessonActiveForDate(cl, targetDate) {
+    const dayIndex = targetDate.getDay();
+    if (Number(cl.dayOfWeek) !== dayIndex) return false;
+    if (state.group !== 'all' && cl.group && cl.group !== 'all' && String(cl.group) !== String(state.group)) {
+        return false;
+    }
+    const parity = getWeekParityInfo(targetDate);
+    if (cl.periodicity === 'numerator' && !parity.isNumerator) return false;
+    if (cl.periodicity === 'denominator' && parity.isNumerator) return false;
+    return true;
+}
+
+function dayHasLessons(d) {
+    const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (gSchedule && gSchedule.byDate[iso] && gSchedule.byDate[iso].length) return true;
+    const local = getLocalCustomLessons(state.scheduleGroup);
+    const admin = gAdminCustomLessons || [];
+    return [...admin, ...local].some(cl => isCustomLessonActiveForDate(cl, d));
+}
 
 function findMod(dateStr, lessonTitle) {
     return gScheduleMods.find(m => m.date === dateStr && lessonTitle.toLowerCase().includes(m.lesson.toLowerCase()));
@@ -2138,7 +2646,34 @@ function renderDayBlock(targetDate, showHeader=true) {
     const nowSecs = kyivNow.getHours()*3600+kyivNow.getMinutes()*60+kyivNow.getSeconds();
     const dateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth()+1).padStart(2,'0')}-${String(targetDate.getDate()).padStart(2,'0')}`;
     const dayLessons = (gSchedule && gSchedule.byDate[dateStr]) || [];
-    const filtered = dayLessons.filter(l => {
+
+    
+    const localList = getLocalCustomLessons(state.scheduleGroup).map(l => ({ ...l, isLocalCustom: true }));
+    const adminList = (gAdminCustomLessons || []).map(l => ({ ...l, isAdminCustom: true }));
+    const activeCustom = [...adminList, ...localList].filter(cl => isCustomLessonActiveForDate(cl, targetDate));
+
+    const convertedCustom = activeCustom.map(cl => ({
+        id: cl.id,
+        title: cl.title,
+        room: cl.room || '',
+        teacher: cl.teacher ? shortTeacher(cl.teacher) : '',
+        teacherFull: cl.teacher || '',
+        type: cl.type || 'ПрС',
+        typeLabel: cl.type || 'Практична',
+        group: (cl.group && cl.group !== 'all') ? cl.group : null,
+        start: cl.start || '08:30',
+        end: cl.end || '10:05',
+        potik: false,
+        isCollective: false,
+        isEng: false,
+        isLocalCustom: !!cl.isLocalCustom,
+        isAdminCustom: !!cl.isAdminCustom,
+        periodicity: cl.periodicity
+    }));
+
+    const combinedLessons = [...dayLessons, ...convertedCustom].sort((a,b) => timeToSeconds(a.start) - timeToSeconds(b.start));
+
+    const filtered = combinedLessons.filter(l => {
         if(state.group!=='all'&&l.group&&l.group.toString()!==state.group) return false;
         if(l.isEng&&state.engTeacher!=='all'&&l.teacherFull!==state.engTeacher) return false;
         return true;
@@ -2171,10 +2706,26 @@ function renderDayBlock(targetDate, showHeader=true) {
         const title=lesson.title, type=lesson.typeLabel, isPotik=lesson.potik;
         const cleanTeacher=lesson.teacher;
         let badges='';
-        if(type) badges+=`<span class="badge badge-type">${type}</span>`;
+        if(type) {
+            let typeStyle = '';
+            if (type === 'ДВВС') {
+                typeStyle = 'style="background:rgba(234,179,8,0.18);color:#eab308;border:1px solid rgba(234,179,8,0.35);"';
+            } else if (type === 'Лекція') {
+                typeStyle = 'style="background:rgba(59,130,246,0.18);color:#60a5fa;border:1px solid rgba(59,130,246,0.35);"';
+            } else if (type === 'Практична') {
+                typeStyle = 'style="background:rgba(16,185,129,0.18);color:#34d399;border:1px solid rgba(16,185,129,0.35);"';
+            } else if (type === 'Лабораторна') {
+                typeStyle = 'style="background:rgba(244,63,94,0.18);color:#fb7185;border:1px solid rgba(244,63,94,0.35);"';
+            }
+            badges+=`<span class="badge badge-type" ${typeStyle}>${type}</span>`;
+        }
         if(lesson.group) badges+=`<span class="badge badge-group">Підгрупа ${lesson.group}</span>`;
         if(isPotik) badges+=`<span class="badge badge-potik">Потік</span>`;
         if(lesson.isCollective&&!(lesson.isEng&&state.engTeacher!=='all')) badges+=`<span class="badge badge-group">Збірна група</span>`;
+        if(lesson.isLocalCustom) badges+=`<span class="badge badge-local-custom" style="background:rgba(168,85,247,0.18);color:#c084fc;border:1px solid rgba(168,85,247,0.35);">✨ Моя пара</span>`;
+        if(lesson.isAdminCustom) badges+=`<span class="badge badge-admin-custom" style="background:rgba(59,130,246,0.18);color:#60a5fa;border:1px solid rgba(59,130,246,0.35);">📌 Групова пара</span>`;
+        if(lesson.periodicity === 'numerator') badges+=`<span class="badge" style="background:rgba(59,130,246,0.15);color:#3b82f6;">Чисельник</span>`;
+        else if(lesson.periodicity === 'denominator') badges+=`<span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">Знаменник</span>`;
 
         const mod = findMod(dateStr, lesson.title);
         let cardExtra = '';
@@ -2235,7 +2786,7 @@ function renderWeek(monday) {
         `</div>` +
         `<div class="week-parity-range">${parity.rangeText}</div>` +
         `</div>`;
-    // Пн-Пт завжди; Сб/Нд лише якщо на них є пари (напр. заочники)
+    
     for(let i=0;i<7;i++){const d=new Date(monday);d.setDate(d.getDate()+i);if(i>=5&&!dayHasLessons(d))continue;html+=renderDayBlock(d,true);}
     return html;
 }
@@ -2256,14 +2807,211 @@ function render() {
     else if(state.tab==='tomorrow'){const t=new Date(nowKyiv);t.setDate(t.getDate()+1);html=renderDayBlock(t,true);}
     else if(state.tab==='this_week'){html=renderWeek(getLocalMonday(nowKyiv));}
     else if(state.tab==='next_week'){const nm=getLocalMonday(nowKyiv);nm.setDate(nm.getDate()+7);html=renderWeek(nm);}
-    // Деканат відповів "записів не знайдено": пояснюємо, чому всі дні порожні
+    
     const notice = gSchedule.totalLessons===0 ? `<div class="empty-state" style="margin-bottom:12px"><span>📭</span><p>Деканат ще не опублікував розклад групи ${state.groupName} на ці два тижні</p></div>` : '';
     els.scheduleContainer.innerHTML=notice+html;
     updateLiveTimers();
     renderDeadlines();
 }
 
+function getLessonEmoji(type) {
+    if (!type) return '📚';
+    const s = String(type).toLowerCase();
+    if (s.includes('лекц') || s === 'л') return '📖';
+    if (s.includes('лаб')) return '🔬';
+    if (s.includes('практ') || s.includes('прс') || s.includes('сем')) return '✏️';
+    if (s.includes('дввс')) return '⭐';
+    if (s.includes('екз') || s.includes('зал')) return '📝';
+    return '📚';
+}
+
+function getTodayLessonsList() {
+    if (!gSchedule || !gSchedule.byDate) return [];
+    const targetDate = getKyivDate();
+    const dateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth()+1).padStart(2,'0')}-${String(targetDate.getDate()).padStart(2,'0')}`;
+    const dayLessons = (gSchedule && gSchedule.byDate[dateStr]) || [];
+
+    
+    const localList = getLocalCustomLessons(state.scheduleGroup).map(l => ({ ...l, isLocalCustom: true }));
+    const adminList = (gAdminCustomLessons || []).map(l => ({ ...l, isAdminCustom: true }));
+    const activeCustom = [...adminList, ...localList].filter(cl => isCustomLessonActiveForDate(cl, targetDate));
+
+    const convertedCustom = activeCustom.map(cl => ({
+        id: cl.id,
+        title: cl.title,
+        room: cl.room || '',
+        teacher: cl.teacher ? shortTeacher(cl.teacher) : '',
+        teacherFull: cl.teacher || '',
+        type: cl.type || 'ПрС',
+        typeLabel: cl.type || 'Практична',
+        group: (cl.group && cl.group !== 'all') ? cl.group : null,
+        start: cl.start || '08:30',
+        end: cl.end || '10:05',
+        potik: false,
+        isCollective: false,
+        isEng: false,
+        isLocalCustom: !!cl.isLocalCustom,
+        isAdminCustom: !!cl.isAdminCustom,
+        periodicity: cl.periodicity
+    }));
+
+    const combinedLessons = [...dayLessons, ...convertedCustom].sort((a,b) => timeToSeconds(a.start) - timeToSeconds(b.start));
+
+    return combinedLessons.filter(l => {
+        if(state.group!=='all'&&l.group&&l.group.toString()!==state.group) return false;
+        if(l.isEng&&state.engTeacher!=='all'&&l.teacherFull!==state.engTeacher) return false;
+        return true;
+    });
+}
+
+function updateDynamicIsland() {
+    const wrap = document.getElementById('dynamic-island-wrap');
+    if (!wrap) return;
+
+    if (!gSchedule) {
+        wrap.style.display = 'none';
+        return;
+    }
+    wrap.style.display = 'block';
+
+    const now = getKyivDate();
+    const dayOfWeek = now.getDay();
+    const nowSecs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    const lessons = getTodayLessonsList();
+
+    const dotEl = document.getElementById('di-pulse-dot');
+    const iconEl = document.getElementById('di-icon');
+    const badgeEl = document.getElementById('di-badge');
+    const titleEl = document.getElementById('di-title');
+    const subtextEl = document.getElementById('di-subtext');
+    const timerValEl = document.getElementById('di-timer-val');
+    const timerSubEl = document.getElementById('di-timer-sub');
+    const progressEl = document.getElementById('di-ring-progress');
+
+    
+    if (lessons.length === 0) {
+        if (dotEl) dotEl.className = 'di-pulse-dot dot-gray';
+        if (iconEl) iconEl.textContent = '🏖️';
+        if (badgeEl) {
+            badgeEl.className = 'di-badge badge-gray';
+            badgeEl.textContent = (dayOfWeek === 0 || dayOfWeek === 6) ? 'Вихідний' : 'Вільно';
+        }
+        if (titleEl) titleEl.textContent = 'Сьогодні пар немає';
+        if (subtextEl) subtextEl.textContent = 'Можна відпочити або вчитись';
+        if (timerValEl) timerValEl.textContent = '🎉';
+        if (timerSubEl) timerSubEl.textContent = 'відпочинок';
+        if (progressEl) progressEl.setAttribute('stroke-dasharray', '100, 100');
+        return;
+    }
+
+    
+    let currentIdx = -1;
+    let nextIdx = -1;
+
+    for (let i = 0; i < lessons.length; i++) {
+        const l = lessons[i];
+        const startS = timeToSeconds(l.start);
+        const endS = timeToSeconds(l.end);
+        if (nowSecs >= startS && nowSecs <= endS) {
+            currentIdx = i;
+            break;
+        } else if (nowSecs < startS && nextIdx === -1) {
+            nextIdx = i;
+        }
+    }
+
+    const firstStartS = timeToSeconds(lessons[0].start);
+    const lastEndS = timeToSeconds(lessons[lessons.length - 1].end);
+
+    if (currentIdx !== -1) {
+        
+        const cur = lessons[currentIdx];
+        const startS = timeToSeconds(cur.start);
+        const endS = timeToSeconds(cur.end);
+        const elapsed = nowSecs - startS;
+        const total = Math.max(1, endS - startS);
+        const remaining = Math.max(0, endS - nowSecs);
+        const pct = Math.min(100, Math.max(0, (elapsed / total) * 100));
+
+        if (dotEl) dotEl.className = 'di-pulse-dot dot-green';
+        if (iconEl) iconEl.textContent = getLessonEmoji(cur.type || cur.typeLabel);
+        if (badgeEl) {
+            badgeEl.className = 'di-badge badge-green';
+            badgeEl.textContent = `Зараз · ${cur.start}–${cur.end}`;
+        }
+        if (titleEl) titleEl.textContent = `${currentIdx + 1}-а: ${cur.title}`;
+        const metaParts = [];
+        if (cur.room) metaParts.push(`Ауд. ${cur.room}`);
+        if (cur.teacher) metaParts.push(cur.teacher);
+        if (subtextEl) subtextEl.textContent = metaParts.join(' · ') || (cur.typeLabel || 'Пара');
+
+        if (timerValEl) timerValEl.textContent = formatTimeLeft(remaining);
+        if (timerSubEl) timerSubEl.textContent = 'до кінця';
+        if (progressEl) progressEl.setAttribute('stroke-dasharray', `${pct.toFixed(1)}, 100`);
+    } else if (nowSecs > lastEndS) {
+        
+        if (dotEl) dotEl.className = 'di-pulse-dot dot-purple';
+        if (iconEl) iconEl.textContent = '🎉';
+        if (badgeEl) {
+            badgeEl.className = 'di-badge badge-purple';
+            badgeEl.textContent = 'Все!';
+        }
+        if (titleEl) titleEl.textContent = 'Всі пари на сьогодні завершено';
+        if (subtextEl) subtextEl.textContent = 'Гарного відпочинку!';
+        if (timerValEl) timerValEl.textContent = '00:00';
+        if (timerSubEl) timerSubEl.textContent = 'завершено';
+        if (progressEl) progressEl.setAttribute('stroke-dasharray', '100, 100');
+    } else if (nextIdx !== -1) {
+        const next = lessons[nextIdx];
+        const nextStartS = timeToSeconds(next.start);
+        const remaining = Math.max(0, nextStartS - nowSecs);
+
+        if (nowSecs < firstStartS) {
+            
+            if (dotEl) dotEl.className = 'di-pulse-dot dot-blue';
+            if (iconEl) iconEl.textContent = '⏰';
+            if (badgeEl) {
+                badgeEl.className = 'di-badge badge-blue';
+                badgeEl.textContent = `Початок о ${next.start}`;
+            }
+            if (titleEl) titleEl.textContent = `1-ша пара: ${next.title}`;
+            const metaParts = [];
+            if (next.room) metaParts.push(`Ауд. ${next.room}`);
+            if (next.teacher) metaParts.push(next.teacher);
+            if (subtextEl) subtextEl.textContent = metaParts.join(' · ') || 'Скоро почнеться';
+
+            if (timerValEl) timerValEl.textContent = formatTimeLeft(remaining);
+            if (timerSubEl) timerSubEl.textContent = 'до початку';
+            if (progressEl) progressEl.setAttribute('stroke-dasharray', '0, 100');
+        } else {
+            
+            const prev = lessons[nextIdx - 1];
+            const prevEndS = prev ? timeToSeconds(prev.end) : firstStartS;
+            const breakTotal = Math.max(1, nextStartS - prevEndS);
+            const breakElapsed = Math.max(0, nowSecs - prevEndS);
+            const pct = Math.min(100, Math.max(0, (breakElapsed / breakTotal) * 100));
+
+            if (dotEl) dotEl.className = 'di-pulse-dot dot-amber';
+            if (iconEl) iconEl.textContent = '☕';
+            if (badgeEl) {
+                badgeEl.className = 'di-badge badge-amber';
+                badgeEl.textContent = `Перерва (${next.start})`;
+            }
+            if (titleEl) titleEl.textContent = `Далі: ${next.title}`;
+            const metaParts = [];
+            if (next.room) metaParts.push(`Ауд. ${next.room}`);
+            if (next.teacher) metaParts.push(next.teacher);
+            if (subtextEl) subtextEl.textContent = metaParts.join(' · ') || 'Перерва між парами';
+
+            if (timerValEl) timerValEl.textContent = formatTimeLeft(remaining);
+            if (timerSubEl) timerSubEl.textContent = 'перерва';
+            if (progressEl) progressEl.setAttribute('stroke-dasharray', `${pct.toFixed(1)}, 100`);
+        }
+    }
+}
+
 function updateLiveTimers() {
+    updateDynamicIsland();
     if(state.tab!=='today') return;
     const now=getKyivDate();
     const nowSecs=now.getHours()*3600+now.getMinutes()*60+now.getSeconds();
@@ -2354,6 +3102,7 @@ window.loadAdminData = async function loadAdminData() {
     applyQuickLink(data.quicklinkName,data.quicklinkUrl);
     applyHolidayTheme(data.holidayMode);
     applyPinnedMsg(data.pinnedText);
+    gAdminCustomLessons = data.customLessons || [];
     gset(state.scheduleGroup,'admin_cache',JSON.stringify(data));
 
     const [modsData, lannData] = await Promise.all([window.fbGetScheduleMods(state.scheduleGroup), window.fbGetLessonAnnouncements(state.scheduleGroup)]);
@@ -2370,6 +3119,7 @@ try {
     if(cached.quicklinkUrl) applyQuickLink(cached.quicklinkName,cached.quicklinkUrl);
     if(cached.holidayMode) applyHolidayTheme(cached.holidayMode);
     if(cached.pinnedText) applyPinnedMsg(cached.pinnedText);
+    if(cached.customLessons) gAdminCustomLessons = cached.customLessons;
 } catch(e) {}
 
 let statsChartInstance = null;
@@ -2422,6 +3172,7 @@ function initAdminPanel() {
             const un = val.toLowerCase().replace('@', '');
             if (un === 'xmice' || (storage.get('admin_authed_id','') && val === storage.get('admin_authed_id',''))) {
                 storage.set('admin_unlocked_xmice', 'true');
+                storage.set('admin_authed_pass', val);
                 document.body.removeChild(promptOverlay);
                 openAdminPanel();
                 return;
@@ -2431,6 +3182,7 @@ function initAdminPanel() {
             const hashHex=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
             if(hashHex===ADMIN_PANEL_HASH){
                 storage.set('admin_unlocked_xmice', 'true');
+                storage.set('admin_authed_pass', val);
                 document.body.removeChild(promptOverlay);
                 openAdminPanel();
             }
@@ -2462,8 +3214,10 @@ function initAdminPanel() {
 
     function openAdminPanel() {
         overlay.classList.add('active');
+        const bGroupName = document.getElementById('broadcast-group-name');
+        if (bGroupName) bGroupName.textContent = state.groupName || 'Поточна група';
         loadAdminStats();
-        // Fill inputs from cache immediately for fast feel
+        
         try {
             const cached=JSON.parse(gget(state.scheduleGroup,'admin_cache','{}') || '{}');
             document.getElementById('warning-title-input').value=cached.warningTitle||'';
@@ -2474,12 +3228,13 @@ function initAdminPanel() {
             const hm=cached.holidayMode||'off';
             updateHolidayCards(hm);
         } catch(e){}
-        // Render from memory first, then reload fresh from Firebase
+        
         renderModList();
         renderLannList();
         renderDlList();
+        renderAdminCustomLessons();
         renderAdminAnnHistory();
-        // Async: reload fresh data from Firebase
+        
         (async () => {
             const waitFB = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
             await waitFB();
@@ -2497,6 +3252,7 @@ function initAdminPanel() {
                     document.getElementById('pinned-text-input').value = freshAdmin.pinnedText||'';
                     updateHolidayCards(freshAdmin.holidayMode||'off');
                     gDeadlines = freshAdmin.deadlines || [];
+                    gAdminCustomLessons = freshAdmin.customLessons || [];
                     gset(state.scheduleGroup,'admin_cache',JSON.stringify(freshAdmin));
                 }
                 gScheduleMods = (modsData.mods || []).filter(m => m.date >= new Date().toISOString().slice(0,10));
@@ -2504,6 +3260,8 @@ function initAdminPanel() {
                 renderModList();
                 renderLannList();
                 renderDlList();
+                renderAdminCustomLessons();
+                render();
             } catch(e) { console.warn('Admin fresh load error:', e); }
         })();
     }
@@ -2541,7 +3299,7 @@ function initAdminPanel() {
         });
     }
 
-    // Holiday card selection state
+    
     let selectedHolidayMode = 'off';
     function updateHolidayCards(mode) {
         selectedHolidayMode = mode;
@@ -2608,6 +3366,92 @@ function initAdminPanel() {
         document.getElementById('pinned-text-input').value='';
     });
 
+    
+    const bTextInput = document.getElementById('broadcast-text-input');
+    const bCharCount = document.getElementById('broadcast-char-count');
+    const bSendBtn   = document.getElementById('broadcast-send-btn');
+    const bTargetSel = document.getElementById('broadcast-target-select');
+    const bResultMsg = document.getElementById('broadcast-result-msg');
+
+    if (bTextInput && bCharCount) {
+        bTextInput.addEventListener('input', () => {
+            bCharCount.textContent = `${bTextInput.value.length} / 800`;
+        });
+    }
+
+    if (bSendBtn) {
+        bSendBtn.addEventListener('click', async () => {
+            const text = (bTextInput?.value || '').trim();
+            if (!text) {
+                alert('Введіть текст повідомлення для розсилки');
+                if (bTextInput) bTextInput.focus();
+                return;
+            }
+
+            const targetVal = bTargetSel?.value || 'current';
+            const targetGroup = targetVal === 'current' ? (state.groupName || 'ФЕП-13с') : 'all';
+            const confirmMsg = targetVal === 'current'
+                ? `Надіслати повідомлення студентам групи "${targetGroup}" через Telegram-бота?`
+                : `УВАГА: Надіслати це повідомлення ВСІМ зареєстрованим користувачам бота?`;
+
+            if (!confirm(confirmMsg)) return;
+
+            const iconSpan = document.getElementById('broadcast-btn-icon');
+            const textSpan = document.getElementById('broadcast-btn-text');
+            bSendBtn.disabled = true;
+            if (iconSpan) iconSpan.textContent = '⏳';
+            if (textSpan) textSpan.textContent = 'Відправка…';
+            if (bResultMsg) bResultMsg.style.display = 'none';
+
+            let tgUser = null;
+            try { tgUser = JSON.parse(localStorage.getItem('tg_user_cache') || 'null'); } catch(e) {}
+            const adminPass = storage.get('admin_authed_pass', '') || '0711';
+            const adminUser = tgUser?.username || (storage.get('admin_unlocked_xmice', '') === 'true' ? 'xmice' : '');
+            const workerBase = localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
+
+            try {
+                const res = await fetch(`${workerBase}/broadcast`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        adminPass,
+                        adminUser,
+                        group: targetGroup,
+                        text
+                    })
+                });
+
+                const data = await res.json();
+                if (!res.ok || !data.ok) {
+                    throw new Error(data.error || 'Помилка під час відправки');
+                }
+
+                if (bResultMsg) {
+                    bResultMsg.style.display = 'block';
+                    bResultMsg.style.background = 'rgba(16,185,129,0.15)';
+                    bResultMsg.style.color = 'var(--accent-green)';
+                    bResultMsg.style.border = '1px solid rgba(16,185,129,0.3)';
+                    bResultMsg.innerHTML = `✅ Розсилку завершено успішно!<br><span style="font-size:12px;opacity:0.9;">Всього знайдено: ${data.total} | Надіслано: ${data.sent} | Помилок: ${data.failed}</span>`;
+                }
+                if (bTextInput) bTextInput.value = '';
+                if (bCharCount) bCharCount.textContent = '0 / 800';
+            } catch (err) {
+                console.error('Broadcast error:', err);
+                if (bResultMsg) {
+                    bResultMsg.style.display = 'block';
+                    bResultMsg.style.background = 'rgba(239,68,68,0.15)';
+                    bResultMsg.style.color = '#ef4444';
+                    bResultMsg.style.border = '1px solid rgba(239,68,68,0.3)';
+                    bResultMsg.textContent = `❌ Помилка розсилки: ${err.message}`;
+                }
+            } finally {
+                bSendBtn.disabled = false;
+                if (iconSpan) iconSpan.textContent = '✈️';
+                if (textSpan) textSpan.textContent = 'Надіслати розсилку';
+            }
+        });
+    }
+
     document.getElementById('warning-save-btn').addEventListener('click', async () => {
         const title=document.getElementById('warning-title-input').value.trim();
         const text=document.getElementById('warning-text-input').value.trim();
@@ -2660,7 +3504,7 @@ function initAdminPanel() {
     modTypeSelect.addEventListener('change',()=>{modChangeFields.style.display=modTypeSelect.value==='change'?'block':'none';});
 
     const dateInput=document.getElementById('mod-date-input');
-    const kyivToday = getKyivDate().toLocaleDateString('sv-SE'); // YYYY-MM-DD in sv-SE locale
+    const kyivToday = getKyivDate().toLocaleDateString('sv-SE'); 
     dateInput.min=kyivToday;
     dateInput.value=kyivToday;
 
@@ -2794,7 +3638,6 @@ function initAdminPanel() {
     }
 }
 
-// ===== ПОШУК ГРУПИ (вітальне вікно і налаштування) =====
 function createGroupSearch({ input, results, onPick }) {
     let timer = null, seq = 0;
     const status = (text) => { results.innerHTML = text ? `<div class="group-search-status">${text}</div>` : ''; };
@@ -2806,7 +3649,7 @@ function createGroupSearch({ input, results, onPick }) {
         timer = setTimeout(async () => {
             const my = ++seq;
             const groups = await window.getSuggestionGroups(q);
-            if (my !== seq) return; // прийшла відповідь на старіший запит
+            if (my !== seq) return; 
             if (!groups.length) { status('Нічого не знайдено. Спробуйте, напр. «ФЕП-1»'); return; }
             results.innerHTML = groups.map(g => `<button type="button" class="group-search-item" data-group="${g}">${g}</button>`).join('');
         }, 250);
@@ -2848,12 +3691,34 @@ function addSavedGroup(groupName) {
     }
 }
 
+function isGroupConfigured(groupName) {
+    if (!groupName) return false;
+    const gid = toGroupId(groupName);
+    return storage.get(gid + '_configured', '') === '1' || storage.get(gid + '_saved_group', '') !== '';
+}
+
 function removeSavedGroup(groupName) {
     let list = getSavedGroups();
     list = list.filter(g => g !== groupName);
     saveSavedGroups(list);
+
+    const gid = toGroupId(groupName);
+    storage.remove(gid + '_saved_group');
+    storage.remove(gid + '_eng_teacher');
+    storage.remove(gid + '_configured');
+    storage.remove('local_custom_lessons_' + gid);
+
+    if (list.length === 0) {
+        storage.remove(APP_ACTIVE_GROUP_KEY);
+        storage.remove('app_has_visited');
+        storage.remove(SAVED_GROUPS_KEY);
+        storage.remove(APP_SETUP_PENDING_KEY);
+        location.reload();
+        return;
+    }
+
     if (groupName === state.groupName) {
-        const nextGroup = list.length > 0 ? list[0] : 'ФЕП-13с';
+        const nextGroup = list[0];
         switchGroup(nextGroup);
     } else {
         renderSavedGroupsUI();
@@ -2897,17 +3762,308 @@ function renderSavedGroupsUI() {
     });
 }
 
-// Зміна групи з налаштувань: після перезавантаження вітальне вікно добере підгрупу й англійську
 function switchGroup(groupName) {
     if (!groupName) return;
     addSavedGroup(groupName);
     storage.set(APP_ACTIVE_GROUP_KEY, groupName);
-    if (groupName !== state.groupName) storage.set(APP_SETUP_PENDING_KEY, '1');
+    if (!isGroupConfigured(groupName)) {
+        storage.set(APP_SETUP_PENDING_KEY, '1');
+    } else {
+        storage.remove(APP_SETUP_PENDING_KEY);
+    }
     location.reload();
+}
+
+function renderCustomLessonItems(containerId, list, scope) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (!list || list.length === 0) {
+        container.innerHTML = scope === 'admin'
+            ? '<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:14px;background:var(--bg-card);border:1px dashed var(--border);border-radius:12px;">Немає групових кастомних пар</div>'
+            : '<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:14px;background:var(--bg-body);border:1px dashed var(--border);border-radius:12px;">Ви ще не додали жодної власної пари</div>';
+        return;
+    }
+
+    container.innerHTML = list.map(cl => {
+        let typeBadgeStyle = '';
+        if (cl.type === 'ДВВС') typeBadgeStyle = 'background:rgba(234,179,8,0.18);color:#eab308;border:1px solid rgba(234,179,8,0.35);';
+        else if (cl.type === 'Лекція') typeBadgeStyle = 'background:rgba(59,130,246,0.18);color:#60a5fa;border:1px solid rgba(59,130,246,0.35);';
+        else if (cl.type === 'Практична') typeBadgeStyle = 'background:rgba(16,185,129,0.18);color:#34d399;border:1px solid rgba(16,185,129,0.35);';
+        else if (cl.type === 'Лабораторна') typeBadgeStyle = 'background:rgba(244,63,94,0.18);color:#fb7185;border:1px solid rgba(244,63,94,0.35);';
+        else typeBadgeStyle = 'background:var(--bg-card);color:var(--text-main);border:1px solid var(--border);';
+
+        const periodicityLabels = { 'both': 'Щотижня', 'numerator': 'Чисельник', 'denominator': 'Знаменник' };
+        const periodicityLabel = periodicityLabels[cl.periodicity] || 'Щотижня';
+        const dayLabel = uaDays[cl.dayOfWeek] || 'День';
+        const timeSlotLabel = (cl.slot && cl.slot !== 'custom') ? `${cl.start}–${cl.end} (${cl.slot} пара)` : `${cl.start}–${cl.end}`;
+
+        return `
+            <div class="custom-lesson-item">
+                <div class="custom-lesson-info">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">
+                        <span class="custom-lesson-badge" style="${typeBadgeStyle}">${escapeHtml(cl.type || 'Пара')}</span>
+                        <span class="custom-lesson-badge" style="background:rgba(100,116,139,0.15);color:var(--text-muted);border:1px solid var(--border);">${periodicityLabel}</span>
+                        ${cl.group && cl.group !== 'all' ? `<span class="custom-lesson-badge" style="background:var(--bg-purple);color:var(--accent-purple);border:1px solid rgba(168,85,247,0.3);">Підгр. ${cl.group}</span>` : ''}
+                    </div>
+                    <div class="custom-lesson-title" title="${escapeHtml(cl.title)}">${escapeHtml(cl.title)}</div>
+                    <div class="custom-lesson-meta">
+                        <span>📅 ${dayLabel}</span>
+                        <span>⏱ ${timeSlotLabel}</span>
+                        ${cl.room ? `<span>📍 ${escapeHtml(cl.room)}</span>` : ''}
+                        ${cl.teacher ? `<span>👤 ${escapeHtml(shortTeacher(cl.teacher))}</span>` : ''}
+                    </div>
+                </div>
+                <div class="custom-lesson-actions">
+                    <button type="button" class="custom-lesson-btn cl-edit-btn" data-id="${cl.id}" data-scope="${scope}" title="Редагувати">✏️</button>
+                    <button type="button" class="custom-lesson-btn danger cl-del-btn" data-id="${cl.id}" data-scope="${scope}" title="Видалити">🗑</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    container.querySelectorAll('.cl-edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.dataset.id;
+            const sc = btn.dataset.scope;
+            const item = (sc === 'admin' ? gAdminCustomLessons : getLocalCustomLessons(state.scheduleGroup)).find(l => l.id === id);
+            if (item) openCustomLessonModal({ scope: sc, lesson: item });
+        });
+    });
+
+    container.querySelectorAll('.cl-del-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.dataset.id;
+            const sc = btn.dataset.scope;
+            if (sc === 'admin') deleteAdminCustomLesson(id);
+            else deleteLocalCustomLesson(id);
+        });
+    });
+}
+
+function renderLocalCustomLessons() {
+    const list = getLocalCustomLessons(state.scheduleGroup);
+    renderCustomLessonItems('local-custom-lessons-list', list, 'local');
+}
+
+function renderAdminCustomLessons() {
+    renderCustomLessonItems('admin-custom-lessons-list', gAdminCustomLessons, 'admin');
+}
+
+function deleteLocalCustomLesson(id) {
+    if (!confirm('Видалити цю пару зі свого розкладу?')) return;
+    let list = getLocalCustomLessons(state.scheduleGroup);
+    list = list.filter(l => l.id !== id);
+    saveLocalCustomLessons(state.scheduleGroup, list);
+    renderLocalCustomLessons();
+    render();
+}
+
+async function deleteAdminCustomLesson(id) {
+    if (!confirm('Видалити цю пару для всієї групи? Вона зникне у всіх студентів.')) return;
+    gAdminCustomLessons = gAdminCustomLessons.filter(l => l.id !== id);
+    const result = await saveAdminField({ customLessons: gAdminCustomLessons });
+    if (result) {
+        renderAdminCustomLessons();
+        render();
+    } else {
+        alert('Помилка видалення в Firebase');
+    }
+}
+
+function openCustomLessonModal({ scope = 'local', lesson = null }) {
+    const modal = document.getElementById('custom-lesson-modal');
+    if (!modal) return;
+    const titleEl = document.getElementById('custom-lesson-modal-title');
+    const editIdEl = document.getElementById('cl-edit-id');
+    const scopeEl = document.getElementById('cl-scope');
+    const titleInput = document.getElementById('cl-title');
+    const typeSelect = document.getElementById('cl-type');
+    const daySelect = document.getElementById('cl-day');
+    const periodicitySelect = document.getElementById('cl-periodicity');
+    const slotSelect = document.getElementById('cl-slot');
+    const startTimeInput = document.getElementById('cl-start-time');
+    const endTimeInput = document.getElementById('cl-end-time');
+    const roomInput = document.getElementById('cl-room');
+    const teacherInput = document.getElementById('cl-teacher');
+    const subgroupSelect = document.getElementById('cl-subgroup');
+    const customTimeRow = document.getElementById('cl-custom-time-row');
+
+    scopeEl.value = scope;
+    if (lesson) {
+        titleEl.textContent = scope === 'admin' ? 'Редагувати групову пару' : 'Редагувати власну пару';
+        editIdEl.value = lesson.id;
+        titleInput.value = lesson.title || '';
+        typeSelect.value = lesson.type || 'ДВВС';
+        daySelect.value = String(lesson.dayOfWeek ?? 1);
+        periodicitySelect.value = lesson.periodicity || 'both';
+        slotSelect.value = lesson.slot || '1';
+        startTimeInput.value = lesson.start || '08:30';
+        endTimeInput.value = lesson.end || '10:05';
+        roomInput.value = lesson.room || '';
+        teacherInput.value = lesson.teacher || '';
+        subgroupSelect.value = lesson.group || 'all';
+        if (customTimeRow) customTimeRow.style.display = lesson.slot === 'custom' ? 'grid' : 'none';
+    } else {
+        titleEl.textContent = scope === 'admin' ? 'Додати пару для всієї групи' : 'Додати власну пару';
+        editIdEl.value = '';
+        titleInput.value = '';
+        typeSelect.value = 'ДВВС';
+        daySelect.value = '1';
+        periodicitySelect.value = 'both';
+        slotSelect.value = '1';
+        startTimeInput.value = '08:30';
+        endTimeInput.value = '10:05';
+        roomInput.value = '';
+        teacherInput.value = '';
+        subgroupSelect.value = 'all';
+        if (customTimeRow) customTimeRow.style.display = 'none';
+    }
+
+    modal.classList.add('active');
+    setTimeout(() => titleInput.focus(), 150);
+}
+
+function closeCustomLessonModal() {
+    const modal = document.getElementById('custom-lesson-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function initCustomLessonsUI() {
+    const modal = document.getElementById('custom-lesson-modal');
+    const closeBtn = document.getElementById('close-custom-lesson-modal');
+    const cancelBtn = document.getElementById('cl-cancel-btn');
+    const saveBtn = document.getElementById('cl-save-btn');
+    const slotSelect = document.getElementById('cl-slot');
+    const customTimeRow = document.getElementById('cl-custom-time-row');
+    const startTimeInput = document.getElementById('cl-start-time');
+    const endTimeInput = document.getElementById('cl-end-time');
+
+    const addLocalBtn = document.getElementById('btn-add-local-custom-lesson');
+    if (addLocalBtn && !addLocalBtn._inited) {
+        addLocalBtn._inited = true;
+        addLocalBtn.addEventListener('click', () => openCustomLessonModal({ scope: 'local' }));
+    }
+
+    const addAdminBtn = document.getElementById('btn-add-admin-custom-lesson');
+    if (addAdminBtn && !addAdminBtn._inited) {
+        addAdminBtn._inited = true;
+        addAdminBtn.addEventListener('click', () => openCustomLessonModal({ scope: 'admin' }));
+    }
+
+    if (closeBtn && !closeBtn._inited) {
+        closeBtn._inited = true;
+        closeBtn.addEventListener('click', closeCustomLessonModal);
+    }
+    if (cancelBtn && !cancelBtn._inited) {
+        cancelBtn._inited = true;
+        cancelBtn.addEventListener('click', closeCustomLessonModal);
+    }
+    if (modal && !modal._inited) {
+        modal._inited = true;
+        modal.addEventListener('click', e => { if (e.target === modal) closeCustomLessonModal(); });
+    }
+
+    if (slotSelect && !slotSelect._inited) {
+        slotSelect._inited = true;
+        slotSelect.addEventListener('change', () => {
+            if (slotSelect.value === 'custom') {
+                if (customTimeRow) customTimeRow.style.display = 'grid';
+            } else {
+                if (customTimeRow) customTimeRow.style.display = 'none';
+                const slotData = STANDARD_PAIR_SLOTS[slotSelect.value];
+                if (slotData) {
+                    if (startTimeInput) startTimeInput.value = slotData.start;
+                    if (endTimeInput) endTimeInput.value = slotData.end;
+                }
+            }
+        });
+    }
+
+    if (saveBtn && !saveBtn._inited) {
+        saveBtn._inited = true;
+        saveBtn.addEventListener('click', async () => {
+            const titleInput = document.getElementById('cl-title');
+            const title = (titleInput ? titleInput.value : '').trim();
+            if (!title) {
+                alert('Введіть назву пари');
+                if (titleInput) titleInput.focus();
+                return;
+            }
+
+            const scope = document.getElementById('cl-scope').value;
+            const editId = document.getElementById('cl-edit-id').value;
+            const type = document.getElementById('cl-type').value;
+            const dayOfWeek = parseInt(document.getElementById('cl-day').value, 10);
+            const periodicity = document.getElementById('cl-periodicity').value;
+            const slot = document.getElementById('cl-slot').value;
+            let start = startTimeInput ? startTimeInput.value : '08:30';
+            let end = endTimeInput ? endTimeInput.value : '10:05';
+            if (slot !== 'custom' && STANDARD_PAIR_SLOTS[slot]) {
+                start = STANDARD_PAIR_SLOTS[slot].start;
+                end = STANDARD_PAIR_SLOTS[slot].end;
+            }
+            const room = document.getElementById('cl-room').value.trim();
+            const teacher = document.getElementById('cl-teacher').value.trim();
+            const group = document.getElementById('cl-subgroup').value;
+
+            const lessonObj = {
+                id: editId || ('cl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)),
+                title,
+                type,
+                dayOfWeek,
+                periodicity,
+                slot,
+                start,
+                end,
+                room,
+                teacher,
+                group
+            };
+
+            if (scope === 'local') {
+                let list = getLocalCustomLessons(state.scheduleGroup);
+                if (editId) {
+                    const idx = list.findIndex(l => l.id === editId);
+                    if (idx >= 0) list[idx] = lessonObj;
+                    else list.push(lessonObj);
+                } else {
+                    list.push(lessonObj);
+                }
+                saveLocalCustomLessons(state.scheduleGroup, list);
+                renderLocalCustomLessons();
+                render();
+                closeCustomLessonModal();
+            } else if (scope === 'admin') {
+                saveBtn.disabled = true;
+                saveBtn.textContent = '…';
+                let nextAdminList = [...gAdminCustomLessons];
+                if (editId) {
+                    const idx = nextAdminList.findIndex(l => l.id === editId);
+                    if (idx >= 0) nextAdminList[idx] = lessonObj;
+                    else nextAdminList.push(lessonObj);
+                } else {
+                    nextAdminList.push(lessonObj);
+                }
+                const res = await saveAdminField({ customLessons: nextAdminList });
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Зберегти';
+                if (res) {
+                    gAdminCustomLessons = nextAdminList;
+                    renderAdminCustomLessons();
+                    render();
+                    closeCustomLessonModal();
+                } else {
+                    alert('Помилка збереження в Firebase');
+                }
+            }
+        });
+    }
 }
 
 function initGroupPicker() {
     renderSavedGroupsUI();
+    renderLocalCustomLessons();
+    initCustomLessonsUI();
     const input = document.getElementById('settings-group-search');
     const results = document.getElementById('settings-group-results');
     if (input && results) {
@@ -2953,7 +4109,7 @@ function initWelcomeModal() {
 
     let chosenGroup = setupPending ? state.groupName : null;
     let chosenSub = 'all';
-    let plan = setupPending ? [] : ['group']; // послідовність кроків; sub/eng додаються за розкладом
+    let plan = setupPending ? [] : ['group']; 
     let planIdx = setupPending ? -1 : 0;
     let visible = setupPending ? 'loading' : 'group';
 
@@ -2991,7 +4147,7 @@ function initWelcomeModal() {
         engList.querySelectorAll('.wlc-eng-btn').forEach(btn => addHover(btn, 'var(--primary)', 'var(--bg-blue)'));
     }
 
-    // Розклад групи визначає, які кроки потрібні: підгрупа лише якщо є підгрупи, англійська лише якщо вона є
+    
     async function loadGroupAndContinue(groupName) {
         chosenGroup = groupName;
         document.getElementById('welcome-loading-text').textContent = groupName;
@@ -3000,7 +4156,7 @@ function initWelcomeModal() {
         try {
             info = normalizeSchedule(await fetchGroupSchedule(groupName));
         } catch (e) {
-            if (setupPending) { finishSetup('all'); return; } // групу вже збережено, доберемо потім
+            if (setupPending) { finishSetup('all'); return; } 
             showStep('group');
             searchInput.disabled = false;
             searchResults.innerHTML = '<div class="group-search-status">😕 Не вдалося завантажити розклад. Спробуйте ще раз.</div>';
@@ -3018,6 +4174,7 @@ function initWelcomeModal() {
         storage.set(APP_ACTIVE_GROUP_KEY, chosenGroup);
         storage.set(gid + '_saved_group', chosenSub);
         storage.set(gid + '_eng_teacher', engValue);
+        storage.set(gid + '_configured', '1');
         storage.set('app_has_visited', '1');
         storage.remove(APP_SETUP_PENDING_KEY);
         inner.style.transition = 'all 0.3s ease';
@@ -3031,16 +4188,16 @@ function initWelcomeModal() {
         btn.addEventListener('mouseleave', () => { btn.style.borderColor = 'var(--border)'; if(bgColor) btn.style.background = 'var(--bg-body)'; btn.style.transform = ''; });
     }
 
-    // Крок: пошук групи
+    
     createGroupSearch({ input: searchInput, results: searchResults, onPick: (g) => { searchInput.disabled = true; loadGroupAndContinue(g); } });
 
-    // Крок: підгрупа
+    
     modal.querySelectorAll('.wlc-sub-btn').forEach(btn => {
         addHover(btn, 'var(--primary)', null);
         btn.addEventListener('click', () => { chosenSub = btn.dataset.sub; goNext(); });
     });
 
-    // Крок: викладач англійської (кнопки створюються після завантаження розкладу)
+    
     engList.addEventListener('click', (e) => {
         const btn = e.target.closest('.wlc-eng-btn');
         if (btn) finishSetup(btn.dataset.eng);
@@ -3057,7 +4214,6 @@ document.addEventListener('DOMContentLoaded', () => { initAdminPanel(); loadAdmi
 document.addEventListener('DOMContentLoaded', init);
 document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGroupPicker(); });
 
-// ===== PWA INSTALL MODAL =====
 (function() {
     let deferredPrompt = null;
 
@@ -3102,7 +4258,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         btn.addEventListener('click', () => {
             overlay.classList.add('active');
             document.body.style.overflow = 'hidden';
-            // Auto-select tab based on OS
+            
             if (isIOS()) {
                 switchTab('ios');
             } else {
@@ -3146,7 +4302,6 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
 })();
 </script>
 
-<!-- PWA Install Modal -->
 <div class="pwa-modal-overlay" id="pwa-modal-overlay">
     <div class="pwa-modal">
         <div class="pwa-modal-header">
@@ -3161,7 +4316,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             <button class="close-btn" id="pwa-modal-close">✕</button>
         </div>
         <div class="pwa-modal-body">
-            <!-- Tabs -->
+            
             <div class="pwa-tabs">
                 <button class="pwa-tab active" data-tab="android">
                     <svg viewBox="0 0 24 24"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zm-2.5-1C2.67 17 2 17.67 2 18.5v-9C2 8.67 2.67 8 3.5 8S5 8.67 5 9.5v9c0 .83-.67 1.5-1.5 1.5zm17 0c-.83 0-1.5-.67-1.5-1.5v-9c0-.83.67-1.5 1.5-1.5S22 8.67 22 9.5v9c0 .83-.67 1.5-1.5 1.5zM15.53 2.16l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48C13.85 1.23 12.95 1 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31C6.97 3.26 6 5.01 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg>
@@ -3173,7 +4328,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                 </button>
             </div>
 
-            <!-- Android Panel -->
+            
             <div class="pwa-panel active" id="pwa-panel-android">
                 <div class="pwa-android-banner">
                     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
@@ -3219,7 +4374,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                 </button>
             </div>
 
-            <!-- iOS Panel -->
+            
             <div class="pwa-panel" id="pwa-panel-ios">
                 <div class="pwa-steps">
                     <div class="pwa-step">
@@ -3265,7 +4420,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         </div>
     </div>
 </div>
-<!-- Offline Banner -->
+
 <div class="offline-banner" id="offline-banner">
     <div class="offline-banner-icon">📶</div>
     <div class="offline-banner-text">
@@ -3280,9 +4435,8 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
 </div>
 
 <script>
-// ===== USER PROFILE + STREAK =====
 (function() {
-    // --- Streak tracking ---
+    
     function getToday() { return new Date().toISOString().slice(0,10); }
     function loadVisitData() {
         try { return JSON.parse(localStorage.getItem('user_visit_data') || 'null') || { count:0, streak:0, lastDate:'', history:[] }; } catch{ return { count:0, streak:0, lastDate:'', history:[] }; }
@@ -3292,7 +4446,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         if (!storage.get('toggle-track-visits_v', 'true') === 'false') return;
         const today = getToday();
         const d = loadVisitData();
-        if (d.lastDate === today) return; // вже відвідав сьогодні
+        if (d.lastDate === today) return; 
         const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
         const yStr = yesterday.toISOString().slice(0,10);
         d.streak = (d.lastDate === yStr) ? (d.streak||0)+1 : 1;
@@ -3306,7 +4460,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
     trackVisit();
     window._visitData = loadVisitData();
 
-    // --- Telegram WebApp user ---
+    
     function getTgUser() {
         try {
             const tg = window.Telegram && window.Telegram.WebApp;
@@ -3347,30 +4501,30 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         const streakNum = document.getElementById('user-streak-num');
         if (!bar) return;
 
-        // Check settings toggle
+        
         const showBar = storage.get('toggle-profile-bar','true') !== 'false';
         if (!showBar) { bar.style.display = 'none'; return; }
 
-        // Custom name from settings
+        
         const customName = storage.get('custom_display_name', '');
 
-        // Try Telegram WebApp first
+        
         const tgUser = getTgUser();
         let user = null;
 
         if (tgUser) {
             user = tgUser;
         } else {
-            // Try from localStorage cache
+            
             try { user = JSON.parse(localStorage.getItem('tg_user_cache') || 'null'); } catch{}
         }
 
-        // Show bar immediately with what we have
+        
         bar.style.display = 'flex';
         const displayName = customName || (user ? (user.first_name + (user.last_name ? ' '+user.last_name : '')) : 'Студент');
         nameEl.textContent = displayName;
 
-        // Set initials placeholder
+        
         if (user) {
             avatarWrap.textContent = getInitials(user.first_name, user.last_name);
             if ((user.username || '').toLowerCase().replace('@', '') === 'xmice' || (storage.get('admin_authed_id', '') && String(user.id) === storage.get('admin_authed_id', ''))) {
@@ -3381,7 +4535,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             }
         }
 
-        // Update group label
+        
         const grpEl = document.getElementById('user-group-label');
         const subGrpEl = document.getElementById('user-subgroup-label');
         if (grpEl) {
@@ -3392,14 +4546,14 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             subGrpEl.textContent = sub === '1' ? 'Підгрупа 1' : sub === '2' ? 'Підгрупа 2' : '';
         }
 
-        // Streak
+        
         const vd = window._visitData;
         if (vd && vd.streak > 1) {
             streakBadge.style.display = 'flex';
             streakNum.textContent = vd.streak;
         }
 
-        // Load photo from Firebase if we have a TG user ID
+        
         if (tgUser && tgUser.id) {
             localStorage.setItem('tg_user_cache', JSON.stringify(tgUser));
             if ((tgUser.username || '').toLowerCase().replace('@', '') === 'xmice') {
@@ -3408,10 +4562,10 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                 const directRow = document.getElementById('admin-settings-row');
                 if (directRow) directRow.style.display = 'block';
             }
-            // Load from Firebase for real photo_url
+            
             const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
             await waitForFirebase();
-            // Update last_seen in Firebase (so admin can see when user last visited)
+            
             if (window.fbUpdateUserLastSeen) window.fbUpdateUserLastSeen(tgUser.id, ACTIVE_GROUP);
             const fbUser = await loadUserFromFirebase(tgUser.id);
             if (fbUser && fbUser.photo_url) {
@@ -3424,7 +4578,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                 avatarWrap.appendChild(img);
             }
         } else if (user && user.photo_url) {
-            // from cache
+            
             const img = document.createElement('img');
             img.src = user.photo_url;
             img.alt = '';
@@ -3438,18 +4592,18 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
     window.renderProfileBar = renderProfileBar;
     document.addEventListener('DOMContentLoaded', () => setTimeout(renderProfileBar, 200));
 
-    // ── Обробка ?tg_token=XXX або ?tg_code=123456 при завантаженні сторінки ──
-    // Юзер повернувся з бота з посиланням — обмінюємо токен на дані
+    
+    
     (async function handleTgAuthFromUrl() {
         const params = new URLSearchParams(window.location.search);
         const token = params.get('tg_token');
         const code  = params.get('tg_code');
         if (!token && !code) return;
 
-        // Прибираємо токен з URL одразу (щоб не світився)
+        
         window.history.replaceState({}, '', window.location.pathname + window.location.hash);
 
-        // WORKER_URL — можна захардкодити або зберегти через localStorage
+        
         const workerBase = localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
 
         try {
@@ -3461,7 +4615,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             const data = await res.json();
             if (!data.id) return;
 
-            // Зберігаємо назавжди у localStorage
+            
             localStorage.setItem('tg_user_cache', JSON.stringify(data));
             if ((data.username || '').toLowerCase().replace('@', '') === 'xmice') {
                 storage.set('admin_unlocked_xmice', 'true');
@@ -3470,7 +4624,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                 if (directRow) directRow.style.display = 'block';
             }
 
-            // Показуємо банер успіху
+            
             const banner = document.getElementById('tg-connect-banner');
             if (banner) {
                 banner.classList.add('visible', 'success');
@@ -3485,19 +4639,18 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                 setTimeout(() => banner.classList.remove('visible', 'success'), 4000);
             }
 
-            // Оновлюємо профіль-бар
+            
             window.renderProfileBar && window.renderProfileBar();
         } catch(e) {
             console.error('TG Link auth error:', e);
         }
     })();
 
-
 })();
-// ===== EXTRA SETTINGS LOGIC =====
+
 (function() {
     document.addEventListener('DOMContentLoaded', () => {
-        // Custom name
+        
         const nameInput = document.getElementById('custom-name-input');
         if (nameInput) {
             nameInput.value = storage.get('custom_display_name', '');
@@ -3513,7 +4666,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             });
         }
 
-        // Profile bar toggle
+        
         const profileBarToggle = document.getElementById('toggle-profile-bar');
         if (profileBarToggle) {
             profileBarToggle.checked = storage.get('toggle-profile-bar','true') !== 'false';
@@ -3523,7 +4676,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             });
         }
 
-        // Other toggles with simple persistence
+        
         ['toggle-notif-lessons','toggle-notif-ann','toggle-notif-dl','toggle-auto-today','toggle-remember-tab','toggle-haptic','toggle-track-visits'].forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
@@ -3532,12 +4685,12 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             el.addEventListener('change', () => storage.set(id+'_v', el.checked ? 'true' : 'false'));
         });
 
-        // My stats in settings
+        
         const vd = window._visitData || { count:0, streak:0 };
         const vc = document.getElementById('my-visit-count'); if(vc) vc.textContent = vd.count || 0;
         const sc = document.getElementById('my-streak-count'); if(sc) sc.textContent = vd.streak || 0;
 
-        // Remember last tab
+        
         if (storage.get('toggle-remember-tab_v','false') === 'true') {
             const lastTab = storage.get('last_active_tab', '');
             if (lastTab) { setTimeout(() => { const btn = document.querySelector(`[data-tab="${lastTab}"]`); if(btn) btn.click(); }, 100); }
@@ -3546,14 +4699,14 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             btn.addEventListener('click', () => storage.set('last_active_tab', btn.dataset.tab));
         });
 
-        // Haptic on tab switch
+        
         document.querySelectorAll('.day-btn, .nav-item').forEach(btn => {
             btn.addEventListener('click', () => {
                 if (storage.get('toggle-haptic_v','true') !== 'false' && navigator.vibrate) navigator.vibrate(8);
             });
         });
 
-        // Reset all settings
+        
         document.getElementById('reset-all-settings-btn')?.addEventListener('click', () => {
             if (confirm('Скинути всі налаштування? Група та тема збережуться.')) {
                 const keep = ['app_active_group','app_has_visited'];
@@ -3566,7 +4719,6 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
     });
 })();
 
-// ===== ADMIN USERS PANEL =====
 (function() {
     let allUsers = [];
     let currentFilter = 'all';
@@ -3601,7 +4753,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
 
     const LEGACY_GROUP_COLORS = { fep11:'#10b981', fep12:'#f59e0b', fep13:'#3b82f6' };
     const GROUP_PALETTE = ['#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#84cc16','#e11d48','#0ea5e9'];
-    // Стабільний колір для будь-якої групи: старі три як були, решта за хешем назви
+    
     const colorForGroup = (g) => { if (LEGACY_GROUP_COLORS[g]) return LEGACY_GROUP_COLORS[g]; let h = 0; for (const ch of String(g || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return GROUP_PALETTE[h % GROUP_PALETTE.length]; };
     const labelForGroup = (g) => g ? toGroupName(g) : '—';
 
@@ -3629,11 +4781,11 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
 
         filtered.sort((a,b) => (b.last_seen||0) - (a.last_seen||0));
 
-        // Update stat counters
+        
         document.getElementById('users-total-count').textContent = allUsers.length;
         document.getElementById('users-today-count').textContent = allUsers.filter(u => u.last_seen >= today).length;
         document.getElementById('users-week-count').textContent = allUsers.filter(u => u.last_seen >= week).length;
-        // Лічильники і фільтр по групах будуються з реальних груп користувачів
+        
         const groupCounts = {};
         allUsers.forEach(u => { const g = u.group || ''; groupCounts[g] = (groupCounts[g] || 0) + 1; });
         const groupsSorted = Object.keys(groupCounts).sort((a, b) => groupCounts[b] - groupCounts[a]);
@@ -3667,7 +4819,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             const lastSeenStr = u.last_seen ? timeAgo(u.last_seen) : 'Не заходив';
             const usernameHtml = u.username ? `<span class="admin-user-username">@${u.username}</span>` : '';
 
-            // Devices list
+            
             const devices = u.devices || [];
             const devicesHtml = devices.length > 0 ? `
                 <div class="admin-devices-section">
@@ -3725,11 +4877,11 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         if (btn) { btn.textContent = '🔄 Оновити список'; btn.disabled = false; }
     }
 
-    // ── Делегування кліків у гриді користувачів ──────────────────────────
+    
     document.getElementById('admin-users-grid')?.addEventListener('click', async (e) => {
         const waitFB = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
 
-        // Повне відключення акаунту
+        
         const fullUnlink = e.target.closest('.admin-unlink-btn');
         if (fullUnlink) {
             const uid  = fullUnlink.dataset.uid;
@@ -3750,7 +4902,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             return;
         }
 
-        // Відключення одного девайсу
+        
         const deviceUnlink = e.target.closest('.admin-device-unlink');
         if (deviceUnlink) {
             const uid    = deviceUnlink.dataset.uid;
@@ -3763,7 +4915,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             await waitFB();
             const ok = await window.fbUnlinkDevice(uid, did);
             if (ok) {
-                // Оновлюємо локально
+                
                 const user = allUsers.find(u => String(u.id) === String(uid));
                 if (user) user.devices = (user.devices || []).filter(d => d.id !== did);
                 renderUsers();
@@ -3792,7 +4944,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             });
         });
 
-        // Кнопки груп створюються динамічно, тому слухаємо контейнер
+        
         document.getElementById('users-group-filter')?.addEventListener('click', (e) => {
             const btn = e.target.closest('.admin-users-group-btn');
             if (!btn) return;
@@ -3801,7 +4953,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         });
     });
 
-    // Auto-load when admin panel opens (always reload to get fresh last_seen)
+    
     document.addEventListener('DOMContentLoaded', () => {
         const overlay = document.getElementById('admin-modal-overlay');
         if (!overlay) return;
@@ -3812,14 +4964,12 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
     });
 })();
 
-
-// ===== PULL-TO-REFRESH =====
 (function() {
     const indicator = document.getElementById('ptr-indicator');
     if (!indicator) return;
 
-    const THRESHOLD = 72;   // px to trigger
-    const MAX_PULL  = 100;  // max visual travel
+    const THRESHOLD = 72;   
+    const MAX_PULL  = 100;  
     let startY = 0, pulling = false, currentY = 0, triggered = false;
 
     function atTop() {
@@ -3839,7 +4989,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             if (window.render) window.render();
             if (window.initAnnouncement) window.initAnnouncement();
         } catch(e) { console.warn('PTR refresh error:', e); }
-        // small pause so spinner is visible
+        
         await new Promise(r => setTimeout(r, 600));
         finishPull();
     }
@@ -3868,14 +5018,14 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         if (dy <= 0) return;
         if (!atTop()) { pulling = false; return; }
 
-        // Rubber-band damping
+        
         const pull = Math.min(MAX_PULL, dy * 0.45);
         const offsetY = -THRESHOLD + pull;
         indicator.style.transform = `translateX(-50%) translateY(${offsetY}px)`;
         indicator.classList.toggle('ptr-visible', pull > 8);
         indicator.classList.toggle('ptr-ready', pull >= THRESHOLD * 0.55);
 
-        // Rotate arrow proportionally
+        
         const arrow = indicator.querySelector('.ptr-arrow');
         if (arrow && !indicator.classList.contains('ptr-ready')) {
             const deg = Math.min(180, (pull / (THRESHOLD * 0.55)) * 180);
@@ -3902,7 +5052,6 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
     }, {passive: true});
 })();
 
-// ===== TG AUTH BOTTOM SHEET =====
 (function() {
     document.addEventListener('DOMContentLoaded', () => {
         const overlay  = document.getElementById('tg-auth-overlay');
@@ -3944,7 +5093,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             } else {
                 if (miniNote)  miniNote.style.display  = 'none';
                 if (browserUI) browserUI.style.display = 'block';
-                // Reset to step 1 each time sheet opens
+                
                 const step1 = document.getElementById('tg-step-generate');
                 const step2 = document.getElementById('tg-step-code');
                 if (step1) step1.style.display = 'block';
@@ -3963,7 +5112,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             setTimeout(() => {
                 overlay.style.pointerEvents = 'none';
                 overlay.style.display = 'flex';
-                // Reset code box for next open
+                
                 const cb = document.getElementById('tg-code-box');
                 if (cb) cb.style.display = 'none';
                 const ci = document.getElementById('tg-code-input');
@@ -3988,12 +5137,12 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             setTimeout(() => banner.classList.remove('visible', 'success'), 4000);
         }
 
-        // Banner button → open sheet
+        
         if (connectBtn) connectBtn.addEventListener('click', openSheet);
         if (closeBtn)   closeBtn.addEventListener('click', closeSheet);
         overlay.addEventListener('click', e => { if (e.target === overlay) closeSheet(); });
 
-        // ── Генерація коду: сайт показує код → юзер вводить в боті → авто-вхід ──
+        
         let autoPollTimer  = null;
         let codeTimerInterval = null;
         let currentCode    = null;
@@ -4060,7 +5209,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                 }
             };
 
-            // Перший запит одразу через 2с, далі кожні 2.5с
+            
             setTimeout(doCheck, 2000);
             autoPollTimer = setInterval(doCheck, 2500);
         }
@@ -4077,7 +5226,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
 
             const code = String(Math.floor(100000 + Math.random() * 900000));
 
-            // Реєструємо код на воркері
+            
             let ok = false;
             try {
                 const res = await fetch(workerBase + '/gen-code', {
@@ -4093,11 +5242,11 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                 return;
             }
 
-            // Показуємо крок 2 з кодом
+            
             if (step1) step1.style.display = 'none';
             if (step2) step2.style.display = 'block';
 
-            // Відображаємо код по дві цифри для читабельності
+            
             if (displayEl) {
                 const formatted = code.slice(0,2) + ' ' + code.slice(2,4) + ' ' + code.slice(4,6);
                 displayEl.textContent = formatted;
@@ -4105,11 +5254,11 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             if (timerEl) { timerEl.style.color = ''; }
             if (status) { status.style.color = 'var(--text-muted)'; status.textContent = 'Очікуємо підтвердження від бота…'; }
 
-            startCodeTimer(600); // 10 хвилин
+            startCodeTimer(600); 
             startAutoPoll(code);
         }
 
-        // Кнопка "Отримати код" — event delegation
+        
         document.addEventListener('click', function(e) {
             if (e.target.closest('#tg-generate-btn')) {
                 generateAndShowCode();
@@ -4124,7 +5273,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             }
         });
 
-                // Show banner if not linked and not dismissed recently
+                
         function shouldShowBanner() {
             if (isMiniApp) return false;
             if (hasCachedUser()) return false;
@@ -4136,15 +5285,13 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
     });
 })();
 
-
-// ===== SERVICE WORKER REGISTRATION =====
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
             .then((reg) => {
                 console.log('[SW] Зареєстровано, scope:', reg.scope);
 
-                // Якщо є нова версія SW — підтягуємо автоматично
+                
                 reg.addEventListener('updatefound', () => {
                     const newWorker = reg.installing;
                     newWorker.addEventListener('statechange', () => {
@@ -4158,7 +5305,6 @@ if ('serviceWorker' in navigator) {
     });
 }
 
-// ===== OFFLINE / ONLINE DETECTION =====
 (function() {
     const banner  = document.getElementById('offline-banner');
     const closeBtn= document.getElementById('offline-banner-close');
@@ -4190,18 +5336,16 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('offline', showOffline);
     window.addEventListener('online',  showOnline);
 
-    // Перевіряємо одразу при завантаженні
+    
     if (!navigator.onLine) showOffline();
 })();
 </script>
 
-<!-- Pull-to-Refresh Indicator -->
 <div class="ptr-indicator" id="ptr-indicator">
     <svg class="ptr-arrow" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
     <div class="ptr-spinner"></div>
 </div>
 
-<!-- TG Auth Bottom Sheet -->
 <div class="tg-auth-overlay" id="tg-auth-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:150;opacity:0;pointer-events:none;transition:opacity 0.3s ease;display:flex;align-items:flex-end;justify-content:center;">
     <div id="tg-auth-sheet" style="background:var(--modal-bg);width:100%;max-width:600px;border-radius:24px 24px 0 0;padding:24px 24px calc(40px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275);border-top:2px solid #2AABEE;box-shadow:0 -10px 40px rgba(0,0,0,0.3);overflow-y:auto;max-height:90vh;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;">
@@ -4221,7 +5365,7 @@ if ('serviceWorker' in navigator) {
 
         <div id="tg-auth-browser-ui">
 
-            <!-- Крок 1: генерація коду -->
+            
             <div id="tg-step-generate">
                 <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.5;">
                     Натисни кнопку — отримаєш код.<br>Відкрий бота і введи його там.
@@ -4231,16 +5375,16 @@ if ('serviceWorker' in navigator) {
                 </button>
             </div>
 
-            <!-- Крок 2: показуємо код + чекаємо -->
+            
             <div id="tg-step-code" style="display:none;">
-                <!-- Великий код -->
+                
                 <div style="background:linear-gradient(135deg,rgba(42,171,238,0.1),rgba(42,171,238,0.05));border:1.5px solid rgba(42,171,238,0.3);border-radius:18px;padding:20px;text-align:center;margin-bottom:16px;">
                     <div style="font-size:12px;font-weight:700;color:#2AABEE;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Твій код</div>
                     <div id="tg-display-code" style="font-size:42px;font-weight:900;letter-spacing:10px;color:var(--text-main);font-variant-numeric:tabular-nums;line-height:1;">——————</div>
                     <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Діє <span id="tg-code-timer" style="font-weight:700;color:var(--text-main);">10:00</span></div>
                 </div>
 
-                <!-- Інструкція -->
+                
                 <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
                     <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;">
                         <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;">1</div>
@@ -4256,7 +5400,7 @@ if ('serviceWorker' in navigator) {
                     </div>
                 </div>
 
-                <!-- Статус очікування -->
+                
                 <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;">
                     <div style="width:16px;height:16px;border-radius:50%;border:2px solid var(--border);border-top-color:#2AABEE;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>
                     <div id="tg-poll-status" style="font-size:13px;color:var(--text-muted);">Очікуємо підтвердження від бота…</div>
