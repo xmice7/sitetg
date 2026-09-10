@@ -990,59 +990,63 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             box-shadow:0 2px 6px rgba(0,0,0,0.3); cursor:pointer;
         }
         /* --- DIGITAL STUDENT ID CARD (APPLE WALLET 3D PASS) --- */
-        .student-id-modal-content { max-width: 440px !important; background: var(--modal-bg); border-radius: 28px 28px 0 0; overflow: hidden; }
-        .student-card-3d-scene { perspective: 1200px; display: flex; justify-content: center; align-items: center; padding: 10px 0 16px; user-select: none; -webkit-user-select: none; }
-        .student-card-3d { width: 336px; height: 212px; position: relative; transform-style: preserve-3d; transform: rotateX(calc(var(--tilt-x, 0) * 1deg)) rotateY(calc(var(--tilt-y, 0) * 1deg)); transition: transform 0.15s ease-out; cursor: pointer; }
-        .student-card-3d.flipped { transform: rotateX(calc(var(--tilt-x, 0) * 1deg)) rotateY(calc(180deg + (var(--tilt-y, 0) * 1deg))); }
-        .student-card-3d.flipping { transition: transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        .student-card-face { position: absolute; inset: 0; border-radius: 18px; backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow: hidden; box-shadow: 0 18px 42px -8px rgba(0,0,0,0.55), 0 0 1px 1px rgba(255,255,255,0.2) inset; background: linear-gradient(135deg, #071526 0%, #0d223f 40%, #153359 75%, #081628 100%); border: 1px solid rgba(245, 158, 11, 0.35); display: flex; flex-direction: column; justify-content: space-between; padding: 13px 15px; color: #fff; }
-        .student-card-back { transform: rotateY(180deg); background: linear-gradient(135deg, #081628 0%, #0e2747 50%, #06111f 100%); padding: 12px 14px; }
-        .card-hologram { position: absolute; inset: 0; border-radius: 18px; pointer-events: none; z-index: 8; opacity: 0.55; mix-blend-mode: color-dodge; background: linear-gradient(var(--holo-angle, 125deg), transparent 15%, rgba(255, 255, 255, 0.22) 28%, rgba(255, 0, 128, 0.32) 40%, rgba(0, 240, 255, 0.38) 52%, rgba(255, 215, 0, 0.42) 65%, rgba(168, 85, 247, 0.3) 78%, transparent 92%); background-size: 200% 200%; background-position: var(--holo-x, 50%) var(--holo-y, 50%); transition: opacity 0.3s ease; }
-        .card-guilloche-bg { position: absolute; inset: 0; background-image: radial-gradient(circle at 50% 50%, rgba(255,215,0,0.06) 0%, transparent 65%), repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 2px, transparent 2px, transparent 6px); pointer-events: none; z-index: 1; }
-        .card-lnu-emblem { position: absolute; right: -15px; bottom: -20px; width: 170px; height: 170px; background: radial-gradient(circle, rgba(245, 158, 11, 0.09) 0%, transparent 70%); pointer-events: none; z-index: 2; }
-        .card-front-top { display: flex; align-items: center; gap: 9px; position: relative; z-index: 5; border-bottom: 1px solid rgba(255,215,0,0.25); padding-bottom: 7px; }
-        .card-lnu-logo-wrap { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #f59e0b, #d97706); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35); flex-shrink: 0; }
-        .card-lnu-logo-wrap svg { width: 18px; height: 18px; fill: #fff; }
+        .student-id-modal-content { max-width: 420px !important; background: var(--modal-bg); border-radius: 28px 28px 0 0; position: relative; transform: translateZ(0); -webkit-transform: translateZ(0); }
+        .student-id-modal-content::before { content: ''; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 38px; height: 4px; border-radius: 4px; background: var(--border); opacity: 0.8; }
+        .student-card-3d-scene { perspective: 1000px; -webkit-perspective: 1000px; display: flex; justify-content: center; align-items: center; padding: 6px 0 14px; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
+        .student-card-tilt-wrap { transform-style: preserve-3d; -webkit-transform-style: preserve-3d; will-change: transform; border-radius: 20px; }
+        .student-card-3d { width: 326px; height: 206px; position: relative; transform-style: preserve-3d; -webkit-transform-style: preserve-3d; transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; border-radius: 20px; will-change: transform; }
+        .student-card-3d.flipped { transform: rotateY(180deg); }
+        .student-card-face { position: absolute; inset: 0; border-radius: 20px; background: #081628; border: 1px solid rgba(245, 158, 11, 0.45); box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.12) inset; display: flex; flex-direction: column; justify-content: space-between; padding: 12px 14px; color: #fff; backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow: hidden; isolation: isolate; }
+        .student-card-front { transform: rotateY(0deg) translateZ(1px); -webkit-transform: rotateY(0deg) translateZ(1px); z-index: 2; opacity: 1; visibility: visible; transition: opacity 0.2s ease, visibility 0s 0s; background: linear-gradient(145deg, #071526 0%, #0d223f 40%, #153359 75%, #081628 100%); }
+        .student-card-back { transform: rotateY(180deg) translateZ(1px); -webkit-transform: rotateY(180deg) translateZ(1px); z-index: 1; opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0s 0.25s; background: linear-gradient(145deg, #06121f 0%, #0a1f38 50%, #050d18 100%); padding: 11px 13px; }
+        .student-card-3d.flipped .student-card-front { opacity: 0; visibility: hidden; z-index: 1; transition: opacity 0.2s ease, visibility 0s 0.25s; }
+        .student-card-3d.flipped .student-card-back { opacity: 1; visibility: visible; z-index: 2; transition: opacity 0.2s ease, visibility 0s 0s; }
+        .card-glare { position: absolute; inset: -60% -60%; width: 220%; height: 220%; background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.15) 48%, rgba(245, 158, 11, 0.18) 52%, transparent 65%); pointer-events: none; z-index: 7; will-change: transform; opacity: 0.45; }
+        .card-guilloche-bg { position: absolute; inset: 0; background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1.5px, transparent 1.5px, transparent 6px); pointer-events: none; z-index: 1; }
+        .card-lnu-emblem { position: absolute; right: -15px; bottom: -20px; width: 160px; height: 160px; background: radial-gradient(circle, rgba(245, 158, 11, 0.08) 0%, transparent 70%); pointer-events: none; z-index: 2; }
+        .card-front-top { display: flex; align-items: center; gap: 9px; position: relative; z-index: 5; border-bottom: 1px solid rgba(255,215,0,0.25); padding-bottom: 6px; }
+        .card-lnu-logo-wrap { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, #f59e0b, #d97706); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35); flex-shrink: 0; }
+        .card-lnu-logo-wrap svg { width: 16px; height: 16px; fill: #fff; }
         .card-top-titles { display: flex; flex-direction: column; min-width: 0; }
-        .card-uni-title { font-size: 8px; font-weight: 800; letter-spacing: 0.6px; color: #f8fafc; text-transform: uppercase; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .card-uni-sub { font-size: 7.5px; font-weight: 700; color: #f59e0b; letter-spacing: 0.5px; margin-top: 1px; text-transform: uppercase; }
-        .card-front-body { display: flex; align-items: center; gap: 12px; position: relative; z-index: 5; margin: 4px 0; }
+        .card-uni-title { font-size: 8px; font-weight: 800; letter-spacing: 0.5px; color: #f8fafc; text-transform: uppercase; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-uni-sub { font-size: 7px; font-weight: 700; color: #f59e0b; letter-spacing: 0.4px; margin-top: 1px; text-transform: uppercase; }
+        .card-front-body { display: flex; align-items: center; gap: 11px; position: relative; z-index: 5; margin: 3px 0; }
         .card-photo-box { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
-        .card-photo { width: 52px; height: 52px; border-radius: 12px; border: 1.5px solid rgba(245, 158, 11, 0.5); background: linear-gradient(135deg, var(--primary), var(--accent-purple)); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: #fff; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .card-photo { width: 50px; height: 50px; border-radius: 12px; border: 1.5px solid rgba(245, 158, 11, 0.6); background: linear-gradient(135deg, var(--primary), var(--accent-purple)); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: #fff; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
         .card-photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
-        .card-status-chip { display: inline-flex; align-items: center; gap: 3px; font-size: 7px; font-weight: 800; padding: 2px 5px; border-radius: 6px; background: rgba(16, 185, 129, 0.2); color: #10e7aa; border: 1px solid rgba(16, 185, 129, 0.35); letter-spacing: 0.3px; text-transform: uppercase; }
+        .card-status-chip { display: inline-flex; align-items: center; gap: 3px; font-size: 6.5px; font-weight: 800; padding: 2px 5px; border-radius: 6px; background: rgba(16, 185, 129, 0.2); color: #10e7aa; border: 1px solid rgba(16, 185, 129, 0.35); letter-spacing: 0.3px; text-transform: uppercase; }
         .card-status-chip .status-dot { width: 4px; height: 4px; border-radius: 50%; background: #10e7aa; box-shadow: 0 0 5px #10e7aa; }
-        .card-info-box { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .card-info-box { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.5px; }
         .card-label { font-size: 6.5px; font-weight: 800; color: rgba(255, 255, 255, 0.55); text-transform: uppercase; letter-spacing: 0.5px; }
         .card-val { color: #fff; font-weight: 700; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .card-student-name { font-size: 13.5px; font-weight: 800; letter-spacing: -0.2px; margin-bottom: 2px; }
-        .card-faculty { font-size: 9px; font-weight: 600; color: rgba(255, 255, 255, 0.85); margin-bottom: 2px; }
+        .card-student-name { font-size: 13px; font-weight: 800; letter-spacing: -0.2px; margin-bottom: 1px; }
+        .card-faculty { font-size: 8.5px; font-weight: 600; color: rgba(255, 255, 255, 0.85); margin-bottom: 2px; }
         .card-row-two { display: flex; gap: 12px; }
-        .card-group { font-size: 11px; font-weight: 800; color: #60a5fa; }
-        .card-id { font-size: 10px; font-weight: 700; color: #f59e0b; letter-spacing: 0.4px; }
-        .card-front-bottom { position: relative; z-index: 5; display: flex; flex-direction: column; gap: 2px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 5px; }
-        .card-barcode-wrap { height: 24px; width: 100%; color: #f8fafc; opacity: 0.9; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); }
-        .card-barcode-label { font-size: 7.5px; font-weight: 700; color: rgba(255, 255, 255, 0.6); letter-spacing: 0.8px; text-align: center; text-transform: uppercase; }
-        .card-back-magstripe { height: 28px; margin: -12px -14px 6px -14px; background: linear-gradient(180deg, #111 0%, #222 50%, #0a0a0a 100%); border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .card-back-content { position: relative; z-index: 5; display: flex; flex-direction: column; justify-content: space-between; height: calc(100% - 24px); }
-        .card-back-header { display: flex; align-items: center; justify-content: space-between; font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.7); }
-        .card-nfc-icon { display: flex; align-items: center; gap: 4px; font-size: 8px; font-weight: 800; color: #60a5fa; letter-spacing: 0.5px; }
-        .card-nfc-icon svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
-        .card-qr-box { display: flex; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 8px 10px; }
-        .card-qr-wrap { width: 68px; height: 68px; border-radius: 8px; background: #fff; padding: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+        .card-group { font-size: 10.5px; font-weight: 800; color: #60a5fa; }
+        .card-id { font-size: 9.5px; font-weight: 700; color: #f59e0b; letter-spacing: 0.4px; }
+        .card-front-bottom { position: relative; z-index: 5; display: flex; flex-direction: column; gap: 2px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 4px; }
+        .card-barcode-wrap { height: 22px; width: 100%; color: #f8fafc; opacity: 0.95; }
+        .card-barcode-label { font-size: 7px; font-weight: 700; color: rgba(255, 255, 255, 0.6); letter-spacing: 0.8px; text-align: center; text-transform: uppercase; }
+        .card-back-magstripe { height: 26px; margin: -11px -13px 6px -13px; background: linear-gradient(180deg, #111 0%, #202020 50%, #0b0b0b 100%); border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .card-back-content { position: relative; z-index: 5; display: flex; flex-direction: column; justify-content: space-between; height: calc(100% - 22px); }
+        .card-back-header { display: flex; align-items: center; justify-content: space-between; font-size: 8.5px; font-weight: 700; color: rgba(255,255,255,0.7); }
+        .card-nfc-icon { display: flex; align-items: center; gap: 4px; font-size: 7.5px; font-weight: 800; color: #60a5fa; letter-spacing: 0.5px; }
+        .card-nfc-icon svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+        .card-qr-box { display: flex; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 7px 10px; }
+        .card-qr-wrap { width: 62px; height: 62px; border-radius: 8px; background: #fff; padding: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
         .card-qr-wrap img, .card-qr-wrap svg { width: 100%; height: 100%; display: block; }
-        .card-qr-hint { display: flex; flex-direction: column; gap: 3px; }
-        .card-qr-hint strong { font-size: 11px; font-weight: 800; color: #fff; }
-        .card-qr-hint span { font-size: 8.5px; color: rgba(255, 255, 255, 0.7); line-height: 1.3; }
-        .card-back-footer { font-size: 7.5px; color: rgba(255, 255, 255, 0.5); text-align: center; line-height: 1.3; }
-        .student-card-hint { text-align: center; font-size: 11.5px; color: var(--text-muted); margin-bottom: 14px; font-weight: 500; }
-        .student-card-actions { display: flex; flex-direction: column; gap: 10px; }
-        .btn-apple-wallet { width: 100%; background: #000; color: #fff; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 13px 18px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); transition: transform 0.2s var(--spring-easing), opacity 0.2s; font-family: var(--apple-font); }
+        .card-qr-hint { display: flex; flex-direction: column; gap: 2.5px; }
+        .card-qr-hint strong { font-size: 10.5px; font-weight: 800; color: #fff; }
+        .card-qr-hint span { font-size: 8px; color: rgba(255, 255, 255, 0.7); line-height: 1.3; }
+        .card-back-footer { font-size: 7px; color: rgba(255, 255, 255, 0.5); text-align: center; line-height: 1.3; }
+        .student-card-hint { text-align: center; font-size: 11.5px; color: var(--text-muted); margin-bottom: 12px; font-weight: 500; }
+        .student-card-actions { display: flex; flex-direction: column; gap: 9px; }
+        .btn-apple-wallet { width: 100%; background: #000; color: #fff; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 16px; padding: 12px 18px; font-size: 14.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); transition: transform 0.2s var(--spring-easing), opacity 0.2s; font-family: var(--apple-font); }
         .btn-apple-wallet:active { transform: scale(0.97); }
         .btn-apple-wallet:hover { background: #111; }
-        .apple-wallet-badge-svg { width: 24px; height: 24px; flex-shrink: 0; }
+        .apple-wallet-badge-svg { width: 22px; height: 22px; flex-shrink: 0; }
         .student-card-sub-actions { display: flex; gap: 8px; }
-        .btn-card-action { flex: 1; padding: 10px 8px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 12px; color: var(--text-main); font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px; font-family: inherit; }
+        .btn-card-action { flex: 1; padding: 10px 6px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 12px; color: var(--text-main); font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s var(--spring-easing); display: flex; align-items: center; justify-content: center; gap: 4px; font-family: inherit; }
         .btn-card-action:hover { border-color: var(--primary); background: var(--bg-card); }
         .btn-card-action:active { transform: scale(0.95); }
     </style>
@@ -1641,82 +1645,84 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         </div>
         <div class="modal-body" style="padding:12px 18px 26px;">
             <div class="student-card-3d-scene" id="student-card-scene">
-                <div class="student-card-3d" id="student-card-inner" title="Натисніть, щоб перевернути">
-                    <!-- FRONT FACE -->
-                    <div class="student-card-face student-card-front">
-                        <div class="card-hologram" id="card-hologram-front"></div>
-                        <div class="card-guilloche-bg"></div>
-                        <div class="card-lnu-emblem"></div>
-                        
-                        <div class="card-front-top">
-                            <div class="card-lnu-logo-wrap">
-                                <svg viewBox="0 0 24 24"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5zm0 4c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm4 11.5c0-.83-1.67-1.5-4-1.5s-4 .67-4 1.5v.5h8v-.5z"/></svg>
-                            </div>
-                            <div class="card-top-titles">
-                                <div class="card-uni-title">ЛЬВІВСЬКИЙ НАЦІОНАЛЬНИЙ УНІВЕРСИТЕТ</div>
-                                <div class="card-uni-sub">ІМЕНІ ІВАНА ФРАНКА • СТУДЕНТСЬКИЙ КВИТОК</div>
-                            </div>
-                        </div>
-
-                        <div class="card-front-body">
-                            <div class="card-photo-box">
-                                <div class="card-photo" id="card-avatar">👤</div>
-                                <div class="card-status-chip">
-                                    <span class="status-dot"></span> ДІЙСНИЙ
+                <div class="student-card-tilt-wrap" id="student-card-tilt">
+                    <div class="student-card-3d" id="student-card-inner" title="Натисніть, щоб перевернути">
+                        <!-- FRONT FACE -->
+                        <div class="student-card-face student-card-front" id="student-card-front">
+                            <div class="card-glare" id="card-glare-front"></div>
+                            <div class="card-guilloche-bg"></div>
+                            <div class="card-lnu-emblem"></div>
+                            
+                            <div class="card-front-top">
+                                <div class="card-lnu-logo-wrap">
+                                    <svg viewBox="0 0 24 24"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5zm0 4c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm4 11.5c0-.83-1.67-1.5-4-1.5s-4 .67-4 1.5v.5h8v-.5z"/></svg>
+                                </div>
+                                <div class="card-top-titles">
+                                    <div class="card-uni-title">ЛЬВІВСЬКИЙ НАЦІОНАЛЬНИЙ УНІВЕРСИТЕТ</div>
+                                    <div class="card-uni-sub">ІМЕНІ ІВАНА ФРАНКА • СТУДЕНТСЬКИЙ КВИТОК</div>
                                 </div>
                             </div>
-                            <div class="card-info-box">
-                                <div class="card-label">СТУДЕНТ</div>
-                                <div class="card-val card-student-name" id="card-name">Студент</div>
 
-                                <div class="card-label">ФАКУЛЬТЕТ</div>
-                                <div class="card-val card-faculty" id="card-faculty">Факультет електроніки та КТ</div>
-
-                                <div class="card-row-two">
-                                    <div>
-                                        <div class="card-label">ГРУПА</div>
-                                        <div class="card-val card-group" id="card-group">ФЕП-13</div>
-                                    </div>
-                                    <div>
-                                        <div class="card-label">КВИТОК №</div>
-                                        <div class="card-val card-id" id="card-id">LNU-2024-849102</div>
+                            <div class="card-front-body">
+                                <div class="card-photo-box">
+                                    <div class="card-photo" id="card-avatar">👤</div>
+                                    <div class="card-status-chip">
+                                        <span class="status-dot"></span> ДІЙСНИЙ
                                     </div>
                                 </div>
-                            </div>
-                        </div>
+                                <div class="card-info-box">
+                                    <div class="card-label">СТУДЕНТ</div>
+                                    <div class="card-val card-student-name" id="card-name">Студент</div>
 
-                        <div class="card-front-bottom">
-                            <div class="card-barcode-wrap" id="card-barcode-svg"></div>
-                            <div class="card-barcode-label">НАУКОВА БІБЛІОТЕКА ЛНУ • <span id="card-lib-code">LIB-LNU-849102</span></div>
-                        </div>
-                    </div>
+                                    <div class="card-label">ФАКУЛЬТЕТ</div>
+                                    <div class="card-val card-faculty" id="card-faculty">Факультет електроніки та КТ</div>
 
-                    <!-- BACK FACE -->
-                    <div class="student-card-face student-card-back">
-                        <div class="card-hologram" id="card-hologram-back"></div>
-                        <div class="card-guilloche-bg"></div>
-                        <div class="card-back-magstripe"></div>
-                        
-                        <div class="card-back-content">
-                            <div class="card-back-header">
-                                <div class="card-nfc-icon">
-                                    <svg viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5-1.5-2.5-3.5-2.5-6s1-4.5 2.5-6"></path><path d="M8 14c-1-1-1.5-2.5-1.5-4s.5-3 1.5-4"></path><path d="M11.5 11.5c-.4-.4-.5-1-.5-1.5s.2-1.1.5-1.5"></path></svg>
-                                    <span>NFC PASS • LNU SMART CAMPUS</span>
-                                </div>
-                                <div class="card-back-mini-id" id="card-back-id">LNU-2024</div>
-                            </div>
-
-                            <div class="card-qr-box">
-                                <div class="card-qr-wrap" id="card-qr-wrap"></div>
-                                <div class="card-qr-hint">
-                                    <strong>Персональний QR-код</strong>
-                                    <span>Скануй для зв'язку в Telegram та синхронізації розкладу групи</span>
+                                    <div class="card-row-two">
+                                        <div>
+                                            <div class="card-label">ГРУПА</div>
+                                            <div class="card-val card-group" id="card-group">ФЕП-13</div>
+                                        </div>
+                                        <div>
+                                            <div class="card-label">КВИТОК №</div>
+                                            <div class="card-val card-id" id="card-id">LNU-2024-849102</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="card-back-footer">
-                                <div>Електронний ідентифікатор студента ЛНУ ім. Івана Франка</div>
-                                <div>Дійсний до 30.06.2027 • Наукова бібліотека ім. І. Франка</div>
+                            <div class="card-front-bottom">
+                                <div class="card-barcode-wrap" id="card-barcode-svg"></div>
+                                <div class="card-barcode-label">НАУКОВА БІБЛІОТЕКА ЛНУ • <span id="card-lib-code">LIB-LNU-849102</span></div>
+                            </div>
+                        </div>
+
+                        <!-- BACK FACE -->
+                        <div class="student-card-face student-card-back" id="student-card-back">
+                            <div class="card-glare" id="card-glare-back"></div>
+                            <div class="card-guilloche-bg"></div>
+                            <div class="card-back-magstripe"></div>
+                            
+                            <div class="card-back-content">
+                                <div class="card-back-header">
+                                    <div class="card-nfc-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5-1.5-2.5-3.5-2.5-6s1-4.5 2.5-6"></path><path d="M8 14c-1-1-1.5-2.5-1.5-4s.5-3 1.5-4"></path><path d="M11.5 11.5c-.4-.4-.5-1-.5-1.5s.2-1.1.5-1.5"></path></svg>
+                                        <span>NFC PASS • LNU SMART CAMPUS</span>
+                                    </div>
+                                    <div class="card-back-mini-id" id="card-back-id">LNU-2024</div>
+                                </div>
+
+                                <div class="card-qr-box">
+                                    <div class="card-qr-wrap" id="card-qr-wrap"></div>
+                                    <div class="card-qr-hint">
+                                        <strong>Персональний QR-код</strong>
+                                        <span>Скануй для зв'язку в Telegram та синхронізації розкладу групи</span>
+                                    </div>
+                                </div>
+
+                                <div class="card-back-footer">
+                                    <div>Електронний ідентифікатор студента ЛНУ ім. Івана Франка</div>
+                                    <div>Дійсний до 30.06.2027 • Наукова бібліотека ім. І. Франка</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -4632,8 +4638,140 @@ function getStudentCardData() {
     };
 }
 
+let isStudentPassOpen = false;
 let isCardFlipped = false;
-let orientationHandlerBound = false;
+let targetTiltX = 0;
+let targetTiltY = 0;
+let currentTiltX = 0;
+let currentTiltY = 0;
+let rAfTiltId = null;
+let gyroBound = false;
+let touchStartX = 0;
+let touchStartY = 0;
+
+function physicsTiltLoop() {
+    if (!isStudentPassOpen) return;
+
+    currentTiltX += (targetTiltX - currentTiltX) * 0.12;
+    currentTiltY += (targetTiltY - currentTiltY) * 0.12;
+
+    const tiltWrap = document.getElementById('student-card-tilt');
+    if (tiltWrap) {
+        tiltWrap.style.transform = `rotateX(${currentTiltX.toFixed(2)}deg) rotateY(${currentTiltY.toFixed(2)}deg)`;
+    }
+
+    const glareOffset = (currentTiltY * 2.2).toFixed(1);
+    const glareFront = document.getElementById('card-glare-front');
+    const glareBack = document.getElementById('card-glare-back');
+    if (glareFront && !isCardFlipped) {
+        glareFront.style.transform = `translateX(${glareOffset}px)`;
+    }
+    if (glareBack && isCardFlipped) {
+        glareBack.style.transform = `translateX(${-glareOffset}px)`;
+    }
+
+    rAfTiltId = requestAnimationFrame(physicsTiltLoop);
+}
+
+function onDeviceOrientation(e) {
+    if (!isStudentPassOpen) return;
+    const gamma = e.gamma || 0;
+    const beta = e.beta || 0;
+    targetTiltY = Math.max(-12, Math.min(12, gamma * 0.35));
+    targetTiltX = Math.max(-10, Math.min(10, (beta - 45) * 0.3));
+}
+
+function onMouseMove(e) {
+    if (!isStudentPassOpen) return;
+    const scene = document.getElementById('student-card-scene');
+    if (!scene) return;
+    const rect = scene.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = e.clientX - cx;
+    const dy = e.clientY - cy;
+    targetTiltY = Math.max(-14, Math.min(14, (dx / (rect.width / 2)) * 14));
+    targetTiltX = Math.max(-11, Math.min(11, (-dy / (rect.height / 2)) * 11));
+}
+
+function onMouseLeave() {
+    targetTiltX = 0;
+    targetTiltY = 0;
+}
+
+function onTouchStart(e) {
+    if (!isStudentPassOpen || e.touches.length !== 1) return;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+}
+
+function onTouchMove(e) {
+    if (!isStudentPassOpen || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - touchStartX;
+    const dy = e.touches[0].clientY - touchStartY;
+    targetTiltY = Math.max(-12, Math.min(12, dx * 0.12));
+    targetTiltX = Math.max(-10, Math.min(10, -dy * 0.12));
+}
+
+function onTouchEnd() {
+    targetTiltX = 0;
+    targetTiltY = 0;
+}
+
+function startParallax() {
+    isStudentPassOpen = true;
+    targetTiltX = 0;
+    targetTiltY = 0;
+    currentTiltX = 0;
+    currentTiltY = 0;
+
+    if (rAfTiltId) cancelAnimationFrame(rAfTiltId);
+    rAfTiltId = requestAnimationFrame(physicsTiltLoop);
+
+    const scene = document.getElementById('student-card-scene');
+    if (scene) {
+        scene.addEventListener('mousemove', onMouseMove, { passive: true });
+        scene.addEventListener('mouseleave', onMouseLeave, { passive: true });
+        scene.addEventListener('touchstart', onTouchStart, { passive: true });
+        scene.addEventListener('touchmove', onTouchMove, { passive: true });
+        scene.addEventListener('touchend', onTouchEnd, { passive: true });
+    }
+
+    if (!gyroBound && window.DeviceOrientationEvent) {
+        try {
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission().then(res => {
+                    if (res === 'granted') {
+                        window.addEventListener('deviceorientation', onDeviceOrientation, { passive: true });
+                        gyroBound = true;
+                    }
+                }).catch(() => {});
+            } else {
+                window.addEventListener('deviceorientation', onDeviceOrientation, { passive: true });
+                gyroBound = true;
+            }
+        } catch(e) {}
+    }
+}
+
+function stopParallax() {
+    isStudentPassOpen = false;
+    if (rAfTiltId) {
+        cancelAnimationFrame(rAfTiltId);
+        rAfTiltId = null;
+    }
+    const tiltWrap = document.getElementById('student-card-tilt');
+    if (tiltWrap) tiltWrap.style.transform = '';
+
+    const scene = document.getElementById('student-card-scene');
+    if (scene) {
+        scene.removeEventListener('mousemove', onMouseMove);
+        scene.removeEventListener('mouseleave', onMouseLeave);
+        scene.removeEventListener('touchstart', onTouchStart);
+        scene.removeEventListener('touchmove', onTouchMove);
+        scene.removeEventListener('touchend', onTouchEnd);
+    }
+}
 
 function initStudentPass() {
     const modal = document.getElementById('student-id-modal');
@@ -4648,15 +4786,17 @@ function initStudentPass() {
     if (!modal) return;
 
     function openModal() {
+        isCardFlipped = false;
+        if (cardInner) cardInner.classList.remove('flipped');
         updateStudentCardUI();
         modal.classList.add('active');
-        bindGyroAndMouse();
+        startParallax();
         haptic('selection');
     }
 
     function closeModal() {
         modal.classList.remove('active');
-        unbindGyroAndMouse();
+        stopParallax();
     }
 
     if (openBtn) openBtn.addEventListener('click', openModal);
@@ -4668,9 +4808,7 @@ function initStudentPass() {
     function toggleCardFlip() {
         if (!cardInner) return;
         isCardFlipped = !isCardFlipped;
-        cardInner.classList.add('flipping');
         cardInner.classList.toggle('flipped', isCardFlipped);
-        setTimeout(() => cardInner.classList.remove('flipping'), 650);
         haptic('selection');
     }
 
@@ -4730,100 +4868,8 @@ function updateStudentCardUI() {
 
     if (qrWrapEl) {
         const qrTarget = data.username ? `https://t.me/${data.username}` : `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent('Розклад ЛНУ (' + data.group + ')')}`;
-        qrWrapEl.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&format=svg&data=${encodeURIComponent(qrTarget)}" alt="QR" style="width:100%;height:100%;object-fit:contain;" onerror="this.outerHTML='<div style=\\'font-size:32px;display:flex;align-items:center;justify-content:center;height:100%;\\'>📱</div>'" />`;
+        qrWrapEl.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&format=svg&data=${encodeURIComponent(qrTarget)}" alt="QR" style="width:100%;height:100%;object-fit:contain;" onerror="this.outerHTML='<div style=\\'font-size:28px;display:flex;align-items:center;justify-content:center;height:100%;\\'>📱</div>'" />`;
     }
-}
-
-function handleDeviceOrientation(e) {
-    const card = document.getElementById('student-card-inner');
-    if (!card) return;
-    const gamma = e.gamma || 0;
-    const beta = e.beta || 0;
-
-    const tiltY = Math.max(-20, Math.min(20, gamma * 0.6));
-    const tiltX = Math.max(-20, Math.min(20, (beta - 45) * 0.5));
-
-    card.style.setProperty('--tilt-x', -tiltX);
-    card.style.setProperty('--tilt-y', tiltY);
-
-    const holoAngle = 115 + tiltY * 2.2;
-    const holoX = 50 + tiltY * 1.8;
-    const holoY = 50 + tiltX * 1.8;
-    card.style.setProperty('--holo-angle', holoAngle + 'deg');
-    card.style.setProperty('--holo-x', holoX + '%');
-    card.style.setProperty('--holo-y', holoY + '%');
-}
-
-function handleMouseMove(e) {
-    const scene = document.getElementById('student-card-scene');
-    const card = document.getElementById('student-card-inner');
-    if (!scene || !card) return;
-
-    const rect = scene.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-
-    const tiltY = ((x - centerX) / centerX) * 16;
-    const tiltX = -((y - centerY) / centerY) * 16;
-
-    card.style.setProperty('--tilt-x', tiltX);
-    card.style.setProperty('--tilt-y', tiltY);
-
-    const holoAngle = 125 + tiltY * 2.5;
-    const holoX = 50 + (x / rect.width) * 40 - 20;
-    const holoY = 50 + (y / rect.height) * 40 - 20;
-    card.style.setProperty('--holo-angle', holoAngle + 'deg');
-    card.style.setProperty('--holo-x', holoX + '%');
-    card.style.setProperty('--holo-y', holoY + '%');
-}
-
-function handleMouseLeave() {
-    const card = document.getElementById('student-card-inner');
-    if (!card) return;
-    card.style.setProperty('--tilt-x', 0);
-    card.style.setProperty('--tilt-y', 0);
-    card.style.setProperty('--holo-angle', '125deg');
-    card.style.setProperty('--holo-x', '50%');
-    card.style.setProperty('--holo-y', '50%');
-}
-
-function bindGyroAndMouse() {
-    const scene = document.getElementById('student-card-scene');
-    if (scene) {
-        scene.addEventListener('mousemove', handleMouseMove);
-        scene.addEventListener('mouseleave', handleMouseLeave);
-    }
-    if (window.DeviceOrientationEvent && !orientationHandlerBound) {
-        try {
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission().then(resp => {
-                    if (resp === 'granted') {
-                        window.addEventListener('deviceorientation', handleDeviceOrientation);
-                        orientationHandlerBound = true;
-                    }
-                }).catch(() => {});
-            } else {
-                window.addEventListener('deviceorientation', handleDeviceOrientation);
-                orientationHandlerBound = true;
-            }
-        } catch(e) {}
-    }
-}
-
-function unbindGyroAndMouse() {
-    const scene = document.getElementById('student-card-scene');
-    if (scene) {
-        scene.removeEventListener('mousemove', handleMouseMove);
-        scene.removeEventListener('mouseleave', handleMouseLeave);
-    }
-    if (orientationHandlerBound) {
-        window.removeEventListener('deviceorientation', handleDeviceOrientation);
-        orientationHandlerBound = false;
-    }
-    handleMouseLeave();
 }
 
 function downloadAppleWalletPass() {
