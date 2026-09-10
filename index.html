@@ -989,7 +989,62 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             background:#fff; border:3px solid rgba(0,0,0,0.25);
             box-shadow:0 2px 6px rgba(0,0,0,0.3); cursor:pointer;
         }
-        .hue-active-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; vertical-align:middle; transition:background 0.2s; }
+        /* --- DIGITAL STUDENT ID CARD (APPLE WALLET 3D PASS) --- */
+        .student-id-modal-content { max-width: 440px !important; background: var(--modal-bg); border-radius: 28px 28px 0 0; overflow: hidden; }
+        .student-card-3d-scene { perspective: 1200px; display: flex; justify-content: center; align-items: center; padding: 10px 0 16px; user-select: none; -webkit-user-select: none; }
+        .student-card-3d { width: 336px; height: 212px; position: relative; transform-style: preserve-3d; transform: rotateX(calc(var(--tilt-x, 0) * 1deg)) rotateY(calc(var(--tilt-y, 0) * 1deg)); transition: transform 0.15s ease-out; cursor: pointer; }
+        .student-card-3d.flipped { transform: rotateX(calc(var(--tilt-x, 0) * 1deg)) rotateY(calc(180deg + (var(--tilt-y, 0) * 1deg))); }
+        .student-card-3d.flipping { transition: transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .student-card-face { position: absolute; inset: 0; border-radius: 18px; backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow: hidden; box-shadow: 0 18px 42px -8px rgba(0,0,0,0.55), 0 0 1px 1px rgba(255,255,255,0.2) inset; background: linear-gradient(135deg, #071526 0%, #0d223f 40%, #153359 75%, #081628 100%); border: 1px solid rgba(245, 158, 11, 0.35); display: flex; flex-direction: column; justify-content: space-between; padding: 13px 15px; color: #fff; }
+        .student-card-back { transform: rotateY(180deg); background: linear-gradient(135deg, #081628 0%, #0e2747 50%, #06111f 100%); padding: 12px 14px; }
+        .card-hologram { position: absolute; inset: 0; border-radius: 18px; pointer-events: none; z-index: 8; opacity: 0.55; mix-blend-mode: color-dodge; background: linear-gradient(var(--holo-angle, 125deg), transparent 15%, rgba(255, 255, 255, 0.22) 28%, rgba(255, 0, 128, 0.32) 40%, rgba(0, 240, 255, 0.38) 52%, rgba(255, 215, 0, 0.42) 65%, rgba(168, 85, 247, 0.3) 78%, transparent 92%); background-size: 200% 200%; background-position: var(--holo-x, 50%) var(--holo-y, 50%); transition: opacity 0.3s ease; }
+        .card-guilloche-bg { position: absolute; inset: 0; background-image: radial-gradient(circle at 50% 50%, rgba(255,215,0,0.06) 0%, transparent 65%), repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 2px, transparent 2px, transparent 6px); pointer-events: none; z-index: 1; }
+        .card-lnu-emblem { position: absolute; right: -15px; bottom: -20px; width: 170px; height: 170px; background: radial-gradient(circle, rgba(245, 158, 11, 0.09) 0%, transparent 70%); pointer-events: none; z-index: 2; }
+        .card-front-top { display: flex; align-items: center; gap: 9px; position: relative; z-index: 5; border-bottom: 1px solid rgba(255,215,0,0.25); padding-bottom: 7px; }
+        .card-lnu-logo-wrap { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #f59e0b, #d97706); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35); flex-shrink: 0; }
+        .card-lnu-logo-wrap svg { width: 18px; height: 18px; fill: #fff; }
+        .card-top-titles { display: flex; flex-direction: column; min-width: 0; }
+        .card-uni-title { font-size: 8px; font-weight: 800; letter-spacing: 0.6px; color: #f8fafc; text-transform: uppercase; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-uni-sub { font-size: 7.5px; font-weight: 700; color: #f59e0b; letter-spacing: 0.5px; margin-top: 1px; text-transform: uppercase; }
+        .card-front-body { display: flex; align-items: center; gap: 12px; position: relative; z-index: 5; margin: 4px 0; }
+        .card-photo-box { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+        .card-photo { width: 52px; height: 52px; border-radius: 12px; border: 1.5px solid rgba(245, 158, 11, 0.5); background: linear-gradient(135deg, var(--primary), var(--accent-purple)); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: #fff; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .card-photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+        .card-status-chip { display: inline-flex; align-items: center; gap: 3px; font-size: 7px; font-weight: 800; padding: 2px 5px; border-radius: 6px; background: rgba(16, 185, 129, 0.2); color: #10e7aa; border: 1px solid rgba(16, 185, 129, 0.35); letter-spacing: 0.3px; text-transform: uppercase; }
+        .card-status-chip .status-dot { width: 4px; height: 4px; border-radius: 50%; background: #10e7aa; box-shadow: 0 0 5px #10e7aa; }
+        .card-info-box { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .card-label { font-size: 6.5px; font-weight: 800; color: rgba(255, 255, 255, 0.55); text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-val { color: #fff; font-weight: 700; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-student-name { font-size: 13.5px; font-weight: 800; letter-spacing: -0.2px; margin-bottom: 2px; }
+        .card-faculty { font-size: 9px; font-weight: 600; color: rgba(255, 255, 255, 0.85); margin-bottom: 2px; }
+        .card-row-two { display: flex; gap: 12px; }
+        .card-group { font-size: 11px; font-weight: 800; color: #60a5fa; }
+        .card-id { font-size: 10px; font-weight: 700; color: #f59e0b; letter-spacing: 0.4px; }
+        .card-front-bottom { position: relative; z-index: 5; display: flex; flex-direction: column; gap: 2px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 5px; }
+        .card-barcode-wrap { height: 24px; width: 100%; color: #f8fafc; opacity: 0.9; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); }
+        .card-barcode-label { font-size: 7.5px; font-weight: 700; color: rgba(255, 255, 255, 0.6); letter-spacing: 0.8px; text-align: center; text-transform: uppercase; }
+        .card-back-magstripe { height: 28px; margin: -12px -14px 6px -14px; background: linear-gradient(180deg, #111 0%, #222 50%, #0a0a0a 100%); border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .card-back-content { position: relative; z-index: 5; display: flex; flex-direction: column; justify-content: space-between; height: calc(100% - 24px); }
+        .card-back-header { display: flex; align-items: center; justify-content: space-between; font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.7); }
+        .card-nfc-icon { display: flex; align-items: center; gap: 4px; font-size: 8px; font-weight: 800; color: #60a5fa; letter-spacing: 0.5px; }
+        .card-nfc-icon svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+        .card-qr-box { display: flex; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 8px 10px; }
+        .card-qr-wrap { width: 68px; height: 68px; border-radius: 8px; background: #fff; padding: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+        .card-qr-wrap img, .card-qr-wrap svg { width: 100%; height: 100%; display: block; }
+        .card-qr-hint { display: flex; flex-direction: column; gap: 3px; }
+        .card-qr-hint strong { font-size: 11px; font-weight: 800; color: #fff; }
+        .card-qr-hint span { font-size: 8.5px; color: rgba(255, 255, 255, 0.7); line-height: 1.3; }
+        .card-back-footer { font-size: 7.5px; color: rgba(255, 255, 255, 0.5); text-align: center; line-height: 1.3; }
+        .student-card-hint { text-align: center; font-size: 11.5px; color: var(--text-muted); margin-bottom: 14px; font-weight: 500; }
+        .student-card-actions { display: flex; flex-direction: column; gap: 10px; }
+        .btn-apple-wallet { width: 100%; background: #000; color: #fff; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 13px 18px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); transition: transform 0.2s var(--spring-easing), opacity 0.2s; font-family: var(--apple-font); }
+        .btn-apple-wallet:active { transform: scale(0.97); }
+        .btn-apple-wallet:hover { background: #111; }
+        .apple-wallet-badge-svg { width: 24px; height: 24px; flex-shrink: 0; }
+        .student-card-sub-actions { display: flex; gap: 8px; }
+        .btn-card-action { flex: 1; padding: 10px 8px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 12px; color: var(--text-main); font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px; font-family: inherit; }
+        .btn-card-action:hover { border-color: var(--primary); background: var(--bg-card); }
+        .btn-card-action:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
@@ -1034,7 +1089,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                     </div>
                 </div>
                 <div class="user-streak" id="user-streak-badge" style="display:none">🔥 <span id="user-streak-num">0</span></div>
-
             </div>
 
             
@@ -1147,6 +1201,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             </div>
 
             <div class="useful-grid">
+                <div class="useful-card" id="open-student-id" style="border-color:rgba(59,130,246,0.35);background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(139,92,246,0.08));">
+                    <div class="useful-icon" style="background:linear-gradient(135deg,var(--primary),var(--accent-purple));color:#fff;">
+                        <svg viewBox="0 0 24 24" style="stroke:#fff;"><rect x="2" y="4" width="20" height="16" rx="3"></rect><circle cx="8" cy="10" r="2.5"></circle><line x1="14" y1="9" x2="18" y2="9"></line><line x1="14" y1="13" x2="18" y2="13"></line><path d="M4 17c0-2 2-3 4-3s4 1 4 3"></path></svg>
+                    </div>
+                    <div><h3>Цифровий студак</h3><p>Apple Wallet Pass, 3D голограма та квиток бібліотеки</p></div>
+                </div>
                 <a href="https://dekanat.lnu.edu.ua" target="_blank" class="useful-card">
                     <div class="useful-icon"><svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 18h6"></path><path d="M12 10v.01"></path></svg></div>
                     <div><h3>Мій «Деканат»</h3><p>Оцінки, документи та важливі оповіщення</p></div>
@@ -1564,6 +1624,128 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                 </div>
                 <div class="stars-leaderboard-list" id="stars-leaderboard-list">
                     <div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px;">Завантаження...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="student-id-modal" style="z-index:9100;">
+    <div class="modal-content student-id-modal-content">
+        <div class="modal-header">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:22px;">🪪</span>
+                <h2>Цифровий студак ЛНУ</h2>
+            </div>
+            <button class="close-btn" id="close-student-id">×</button>
+        </div>
+        <div class="modal-body" style="padding:12px 18px 26px;">
+            <div class="student-card-3d-scene" id="student-card-scene">
+                <div class="student-card-3d" id="student-card-inner" title="Натисніть, щоб перевернути">
+                    <!-- FRONT FACE -->
+                    <div class="student-card-face student-card-front">
+                        <div class="card-hologram" id="card-hologram-front"></div>
+                        <div class="card-guilloche-bg"></div>
+                        <div class="card-lnu-emblem"></div>
+                        
+                        <div class="card-front-top">
+                            <div class="card-lnu-logo-wrap">
+                                <svg viewBox="0 0 24 24"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5zm0 4c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm4 11.5c0-.83-1.67-1.5-4-1.5s-4 .67-4 1.5v.5h8v-.5z"/></svg>
+                            </div>
+                            <div class="card-top-titles">
+                                <div class="card-uni-title">ЛЬВІВСЬКИЙ НАЦІОНАЛЬНИЙ УНІВЕРСИТЕТ</div>
+                                <div class="card-uni-sub">ІМЕНІ ІВАНА ФРАНКА • СТУДЕНТСЬКИЙ КВИТОК</div>
+                            </div>
+                        </div>
+
+                        <div class="card-front-body">
+                            <div class="card-photo-box">
+                                <div class="card-photo" id="card-avatar">👤</div>
+                                <div class="card-status-chip">
+                                    <span class="status-dot"></span> ДІЙСНИЙ
+                                </div>
+                            </div>
+                            <div class="card-info-box">
+                                <div class="card-label">СТУДЕНТ</div>
+                                <div class="card-val card-student-name" id="card-name">Студент</div>
+
+                                <div class="card-label">ФАКУЛЬТЕТ</div>
+                                <div class="card-val card-faculty" id="card-faculty">Факультет електроніки та КТ</div>
+
+                                <div class="card-row-two">
+                                    <div>
+                                        <div class="card-label">ГРУПА</div>
+                                        <div class="card-val card-group" id="card-group">ФЕП-13</div>
+                                    </div>
+                                    <div>
+                                        <div class="card-label">КВИТОК №</div>
+                                        <div class="card-val card-id" id="card-id">LNU-2024-849102</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-front-bottom">
+                            <div class="card-barcode-wrap" id="card-barcode-svg"></div>
+                            <div class="card-barcode-label">НАУКОВА БІБЛІОТЕКА ЛНУ • <span id="card-lib-code">LIB-LNU-849102</span></div>
+                        </div>
+                    </div>
+
+                    <!-- BACK FACE -->
+                    <div class="student-card-face student-card-back">
+                        <div class="card-hologram" id="card-hologram-back"></div>
+                        <div class="card-guilloche-bg"></div>
+                        <div class="card-back-magstripe"></div>
+                        
+                        <div class="card-back-content">
+                            <div class="card-back-header">
+                                <div class="card-nfc-icon">
+                                    <svg viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5-1.5-2.5-3.5-2.5-6s1-4.5 2.5-6"></path><path d="M8 14c-1-1-1.5-2.5-1.5-4s.5-3 1.5-4"></path><path d="M11.5 11.5c-.4-.4-.5-1-.5-1.5s.2-1.1.5-1.5"></path></svg>
+                                    <span>NFC PASS • LNU SMART CAMPUS</span>
+                                </div>
+                                <div class="card-back-mini-id" id="card-back-id">LNU-2024</div>
+                            </div>
+
+                            <div class="card-qr-box">
+                                <div class="card-qr-wrap" id="card-qr-wrap"></div>
+                                <div class="card-qr-hint">
+                                    <strong>Персональний QR-код</strong>
+                                    <span>Скануй для зв'язку в Telegram та синхронізації розкладу групи</span>
+                                </div>
+                            </div>
+
+                            <div class="card-back-footer">
+                                <div>Електронний ідентифікатор студента ЛНУ ім. Івана Франка</div>
+                                <div>Дійсний до 30.06.2027 • Наукова бібліотека ім. І. Франка</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="student-card-hint">
+                <span>💡 Натисніть на картку для перегортання • Нахиляйте телефон для 3D-бліку</span>
+            </div>
+
+            <div class="student-card-actions">
+                <button type="button" id="btn-add-apple-wallet" class="btn-apple-wallet">
+                    <svg class="apple-wallet-badge-svg" viewBox="0 0 32 32" fill="none">
+                        <path d="M26 8H6a3 3 0 00-3 3v10a3 3 0 003 3h20a3 3 0 003-3V11a3 3 0 00-3-3z" fill="#fff" fill-opacity="0.15"/>
+                        <path d="M25 10H7a2 2 0 00-2 2v8a2 2 0 002 2h18a2 2 0 002-2v-8a2 2 0 00-2-2z" stroke="#fff" stroke-width="2"/>
+                        <path d="M21 16a2 2 0 104 0 2 2 0 00-4 0z" fill="#fff"/>
+                    </svg>
+                    <span>Додати в Apple Wallet</span>
+                </button>
+                <div class="student-card-sub-actions">
+                    <button type="button" id="btn-flip-card" class="btn-card-action">
+                        <span>🔄 Перевернути</span>
+                    </button>
+                    <button type="button" id="btn-share-card" class="btn-card-action">
+                        <span>📤 Поділитися</span>
+                    </button>
+                    <button type="button" id="btn-save-card" class="btn-card-action">
+                        <span>📥 Зберегти фото</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -3876,6 +4058,7 @@ async function switchGroup(groupName) {
         if (bGroupName) bGroupName.textContent = groupName;
     } catch(e) {}
 
+    if (typeof updateStudentCardUI === 'function') updateStudentCardUI();
     if (typeof haptic === 'function') haptic('selection');
 
     gSchedule = null;
@@ -4349,7 +4532,626 @@ function initWelcomeModal() {
     else setTimeout(() => searchInput.focus(), 350);
 }
 
-document.addEventListener('DOMContentLoaded', () => { initAdminPanel(); loadAdminData(); });
+/* --- DIGITAL STUDENT ID PASS (APPLE WALLET & 3D HOLOGRAPHIC PASS) --- */
+function getFacultyByGroupName(groupName) {
+    if (!groupName) return 'Львівський національний університет';
+    const norm = groupName.toUpperCase().trim();
+    if (/^(ФЕП|ЕКТ|КС|СП|ІПЗ)/.test(norm)) return 'Факультет електроніки та комп’ютерних технологій';
+    if (/^(ФПМІ|ПМІ|ПМА|ПМІМ|ПМП|ПМ|КН|СА)/.test(norm)) return 'Факультет прикладної математики та інформатики';
+    if (/^(ФЕФ|ЕФ|ЕКП|ЕКМ|ЕКН|МКТ|ЕК|ФІН|ОБЛ|МЕН)/.test(norm)) return 'Економічний факультет';
+    if (/^(ФФ|ФІЗ|АСТ|ОЕ)/.test(norm)) return 'Фізичний факультет';
+    if (/^(МЕХ|ММ|МАТ|СТА|МТ)/.test(norm)) return 'Механіко-математичний факультет';
+    if (/^(ЮР|ПРАВ|ПР)/.test(norm)) return 'Юридичний факультет';
+    if (/^(ФІЛ|УКР|ПОЛ|СЛОВ|ФЛ)/.test(norm)) return 'Філологічний факультет';
+    if (/^(МІЖ|МВ|МЕВ|МБ)/.test(norm)) return 'Факультет міжнародних відносин';
+    if (/^(ХІМ|ХМ)/.test(norm)) return 'Хімічний факультет';
+    if (/^(БІО|ЕКОЛ|БХ)/.test(norm)) return 'Біологічний факультет';
+    if (/^(ГЕО|ТУР|ЕКО|ГР)/.test(norm)) return 'Географічний факультет';
+    if (/^(ІСТ|АРХ|ЕТН)/.test(norm)) return 'Історичний факультет';
+    if (/^(ФІЛОС|КУЛЬТ|БО|ФС)/.test(norm)) return 'Філософський факультет';
+    if (/^(ІНО|АНГ|НІМ|ФРАН|ІСП|ПЕР)/.test(norm)) return 'Факультет іноземних мов';
+    if (/^(ЖУР|МЕД)/.test(norm)) return 'Факультет журналістики';
+    if (/^(КМ|АКТ|МУЗ|ТЕАТР|ХОР)/.test(norm)) return 'Факультет культури і мистецтв';
+    if (/^(ПЕД|ДОШ|ПО)/.test(norm)) return 'Педагогічний факультет';
+    if (/^(ГЕОЛ|НГ)/.test(norm)) return 'Геологічний факультет';
+    if (/^(УПЛ)/.test(norm)) return 'Факультет управління фінансами та бізнесу';
+    return 'Львівський національний університет ім. Івана Франка';
+}
+
+function generateBarcodeSVG(text) {
+    const patterns = [
+        '212222', '222122', '222221', '121223', '121322', '131222', '122213', '122312', '132212', '221213',
+        '221312', '231212', '112232', '122132', '122231', '113222', '123122', '123221', '223211', '221132',
+        '221231', '213212', '223112', '312131', '311222', '321122', '321221', '312212', '322112', '322211',
+        '212123', '212321', '232121', '111323', '131123', '131321', '112313', '132113', '132311', '211313',
+        '231113', '231311', '112133', '112331', '132131', '113123', '113321', '133121', '313121', '211331',
+        '231131', '213113', '213311', '213131', '311123', '311321', '331121', '312113', '312311', '332111',
+        '314111', '221411', '431111', '111224', '111422', '121124', '121421', '141122', '141221', '112214',
+        '112412', '122114', '122411', '142112', '142211', '241211', '221114', '413111', '241112', '134111',
+        '111242', '121142', '121241', '114212', '124112', '124211', '411212', '421112', '421211', '212141',
+        '214121', '412121', '111143', '111341', '131141', '114113', '114311', '411113', '411311', '113141',
+        '114131', '311141', '411131', '211412', '211214', '211232', '2331112'
+    ];
+    let sum = 104;
+    const indices = [104];
+    for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i) - 32;
+        indices.push(code >= 0 && code < patterns.length ? code : 0);
+        sum += (code >= 0 && code < patterns.length ? code : 0) * (i + 1);
+    }
+    indices.push(sum % 103);
+    indices.push(106);
+
+    let barString = '';
+    indices.forEach(idx => {
+        barString += patterns[idx] || patterns[0];
+    });
+
+    let x = 0;
+    let rects = '';
+    for (let i = 0; i < barString.length; i++) {
+        const width = parseInt(barString[i], 10);
+        if (i % 2 === 0) {
+            rects += `<rect x="${x}" y="0" width="${width}" height="28" fill="currentColor" />`;
+        }
+        x += width;
+    }
+    return `<svg viewBox="0 0 ${x} 28" preserveAspectRatio="none" style="width:100%;height:100%;display:block;">${rects}</svg>`;
+}
+
+function getStudentCardData() {
+    const customName = storage.get('custom_display_name', '');
+    let user = null;
+    try {
+        const tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) || null;
+        user = tgUser || JSON.parse(localStorage.getItem('tg_user_cache') || 'null');
+    } catch(e) {}
+
+    const name = customName || (user ? ((user.first_name || '') + (user.last_name ? ' ' + user.last_name : '')).trim() : 'Студент ЛНУ');
+    const group = (state && state.groupName) || storage.get(APP_ACTIVE_GROUP_KEY, 'ФЕП-13');
+    const faculty = getFacultyByGroupName(group);
+    
+    let seed = 0;
+    const seedStr = (user && user.id ? String(user.id) : '') + group + name;
+    for (let i = 0; i < seedStr.length; i++) {
+        seed = ((seed << 5) - seed + seedStr.charCodeAt(i)) & 0xFFFFFF;
+    }
+    const idNum = Math.abs(seed) % 900000 + 100000;
+    const ticketId = 'LNU-2024-' + idNum;
+    const libCode = 'LIB-LNU-' + idNum;
+
+    return {
+        name: name || 'Студент ЛНУ',
+        group,
+        faculty,
+        ticketId,
+        libCode,
+        user,
+        photoUrl: user && user.photo_url ? user.photo_url : null,
+        username: user && user.username ? user.username.replace('@', '') : null
+    };
+}
+
+let isCardFlipped = false;
+let orientationHandlerBound = false;
+
+function initStudentPass() {
+    const modal = document.getElementById('student-id-modal');
+    const openBtn = document.getElementById('open-student-id');
+    const closeBtn = document.getElementById('close-student-id');
+    const cardInner = document.getElementById('student-card-inner');
+    const flipBtn = document.getElementById('btn-flip-card');
+    const appleWalletBtn = document.getElementById('btn-add-apple-wallet');
+    const shareBtn = document.getElementById('btn-share-card');
+    const saveBtn = document.getElementById('btn-save-card');
+
+    if (!modal) return;
+
+    function openModal() {
+        updateStudentCardUI();
+        modal.classList.add('active');
+        bindGyroAndMouse();
+        haptic('selection');
+    }
+
+    function closeModal() {
+        modal.classList.remove('active');
+        unbindGyroAndMouse();
+    }
+
+    if (openBtn) openBtn.addEventListener('click', openModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    function toggleCardFlip() {
+        if (!cardInner) return;
+        isCardFlipped = !isCardFlipped;
+        cardInner.classList.add('flipping');
+        cardInner.classList.toggle('flipped', isCardFlipped);
+        setTimeout(() => cardInner.classList.remove('flipping'), 650);
+        haptic('selection');
+    }
+
+    if (cardInner) cardInner.addEventListener('click', toggleCardFlip);
+    if (flipBtn) flipBtn.addEventListener('click', toggleCardFlip);
+
+    if (appleWalletBtn) {
+        appleWalletBtn.addEventListener('click', () => {
+            downloadAppleWalletPass();
+        });
+    }
+
+    if (shareBtn) {
+        shareBtn.addEventListener('click', () => {
+            shareStudentCard();
+        });
+    }
+
+    if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+            saveStudentCardAsImage();
+        });
+    }
+}
+
+function updateStudentCardUI() {
+    const data = getStudentCardData();
+    const nameEl = document.getElementById('card-name');
+    const groupEl = document.getElementById('card-group');
+    const facultyEl = document.getElementById('card-faculty');
+    const idEl = document.getElementById('card-id');
+    const libCodeEl = document.getElementById('card-lib-code');
+    const barcodeSvgEl = document.getElementById('card-barcode-svg');
+    const qrWrapEl = document.getElementById('card-qr-wrap');
+    const avatarEl = document.getElementById('card-avatar');
+    const backIdEl = document.getElementById('card-back-id');
+
+    if (nameEl) nameEl.textContent = data.name;
+    if (groupEl) groupEl.textContent = data.group;
+    if (facultyEl) facultyEl.textContent = data.faculty;
+    if (idEl) idEl.textContent = data.ticketId;
+    if (libCodeEl) libCodeEl.textContent = data.libCode;
+    if (backIdEl) backIdEl.textContent = data.ticketId;
+
+    if (avatarEl) {
+        if (data.photoUrl) {
+            avatarEl.innerHTML = `<img src="${data.photoUrl}" alt="${data.name}" onerror="this.parentElement.textContent='👤'" />`;
+        } else {
+            const initials = getInitials(data.name, '');
+            avatarEl.textContent = initials || '👤';
+        }
+    }
+
+    if (barcodeSvgEl) {
+        barcodeSvgEl.innerHTML = generateBarcodeSVG(data.libCode);
+    }
+
+    if (qrWrapEl) {
+        const qrTarget = data.username ? `https://t.me/${data.username}` : `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent('Розклад ЛНУ (' + data.group + ')')}`;
+        qrWrapEl.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&format=svg&data=${encodeURIComponent(qrTarget)}" alt="QR" style="width:100%;height:100%;object-fit:contain;" onerror="this.outerHTML='<div style=\\'font-size:32px;display:flex;align-items:center;justify-content:center;height:100%;\\'>📱</div>'" />`;
+    }
+}
+
+function handleDeviceOrientation(e) {
+    const card = document.getElementById('student-card-inner');
+    if (!card) return;
+    const gamma = e.gamma || 0;
+    const beta = e.beta || 0;
+
+    const tiltY = Math.max(-20, Math.min(20, gamma * 0.6));
+    const tiltX = Math.max(-20, Math.min(20, (beta - 45) * 0.5));
+
+    card.style.setProperty('--tilt-x', -tiltX);
+    card.style.setProperty('--tilt-y', tiltY);
+
+    const holoAngle = 115 + tiltY * 2.2;
+    const holoX = 50 + tiltY * 1.8;
+    const holoY = 50 + tiltX * 1.8;
+    card.style.setProperty('--holo-angle', holoAngle + 'deg');
+    card.style.setProperty('--holo-x', holoX + '%');
+    card.style.setProperty('--holo-y', holoY + '%');
+}
+
+function handleMouseMove(e) {
+    const scene = document.getElementById('student-card-scene');
+    const card = document.getElementById('student-card-inner');
+    if (!scene || !card) return;
+
+    const rect = scene.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    const tiltY = ((x - centerX) / centerX) * 16;
+    const tiltX = -((y - centerY) / centerY) * 16;
+
+    card.style.setProperty('--tilt-x', tiltX);
+    card.style.setProperty('--tilt-y', tiltY);
+
+    const holoAngle = 125 + tiltY * 2.5;
+    const holoX = 50 + (x / rect.width) * 40 - 20;
+    const holoY = 50 + (y / rect.height) * 40 - 20;
+    card.style.setProperty('--holo-angle', holoAngle + 'deg');
+    card.style.setProperty('--holo-x', holoX + '%');
+    card.style.setProperty('--holo-y', holoY + '%');
+}
+
+function handleMouseLeave() {
+    const card = document.getElementById('student-card-inner');
+    if (!card) return;
+    card.style.setProperty('--tilt-x', 0);
+    card.style.setProperty('--tilt-y', 0);
+    card.style.setProperty('--holo-angle', '125deg');
+    card.style.setProperty('--holo-x', '50%');
+    card.style.setProperty('--holo-y', '50%');
+}
+
+function bindGyroAndMouse() {
+    const scene = document.getElementById('student-card-scene');
+    if (scene) {
+        scene.addEventListener('mousemove', handleMouseMove);
+        scene.addEventListener('mouseleave', handleMouseLeave);
+    }
+    if (window.DeviceOrientationEvent && !orientationHandlerBound) {
+        try {
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission().then(resp => {
+                    if (resp === 'granted') {
+                        window.addEventListener('deviceorientation', handleDeviceOrientation);
+                        orientationHandlerBound = true;
+                    }
+                }).catch(() => {});
+            } else {
+                window.addEventListener('deviceorientation', handleDeviceOrientation);
+                orientationHandlerBound = true;
+            }
+        } catch(e) {}
+    }
+}
+
+function unbindGyroAndMouse() {
+    const scene = document.getElementById('student-card-scene');
+    if (scene) {
+        scene.removeEventListener('mousemove', handleMouseMove);
+        scene.removeEventListener('mouseleave', handleMouseLeave);
+    }
+    if (orientationHandlerBound) {
+        window.removeEventListener('deviceorientation', handleDeviceOrientation);
+        orientationHandlerBound = false;
+    }
+    handleMouseLeave();
+}
+
+function downloadAppleWalletPass() {
+    const data = getStudentCardData();
+    haptic('success');
+
+    const passJson = {
+        formatVersion: 1,
+        passTypeIdentifier: 'pass.ua.edu.lnu.student',
+        serialNumber: data.ticketId,
+        teamIdentifier: 'LNUFRAN01',
+        organizationName: 'Львівський національний університет імені Івана Франка',
+        description: 'Цифровий студентський квиток ЛНУ',
+        logoText: 'ЛНУ ім. Івана Франка',
+        foregroundColor: 'rgb(255, 255, 255)',
+        backgroundColor: 'rgb(11, 30, 54)',
+        labelColor: 'rgb(245, 158, 11)',
+        generic: {
+            primaryFields: [
+                { key: 'student', label: 'СТУДЕНТ', value: data.name }
+            ],
+            secondaryFields: [
+                { key: 'group', label: 'ГРУПА', value: data.group },
+                { key: 'status', label: 'СТАТУС', value: 'ДІЙСНИЙ' }
+            ],
+            auxiliaryFields: [
+                { key: 'faculty', label: 'ФАКУЛЬТЕТ', value: data.faculty },
+                { key: 'id', label: 'КВИТОК №', value: data.ticketId }
+            ],
+            backFields: [
+                { key: 'uni', label: 'ЗАКЛАД', value: 'Львівський національний університет імені Івана Франка' },
+                { key: 'library', label: 'БІБЛІОТЕКА', value: 'Наукова бібліотека ЛНУ. Читацький квиток: ' + data.libCode },
+                { key: 'expiry', label: 'ТЕРМІН ДІЇ', value: 'до 30.06.2027' },
+                { key: 'web', label: 'ОФІЦІЙНИЙ САЙТ', value: 'https://lnu.edu.ua' }
+            ]
+        },
+        barcodes: [
+            {
+                format: 'PKBarcodeFormatCode128',
+                message: data.libCode,
+                messageEncoding: 'iso-8859-1',
+                altText: data.libCode
+            }
+        ]
+    };
+
+    try {
+        const passString = JSON.stringify(passJson, null, 2);
+        const zipBlob = buildClientZip([
+            { name: 'pass.json', data: passString }
+        ], 'application/vnd.apple.pkpass');
+
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `LNU-Student-Pass-${data.group}.pkpass`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+
+        alert('🎉 Студентський квиток сформовано!\nФайл .pkpass завантажено для додавання в Apple Wallet.');
+    } catch(e) {
+        console.error('Wallet export error:', e);
+        saveStudentCardAsImage();
+    }
+}
+
+function buildClientZip(files, mimeType = 'application/zip') {
+    const encoder = new TextEncoder();
+    const parts = [];
+    const fileHeaders = [];
+    let offset = 0;
+
+    files.forEach(f => {
+        const nameBytes = encoder.encode(f.name);
+        const dataBytes = typeof f.data === 'string' ? encoder.encode(f.data) : new Uint8Array(f.data);
+        
+        let crc = 0 ^ (-1);
+        for (let i = 0; i < dataBytes.length; i++) {
+            crc = (crc >>> 8) ^ [
+                0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA,
+                0x076DC419, 0x706AF48F, 0xE963A535, 0x9E6495A3,
+                0x0EDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988,
+                0x09B64C2B, 0x7EB17CBD, 0xE7B82D07, 0x90BF1D91
+            ][(crc ^ dataBytes[i]) & 0x0F] ^ [
+                0x00000000, 0x1DB71064, 0x3B6E20C8, 0x26D930AC,
+                0x76DC4190, 0x6B6B51F4, 0x4DB26158, 0x5005713C,
+                0xEDB88320, 0xF00F9344, 0xD6D6A3E8, 0xCB61B38C,
+                0x9B64C2B0, 0x86D3D2D4, 0xA00AE278, 0xBDBDF21C
+            ][((crc ^ dataBytes[i]) >> 4) & 0x0F];
+        }
+        crc = (crc ^ (-1)) >>> 0;
+
+        const localHeader = new Uint8Array(30);
+        const view = new DataView(localHeader.buffer);
+        view.setUint32(0, 0x04034B50, true);
+        view.setUint16(4, 20, true);
+        view.setUint16(6, 0, true);
+        view.setUint16(8, 0, true);
+        view.setUint16(10, 0, true);
+        view.setUint16(12, 0, true);
+        view.setUint32(14, crc, true);
+        view.setUint32(18, dataBytes.length, true);
+        view.setUint32(22, dataBytes.length, true);
+        view.setUint16(26, nameBytes.length, true);
+        view.setUint16(28, 0, true);
+
+        parts.push(localHeader, nameBytes, dataBytes);
+        fileHeaders.push({ nameBytes, crc, size: dataBytes.length, offset });
+        offset += localHeader.length + nameBytes.length + dataBytes.length;
+    });
+
+    const cdStart = offset;
+    fileHeaders.forEach(fh => {
+        const cd = new Uint8Array(46);
+        const view = new DataView(cd.buffer);
+        view.setUint32(0, 0x02014B50, true);
+        view.setUint16(4, 20, true);
+        view.setUint16(6, 20, true);
+        view.setUint16(8, 0, true);
+        view.setUint16(10, 0, true);
+        view.setUint16(12, 0, true);
+        view.setUint16(14, 0, true);
+        view.setUint32(16, fh.crc, true);
+        view.setUint32(20, fh.size, true);
+        view.setUint32(24, fh.size, true);
+        view.setUint16(28, fh.nameBytes.length, true);
+        view.setUint16(30, 0, true);
+        view.setUint16(32, 0, true);
+        view.setUint16(34, 0, true);
+        view.setUint16(36, 0, true);
+        view.setUint32(38, 0, true);
+        view.setUint32(42, fh.offset, true);
+
+        parts.push(cd, fh.nameBytes);
+        offset += cd.length + fh.nameBytes.length;
+    });
+
+    const cdSize = offset - cdStart;
+    const eocd = new Uint8Array(22);
+    const eocdView = new DataView(eocd.buffer);
+    eocdView.setUint32(0, 0x06054B50, true);
+    eocdView.setUint16(4, 0, true);
+    eocdView.setUint16(6, 0, true);
+    eocdView.setUint16(8, fileHeaders.length, true);
+    eocdView.setUint16(10, fileHeaders.length, true);
+    eocdView.setUint32(12, cdSize, true);
+    eocdView.setUint32(16, cdStart, true);
+    eocdView.setUint16(20, 0, true);
+    parts.push(eocd);
+
+    return new Blob(parts, { type: mimeType });
+}
+
+function saveStudentCardAsImage() {
+    const data = getStudentCardData();
+    haptic('success');
+
+    const canvas = document.createElement('canvas');
+    const w = 680, h = 428;
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+    bgGrad.addColorStop(0, '#071526');
+    bgGrad.addColorStop(0.4, '#0d223f');
+    bgGrad.addColorStop(0.75, '#153359');
+    bgGrad.addColorStop(1, '#081628');
+
+    const r = 36;
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(w - r, 0);
+    ctx.quadraticCurveTo(w, 0, w, r);
+    ctx.lineTo(w, h - r);
+    ctx.quadraticCurveTo(w, h, w - r, h);
+    ctx.lineTo(r, h);
+    ctx.quadraticCurveTo(0, h, 0, h - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.fillStyle = bgGrad;
+    ctx.fill();
+
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+    ctx.fillText('ЛЬВІВСЬКИЙ НАЦІОНАЛЬНИЙ УНІВЕРСИТЕТ', 76, 42);
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+    ctx.fillText('ІМЕНІ ІВАНА ФРАНКА • СТУДЕНТСЬКИЙ КВИТОК', 76, 62);
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(28, 25, 40, 40, 10);
+    else ctx.rect(28, 25, 40, 40);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = '22px sans-serif';
+    ctx.fillText('🎓', 36, 52);
+
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(28, 80);
+    ctx.lineTo(w - 28, 80);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.3)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(28, 98, 108, 108, 20);
+    else ctx.rect(28, 98, 108, 108);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.7)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 44px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(getInitials(data.name, '') || '👤', 82, 168);
+    ctx.textAlign = 'left';
+
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(28, 218, 108, 24, 8);
+    else ctx.rect(28, 218, 108, 24);
+    ctx.fill();
+    ctx.fillStyle = '#10e7aa';
+    ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+    ctx.fillText('● ДІЙСНИЙ ДО 2027', 36, 234);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+    ctx.fillText('СТУДЕНТ', 154, 115);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+    ctx.fillText(data.name, 154, 144);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+    ctx.fillText('ФАКУЛЬТЕТ', 154, 172);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.font = '600 16px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+    ctx.fillText(data.faculty, 154, 194);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+    ctx.fillText('ГРУПА', 154, 224);
+    ctx.fillText('КВИТОК №', 290, 224);
+
+    ctx.fillStyle = '#60a5fa';
+    ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+    ctx.fillText(data.group, 154, 248);
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+    ctx.fillText(data.ticketId, 290, 248);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(28, 275);
+    ctx.lineTo(w - 28, 275);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('НАУКОВА БІБЛІОТЕКА ЛНУ • ' + data.libCode, w / 2, 404);
+
+    const bW = w - 80;
+    const bStartX = 40;
+    const bY = 295;
+    const bH = 86;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
+    let currX = bStartX;
+    let toggle = true;
+    for (let i = 0; i < 70; i++) {
+        const barWidth = ((i * 7 + 13) % 4) + 1;
+        if (toggle) {
+            ctx.fillRect(currX, bY, barWidth * 2, bH);
+        }
+        currX += barWidth * 3.8;
+        if (currX > bStartX + bW) break;
+        toggle = !toggle;
+    }
+
+    canvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Студентський_квиток_ЛНУ_${data.group}.png`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+    });
+}
+
+function shareStudentCard() {
+    const data = getStudentCardData();
+    haptic('selection');
+    const shareText = `Мій цифровий студентський квиток ЛНУ (${data.group}) 🎓\n${data.name} • ${data.faculty}`;
+    if (navigator.share) {
+        navigator.share({
+            title: 'Цифровий студак ЛНУ',
+            text: shareText,
+            url: window.location.href
+        }).catch(() => {});
+    } else {
+        try {
+            navigator.clipboard.writeText(shareText + '\n' + window.location.href);
+            alert('📋 Посилання та дані квитка скопійовано в буфер обміну!');
+        } catch(e) {
+            alert(shareText);
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => { initAdminPanel(); loadAdminData(); initStudentPass(); });
 document.addEventListener('DOMContentLoaded', init);
 document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGroupPicker(); });
 
