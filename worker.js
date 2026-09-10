@@ -367,27 +367,105 @@ function extractStudentDossier(html, detectedGroup = "") {
   };
 }
 
-function parseDekanatGrades(html) {
-  const studentMatch = html.match(/Журнал успішності студента:\s*([^<]+)/i) || 
-                       html.match(/<h3>([^<]+)<\/h3>/i) ||
-                       html.match(/<li class=["\x27]active["\x27]>([^<]+)<\/li>/i);
-  let studentName = studentMatch ? stripTags(studentMatch[1]).replace(/ПС-Журнал.*?Web/i, '').trim() : "Студент";
-  if (!studentName || studentName === "Авторизація користувача") studentName = "Студент";
+function findGradesTable(html) {
+  const allTables = [...html.matchAll(/<table[^>]*>([\s\S]*?)<\/table>/gi)];
+  if (!allTables.length) return null;
+
+  // Prefer table that has grades indicators (бал, ects, grade category headers)
+  for (const t of allTables) {
+    const tableHtml = t[1];
+    const hasScoreHeader = /<th>[^<]*(?:бал|ects|підсумок|разом)[^<]*<\/th>/i.test(tableHtml) ||
+                           /class=["\x27][^"\x27]*(?:bal|ects|grade)/i.test(tableHtml);
+    const hasGradeCategory = /<th>[^<]*(?:Лаб|ПрСем|Лек|МК|КтР|Тест|Кол|Зал)[^<]*<\/th>/i.test(tableHtml);
+    const hasDiscipline = /<th>[^<]*(?:Дисципліна|Предмет)[^<]*<\/th>/i.test(tableHtml);
+
+    if (hasScoreHeader || (hasGradeCategory && hasDiscipline) || hasGradeCategory) {
+      return t;
+    }
+  }
+
+  // Fallback: table with maximum row count > 1
+  let bestTable = allTables[0];
+  let maxCells = 0;
+  for (const t of allTables) {
+    const cellsCount = (t[1].match(/<(?:td|th)/gi) || []).length;
+    if (cellsCount > maxCells) {
+      maxCells = cellsCount;
+      bestTable = t;
+    }
+  }
+  return bestTable;
+}
+
+function extractStudentName(html, fallbackUserName = "") {
+  function clean(s) {
+    if (!s) return "";
+    return s.replace(/<[^>]*>/g, " ")
+            .replace(/&nbsp;/g, " ")
+            .replace(/ПС-Журнал.*?Web/i, "")
+            .replace(/Авторизація користувача/i, "")
+            .replace(/\s+/g, " ")
+            .trim();
+  }
+
+  // 1. Table cell: <th>Студент</th><td>...</td> or <td>Студент:</td><td>...</td>
+  const cellMatch = html.match(/<(?:th|td)[^>]*>(?:Студент|ПІБ|Прізвище,?\s*ім[\x27`’]я(?:\s*,\s*по\s+батькові)?)[\s:]*<\/(?:th|td)>\s*<(?:th|td)[^>]*>([\s\S]*?)<\/(?:th|td)>/i);
+  if (cellMatch) {
+    const name = clean(cellMatch[1]);
+    if (name && name !== "Студент" && name.length > 2) return name;
+  }
+
+  // 2. Text match: Студент: Прізвище Ім'я По батькові
+  const inlineMatch = html.match(/(?:Студент|ПІБ|Прізвище,\s*ім[\x27`’]я)(?::|\s+)?\s*(?:<[^>]+>)*\s*([А-ЯІЇЄ][А-Яа-яІіЇїЄєҐґ'\s\-]+?)(?=(?:<|\(|\n|\r|Груп|Факультет|Спеціальність|$))/i);
+  if (inlineMatch) {
+    const name = clean(inlineMatch[1]);
+    if (name && name !== "Студент" && name.length > 2) return name;
+  }
+
+  // 3. Header: Журнал успішності студента: ...
+  const journalMatch = html.match(/Журнал успішності студента:\s*([^<]+)/i);
+  if (journalMatch) {
+    const name = clean(journalMatch[1]);
+    if (name && name !== "Студент" && name.length > 2) return name;
+  }
+
+  // 4. H3 or active li
+  const h3Match = html.match(/<h3>([^<]+)<\/h3>/i) || html.match(/<li class=["\x27]active["\x27]>([^<]+)<\/li>/i);
+  if (h3Match) {
+    const name = clean(h3Match[1]);
+    if (name && name !== "Студент" && !name.includes("Авторизація") && name.length > 2) return name;
+  }
+
+  // 5. Fallback user_name passed during auth
+  if (fallbackUserName && fallbackUserName.trim()) {
+    const trimmed = fallbackUserName.trim();
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  }
+
+  return "Студент";
+}
+
+function parseDekanatGrades(html, fallbackUserName = "") {
+  const studentName = extractStudentName(html, fallbackUserName);
 
   const groupMatch = html.match(/Група:\s*<b>([^<]+)<\/b>/i) || html.match(/Група:\s*([^|<]+)/i);
   const group = groupMatch ? stripTags(groupMatch[1]).trim() : "";
 
   const dossier = extractStudentDossier(html, group);
+  dossier.studentName = studentName;
 
-  const tableMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
+  const tableMatch = findGradesTable(html);
   if (!tableMatch) return { studentName, group: dossier.group || group, dossier, subjects: [], average: "0" };
 
   const tableHtml = tableMatch[1];
   const trMatches = [...tableHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
-  if (trMatches.length < 2) return { studentName, group, subjects: [], average: "0" };
+  if (trMatches.length < 2) return { studentName, group: dossier.group || group, dossier, subjects: [], average: "0" };
 
   const headerRow = trMatches[0][1];
-  const thMatches = [...headerRow.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gi)];
+  let thMatches = [...headerRow.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gi)];
+  if (!thMatches.length) {
+    thMatches = [...headerRow.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)];
+  }
   const headers = thMatches.map((m, idx) => {
     const raw = m[1];
     const titleMatch = m[0].match(/title=["\x27]([^"\x27]*)["\x27]/i);
@@ -532,7 +610,7 @@ async function fetchDekanatGrades(user_name, user_pwd) {
     throw new Error("DEKANAT_SERVER_ERROR");
   }
 
-  return parseDekanatGrades(postHtml);
+  return parseDekanatGrades(postHtml, user_name);
 }
 
 function findNewGrades(oldSubjects, newSubjects) {
