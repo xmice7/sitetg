@@ -257,13 +257,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 </script>
     <style>
         :root {
-            --fs-title: 15px; --fs-meta: 13px; --fs-time: 18px; --fs-time-end: 13px; --fs-day-title: 18px;
+            --fs-title: 15.5px; --fs-meta: 13px; --fs-time: 18px; --fs-time-end: 13px; --fs-day-title: 18px;
             --bg-body: #f1f5f9; --bg-card: #ffffff; --text-main: #0f172a; --text-muted: #64748b;
             --border: #e2e8f0; --accent-green: #059669; --bg-green: #d1fae5; --accent-purple: #7c3aed;
             --bg-purple: #ede9fe; --bg-blue: #dbeafe;
-            --shadow: 0 4px 6px -1px rgba(0,0,0,0.05),0 2px 4px -1px rgba(0,0,0,0.03);
-            --shadow-hover: 0 10px 15px -3px rgba(0,0,0,0.1),0 4px 6px -2px rgba(0,0,0,0.05);
-            --modal-bg: rgba(255,255,255,0.95); --orb-opacity: 0.12;
+            --shadow: 0 4px 14px -2px rgba(0,0,0,0.06), 0 2px 4px -1px rgba(0,0,0,0.04);
+            --shadow-hover: 0 12px 28px -4px rgba(0,0,0,0.12), 0 4px 8px -2px rgba(0,0,0,0.06);
+            --modal-bg: rgba(255,255,255,0.92); --orb-opacity: 0.12;
+            --spring-easing: cubic-bezier(0.32, 0.72, 0, 1);
+            --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --apple-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, sans-serif;
         }
         [data-theme="dark"] {
             --bg-body: #0f172a; --bg-card: #1e293b; --text-main: #f8fafc; --text-muted: #94a3b8;
@@ -321,8 +324,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         [data-theme="aurora"] .bg-orb-3 { background: #a855f7; }
         [data-theme="aurora"] .bg-orb-4 { background: #38bdf8; }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background-color: var(--bg-body); color: var(--text-main); line-height: 1.5; padding-bottom: calc(80px + env(safe-area-inset-bottom)); transition: background-color 0.3s ease,color 0.3s ease; overflow-x: hidden; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--apple-font); -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg-body); color: var(--text-main); line-height: 1.5; padding-bottom: calc(96px + env(safe-area-inset-bottom)); transition: background-color 0.3s ease,color 0.3s ease; overflow-x: hidden; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
         .bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
         .bg-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: var(--orb-opacity); will-change: transform; }
         .bg-orb-1 { width: 420px; height: 420px; background: var(--primary,#3b82f6); top: -100px; left: -100px; animation: orbFloat1 22s linear infinite; }
@@ -365,10 +368,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .current-group-chip { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:12px; background:var(--bg-blue); color:var(--primary); font-weight:800; font-size:15px; margin:10px 0; }
         .days-nav { display: flex; gap: 8px; overflow-x: auto; padding: 10px 4px 12px 4px; margin-bottom: 8px; scrollbar-width: none; position: sticky; top: 0; background: transparent; z-index: 50; }
         .days-nav::-webkit-scrollbar { display: none; }
-        .day-btn { background: rgba(255,255,255,0.06); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-        [data-theme="light"] .day-btn { background: rgba(255,255,255,0.55); border-color: rgba(0,0,0,0.08); }
-        .day-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.18); color: var(--text-main); }
-        .day-btn.active { background: var(--day-btn-active-bg, var(--primary)); border-color: var(--day-btn-active-border, var(--primary)); color: #fff; box-shadow: var(--day-btn-active-shadow, 0 4px 14px rgba(59,130,246,0.45)); backdrop-filter: none; }
+        .day-btn { background: rgba(255,255,255,0.06); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,0.12); color: var(--text-muted); padding: 9px 18px; border-radius: 22px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: transform 0.22s var(--spring-bounce), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.12); user-select: none; -webkit-user-select: none; }
+        [data-theme="light"] .day-btn { background: rgba(255,255,255,0.65); border-color: rgba(0,0,0,0.08); box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+        .day-btn:active { transform: scale(0.92); }
+        .day-btn:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.22); color: var(--text-main); }
+        [data-theme="light"] .day-btn:hover { background: rgba(255,255,255,0.92); border-color: rgba(0,0,0,0.14); }
+        .day-btn.active { background: var(--day-btn-active-bg, var(--primary)); border-color: var(--day-btn-active-border, var(--primary)); color: #fff; box-shadow: var(--day-btn-active-shadow, 0 4px 16px rgba(59,130,246,0.4)); backdrop-filter: none; transform: scale(1.02); }
+        .day-btn.active:active { transform: scale(0.96); }
         .week-parity-card { display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 12px 18px; margin-bottom: 14px; box-shadow: var(--shadow); animation: cardSlideIn 0.35s ease both; }
         .week-parity-badge { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; padding: 5px 14px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
         .week-parity-badge.num { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
@@ -399,14 +405,28 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .day-header { display: flex; justify-content: space-between; align-items: flex-end; margin: 10px 0 8px 0; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
         .day-header .day-title { font-size: var(--fs-day-title); font-weight: 700; color: var(--text-main); }
         .day-header .week-badge { font-size: 12px; font-weight: 600; color: var(--text-muted); background: var(--bg-card); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border); }
-        .lesson-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 0; transition: all 0.3s ease; box-shadow: var(--shadow); position: relative; overflow: hidden; animation: cardSlideIn 0.4s ease both; }
+        .lesson-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 0; transition: transform 0.25s var(--spring-easing), box-shadow 0.25s var(--spring-easing), border-color 0.2s ease; box-shadow: var(--shadow); position: relative; overflow: hidden; animation: cardSlideIn 0.35s var(--spring-easing) both; }
+        .lesson-card:active { transform: scale(0.985); }
         .lesson-card-inner { display: flex; gap: 16px; width: 100%; }
-        .schedule-list .lesson-card:nth-child(1){animation-delay:0.04s} .schedule-list .lesson-card:nth-child(2){animation-delay:0.09s} .schedule-list .lesson-card:nth-child(3){animation-delay:0.14s} .schedule-list .lesson-card:nth-child(4){animation-delay:0.19s} .schedule-list .lesson-card:nth-child(5){animation-delay:0.24s} .schedule-list .lesson-card:nth-child(6){animation-delay:0.29s}
-        @keyframes cardSlideIn { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-        .lesson-card::before { content:''; position:absolute; top:0; left:-100%; width:60%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent); transform:skewX(-15deg); transition:left 0.5s ease; pointer-events:none; }
+        .schedule-list .lesson-card:nth-child(1){animation-delay:0.03s} .schedule-list .lesson-card:nth-child(2){animation-delay:0.07s} .schedule-list .lesson-card:nth-child(3){animation-delay:0.11s} .schedule-list .lesson-card:nth-child(4){animation-delay:0.15s} .schedule-list .lesson-card:nth-child(5){animation-delay:0.19s} .schedule-list .lesson-card:nth-child(6){animation-delay:0.23s}
+        @keyframes cardSlideIn { from{opacity:0;transform:translateY(12px) scale(0.985)} to{opacity:1;transform:translateY(0) scale(1)} }
+        .lesson-card::before { content:''; position:absolute; top:0; left:-100%; width:60%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.05),transparent); transform:skewX(-15deg); transition:left 0.5s ease; pointer-events:none; }
         .lesson-card:hover::before { left: 160%; }
         .lesson-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
-        .lesson-card.current-lesson { border-color: var(--accent-green); border-width: 2px; box-shadow: 0 8px 20px rgba(16,185,129,0.15); }
+        .lesson-card.current-lesson { border-color: var(--accent-green); border-width: 2px; box-shadow: 0 10px 28px -4px rgba(16,185,129,0.22), 0 0 1px 1px var(--accent-green) inset; animation: cardSlideIn 0.35s var(--spring-easing) both, auraPulse 4s ease-in-out infinite alternate; }
+        @keyframes auraPulse { 0% { box-shadow: 0 6px 20px -4px rgba(16,185,129,0.2), 0 0 1px 1px var(--accent-green) inset; } 100% { box-shadow: 0 14px 32px -2px rgba(16,185,129,0.32), 0 0 2px 1px var(--accent-green) inset; } }
+        .skeleton-wrap { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
+        .skeleton-header { width: 140px; height: 22px; border-radius: 8px; background: rgba(148, 163, 184, 0.18); margin: 10px 0 8px; }
+        .skeleton-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 16px; display: flex; gap: 16px; box-shadow: var(--shadow); min-height: 96px; position: relative; overflow: hidden; }
+        .skeleton-time { width: 60px; height: 50px; border-radius: 10px; background: rgba(148, 163, 184, 0.15); flex-shrink: 0; }
+        .skeleton-content { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+        .skeleton-pill { width: 70px; height: 16px; border-radius: 6px; background: rgba(148, 163, 184, 0.18); }
+        .skeleton-title { width: 85%; height: 18px; border-radius: 6px; background: rgba(148, 163, 184, 0.22); }
+        .skeleton-meta { width: 55%; height: 14px; border-radius: 5px; background: rgba(148, 163, 184, 0.14); }
+        .shimmer { position: relative; overflow: hidden; }
+        .shimmer::after { position: absolute; top: 0; right: 0; bottom: 0; left: 0; transform: translateX(-100%); background-image: linear-gradient(90deg, rgba(255, 255, 255, 0) 0, rgba(255, 255, 255, 0.08) 20%, rgba(255, 255, 255, 0.22) 60%, rgba(255, 255, 255, 0)); animation: shimmer 1.8s infinite cubic-bezier(0.4, 0, 0.2, 1); content: ''; }
+        [data-theme="light"] .shimmer::after { background-image: linear-gradient(90deg, rgba(255, 255, 255, 0) 0, rgba(255, 255, 255, 0.35) 20%, rgba(255, 255, 255, 0.65) 60%, rgba(255, 255, 255, 0)); }
+        @keyframes shimmer { 100% { transform: translateX(100%); } }
         .lesson-card.cancelled { border-color: #ef4444 !important; border-width: 2px !important; opacity: 0.7; }
         .lesson-card.cancelled .lesson-title { text-decoration: line-through; color: var(--text-muted); }
         .lesson-card.modified { border-color: #f59e0b !important; border-width: 2px !important; }
@@ -516,7 +536,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         
         .pwa-modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); z-index:300; opacity:0; pointer-events:none; transition:opacity 0.3s ease; display:flex; align-items:flex-end; justify-content:center; }
         .pwa-modal-overlay.active { opacity:1; pointer-events:all; }
-        .pwa-modal { background:var(--modal-bg); width:100%; max-width:600px; border-radius:28px 28px 0 0; transform:translateY(100%); transition:transform 0.38s cubic-bezier(0.175,0.885,0.32,1.275); border-top:2px solid var(--primary); box-shadow:0 -10px 50px rgba(59,130,246,0.15); padding-bottom:env(safe-area-inset-bottom); }
+        .pwa-modal { background:var(--modal-bg); width:100%; max-width:600px; border-radius:28px 28px 0 0; transform:translateY(100%); transition:transform 0.38s var(--spring-easing); border-top:1px solid rgba(255,255,255,0.16); box-shadow:0 -12px 50px rgba(59,130,246,0.15); padding-bottom:env(safe-area-inset-bottom); position:relative; }
+        .pwa-modal::before { content: ''; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 38px; height: 4px; border-radius: 4px; background: var(--border); opacity: 0.8; }
         .pwa-modal-overlay.active .pwa-modal { transform:translateY(0); }
         .pwa-modal-header { padding:20px 24px 0; display:flex; align-items:center; justify-content:space-between; }
         .pwa-modal-title-row { display:flex; align-items:center; gap:12px; }
@@ -569,17 +590,21 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .useful-card h3 { font-size:17px; font-weight:700; color:var(--text-main); margin:0; line-height:1.2; }
         .useful-card p { font-size:13px; color:var(--text-muted); font-weight:500; margin:0; line-height:1.4; }
 
-        .bottom-nav { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:600px; background:var(--bg-card); border-top:1px solid var(--border); display:flex; z-index:90; padding-bottom:env(safe-area-inset-bottom); box-shadow:0 -4px 20px rgba(0,0,0,0.05); }
-        .nav-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:14px 0; background:none; border:none; color:var(--text-muted); font-size:11px; font-weight:700; cursor:pointer; transition:0.2s; text-transform:uppercase; letter-spacing:0.5px; }
-        .nav-item svg { width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:0.2s; }
+        .bottom-nav { position: fixed; bottom: max(14px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: calc(100% - 28px); max-width: 520px; background: var(--modal-bg); backdrop-filter: blur(28px) saturate(200%); -webkit-backdrop-filter: blur(28px) saturate(200%); border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.35), 0 0 1px 1px rgba(255, 255, 255, 0.1) inset; border-radius: 28px; display: flex; z-index: 90; padding: 6px 8px; transition: transform 0.3s var(--spring-easing), background 0.3s ease; }
+        [data-theme="light"] .bottom-nav { background: rgba(255, 255, 255, 0.86); border: 1px solid rgba(0, 0, 0, 0.08); box-shadow: 0 14px 36px -6px rgba(0, 0, 0, 0.12), 0 0 1px 1px rgba(255, 255, 255, 0.8) inset; }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px 0; background: none; border: none; color: var(--text-muted); font-size: 11px; font-weight: 700; cursor: pointer; border-radius: 20px; transition: all 0.25s var(--spring-easing); text-transform: uppercase; letter-spacing: 0.5px; position: relative; user-select: none; -webkit-user-select: none; }
+        .nav-item:active { transform: scale(0.92); }
+        .nav-item svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.25s var(--spring-bounce), stroke 0.2s ease, stroke-width 0.2s ease; }
         .nav-item.active { color: var(--primary); }
-        .nav-item.active svg { transform:translateY(-2px); stroke-width:2.5; }
+        .nav-item.active svg { transform: translateY(-2px) scale(1.08); stroke-width: 2.4; }
+        .nav-item.active::after { content: ''; position: absolute; bottom: 2px; width: 14px; height: 3px; border-radius: 3px; background: var(--primary); box-shadow: 0 2px 8px var(--primary); }
 
-        .modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); z-index:100; opacity:0; pointer-events:none; transition:opacity 0.3s ease; display:flex; align-items:flex-end; justify-content:center; }
-        .modal-overlay.active { opacity:1; pointer-events:all; }
-        .modal-content { background:var(--modal-bg); width:100%; max-width:600px; border-radius:24px 24px 0 0; max-height:88vh; display:flex; flex-direction:column; transform:translateY(100%); transition:transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275); border-top:1px solid var(--border); box-shadow:0 -10px 40px rgba(0,0,0,0.2); }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s var(--spring-easing); display: flex; align-items: flex-end; justify-content: center; }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+        .modal-content { background: var(--modal-bg); width: 100%; max-width: 600px; border-radius: 28px 28px 0 0; max-height: 88vh; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.38s var(--spring-easing); border-top: 1px solid rgba(255,255,255,0.16); box-shadow: 0 -12px 48px rgba(0,0,0,0.28); position: relative; }
+        .modal-content::before { content: ''; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 38px; height: 4px; border-radius: 4px; background: var(--border); opacity: 0.8; }
         .modal-overlay.active .modal-content { transform: translateY(0); }
-        .modal-header { display:flex; justify-content:space-between; align-items:center; padding:20px 24px 16px; position:sticky; top:0; background:var(--modal-bg); border-radius:24px 24px 0 0; border-bottom:1px solid var(--border); z-index:5; flex-shrink:0; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 22px 24px 16px; position: sticky; top: 0; background: var(--modal-bg); border-radius: 28px 28px 0 0; border-bottom: 1px solid var(--border); z-index: 5; flex-shrink: 0; }
         .modal-header h2 { font-size:20px; font-weight:800; }
         .modal-body { overflow-y:auto; -webkit-overflow-scrolling:touch; padding:20px 24px 32px; flex:1; }
         .close-btn { background:var(--border); border:none; width:36px; height:36px; border-radius:50%; color:var(--text-main); font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:20px; transition:0.2s; flex-shrink:0; }
@@ -623,7 +648,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
         .admin-modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); z-index:200; opacity:0; pointer-events:none; transition:opacity 0.3s ease; display:flex; align-items:flex-end; justify-content:center; }
         .admin-modal-overlay.active { opacity:1; pointer-events:all; }
-        .admin-modal { background:var(--modal-bg); width:100%; max-width:600px; border-radius:24px 24px 0 0; max-height:92vh; display:flex; flex-direction:column; transform:translateY(100%); transition:transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275); border-top:2px solid var(--primary); box-shadow:0 -10px 40px rgba(0,0,0,0.3); }
+        .admin-modal { background:var(--modal-bg); width:100%; max-width:600px; border-radius:28px 28px 0 0; max-height:92vh; display:flex; flex-direction:column; transform:translateY(100%); transition:transform 0.38s var(--spring-easing); border-top:1px solid rgba(255,255,255,0.16); box-shadow:0 -12px 48px rgba(0,0,0,0.3); position:relative; }
+        .admin-modal::before { content: ''; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 38px; height: 4px; border-radius: 4px; background: var(--border); opacity: 0.8; }
         .admin-modal-overlay.active .admin-modal { transform: translateY(0); }
         .admin-modal-header { padding:20px 24px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; background:var(--modal-bg); border-radius:24px 24px 0 0; position:sticky; top:0; z-index:5; }
         .admin-modal-header-left { display:flex; align-items:center; gap:10px; }
@@ -1407,7 +1433,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
     </nav>
 </div>
 
-<div id="welcome-modal" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0.72);backdrop-filter:blur(10px);">
+<div id="welcome-modal" style="position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0.72);backdrop-filter:blur(10px);">
     <div id="welcome-inner" style="background:var(--bg-card);border:1px solid var(--border);border-radius:28px;padding:32px 26px;max-width:380px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.45);animation:fadeIn 0.4s ease;overflow:hidden;">
 
         
@@ -1798,6 +1824,22 @@ const storage = {
     set: (key, val) => { try { localStorage.setItem(key, val); } catch(e) {} },
     remove: (key) => { try { localStorage.removeItem(key); } catch(e) {} }
 };
+
+function haptic(type = 'light') {
+    try {
+        if (storage.get('toggle-haptic_v', 'true') === 'false') return;
+        const tg = window.Telegram && window.Telegram.WebApp;
+        if (tg && tg.HapticFeedback) {
+            if (type === 'selection') tg.HapticFeedback.selectionChanged();
+            else if (type === 'success' || type === 'warning' || type === 'error') tg.HapticFeedback.notificationOccurred(type);
+            else tg.HapticFeedback.impactOccurred(type || 'light');
+            return;
+        }
+        if (navigator.vibrate) {
+            navigator.vibrate(type === 'selection' ? 6 : (type === 'medium' ? 12 : 8));
+        }
+    } catch(e) {}
+}
 
 function isUserAdmin() {
     if (storage.get('admin_unlocked_xmice', '') === 'true') return true;
@@ -2967,6 +3009,38 @@ function renderWeek(monday) {
     for(let i=0;i<7;i++){const d=new Date(monday);d.setDate(d.getDate()+i);if(i>=5&&!dayHasLessons(d))continue;html+=renderDayBlock(d,true);}
     return html;
 }
+function renderScheduleSkeleton() {
+    return `
+        <div class="skeleton-wrap">
+            <div class="skeleton-header shimmer"></div>
+            <div class="skeleton-card shimmer">
+                <div class="skeleton-time"></div>
+                <div class="skeleton-content">
+                    <div class="skeleton-pill"></div>
+                    <div class="skeleton-title"></div>
+                    <div class="skeleton-meta"></div>
+                </div>
+            </div>
+            <div class="skeleton-card shimmer">
+                <div class="skeleton-time"></div>
+                <div class="skeleton-content">
+                    <div class="skeleton-pill"></div>
+                    <div class="skeleton-title"></div>
+                    <div class="skeleton-meta"></div>
+                </div>
+            </div>
+            <div class="skeleton-card shimmer">
+                <div class="skeleton-time"></div>
+                <div class="skeleton-content">
+                    <div class="skeleton-pill"></div>
+                    <div class="skeleton-title"></div>
+                    <div class="skeleton-meta"></div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 function render() {
     if(!els.scheduleContainer) return;
     document.querySelectorAll('.day-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.tab===state.tab));
@@ -2974,7 +3048,7 @@ function render() {
     if(!gSchedule) {
         els.scheduleContainer.innerHTML = gScheduleError
             ? `<div class="empty-state"><span>😕</span><p>${gScheduleError}</p><button class="go-tomorrow-btn" style="margin:16px auto 0;width:fit-content;" onclick="refreshSchedule(true)">Спробувати ще раз</button></div>`
-            : `<div class="empty-state"><span>⏳</span><p>Завантажуємо розклад ${state.groupName}…</p></div>`;
+            : renderScheduleSkeleton();
         renderDeadlines();
         return;
     }
@@ -3763,16 +3837,60 @@ function renderSavedGroupsUI() {
     });
 }
 
-function switchGroup(groupName) {
+async function switchGroup(groupName) {
     if (!groupName) return;
     addSavedGroup(groupName);
     storage.set(APP_ACTIVE_GROUP_KEY, groupName);
-    if (!isGroupConfigured(groupName)) {
-        storage.set(APP_SETUP_PENDING_KEY, '1');
-    } else {
-        storage.remove(APP_SETUP_PENDING_KEY);
+
+    const gid = toGroupId(groupName);
+    if (!storage.get(gid + '_saved_group', '')) {
+        storage.set(gid + '_saved_group', 'all');
     }
-    location.reload();
+    if (!storage.get(gid + '_configured', '')) {
+        storage.set(gid + '_configured', '1');
+    }
+    storage.remove(APP_SETUP_PENDING_KEY);
+
+    state.scheduleGroup = gid;
+    state.groupName = groupName;
+    state.group = gget(gid, 'saved_group', 'all');
+    state.engTeacher = gget(gid, 'eng_teacher', 'all');
+    state.color = gget(gid, 'color', 'blue');
+
+    const titleEl = document.getElementById('app-title');
+    if (titleEl) titleEl.textContent = 'Розклад ' + groupName;
+    document.title = 'Розклад ' + groupName;
+
+    applyColor(state.color);
+    if (els.groupSelect) els.groupSelect.value = state.group;
+    if (typeof populateEngSelect === 'function') populateEngSelect();
+    if (typeof renderColorPicker === 'function') renderColorPicker();
+    if (typeof renderSavedGroupsUI === 'function') renderSavedGroupsUI();
+    if (typeof renderLocalCustomLessons === 'function') renderLocalCustomLessons();
+    if (typeof renderAdminCustomLessons === 'function') renderAdminCustomLessons();
+
+    try {
+        const uLabel = document.getElementById('user-group-label');
+        if (uLabel) uLabel.textContent = groupName;
+        const bGroupName = document.getElementById('broadcast-group-name');
+        if (bGroupName) bGroupName.textContent = groupName;
+    } catch(e) {}
+
+    if (typeof haptic === 'function') haptic('selection');
+
+    gSchedule = null;
+    gScheduleError = null;
+    render();
+
+    try {
+        await refreshSchedule();
+    } catch(e) {}
+
+    if (typeof loadAdminData === 'function') {
+        try { await loadAdminData(); } catch(e) {}
+    }
+
+    if (window.CloudSync) window.CloudSync.push();
 }
 
 function renderCustomLessonItems(containerId, list, scope) {
@@ -4726,7 +4844,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         
         document.querySelectorAll('.day-btn, .nav-item').forEach(btn => {
             btn.addEventListener('click', () => {
-                if (storage.get('toggle-haptic_v','true') !== 'false' && navigator.vibrate) navigator.vibrate(8);
+                haptic('selection');
             });
         });
 
