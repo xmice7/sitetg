@@ -2378,4 +2378,65 @@ if (text.startsWith("/start code_")) {
     await send(chatId, menuText(prefs), kb.main(prefs));
     return new Response("OK");
   },
+
+  // ─── HOURLY CRON: auto-check Dekanat grades for all users ───────────────────
+  async scheduled(event, env, ctx) {
+    const kv = env.PREFS_KV;
+    if (!kv || !env.BOT_TOKEN) return;
+
+    // Skip if cache was updated within last 50 min (user opened app themselves)
+    const SKIP_IF_NEWER_MS = 50 * 60 * 1000;
+    // Max users to process per cron run (stay within 30-sec wall-clock limit)
+    const MAX_PER_RUN = 10;
+
+    try {
+      const listed = await kv.list({ prefix: 'dekanat_creds:' });
+      const keys = (listed.keys || []).slice(0, MAX_PER_RUN);
+
+      for (const key of keys) {
+        const userId = key.name.replace('dekanat_creds:', '');
+        try {
+          // Load credentials
+          const rawCreds = await kv.get(key.name);
+          if (!rawCreds) continue;
+          const { user_name, user_pwd } = JSON.parse(rawCreds);
+          if (!user_name || !user_pwd) continue;
+
+          // Load cached grades
+          const rawCache = await kv.get(`dekanat_cache:${userId}`);
+          const cached = rawCache ? JSON.parse(rawCache) : null;
+
+          // Skip if recently synced — user just opened the app
+          if (cached && cached.ts && (Date.now() - cached.ts) < SKIP_IF_NEWER_MS) {
+            continue;
+          }
+
+          // Fetch fresh data from Dekanat
+          let freshData;
+          try {
+            freshData = await fetchDekanatGrades(user_name, user_pwd);
+          } catch (fetchErr) {
+            // Wrong password or Dekanat down — skip silently, don't remove creds
+            continue;
+          }
+
+          // Compare with cached — find new grades
+          if (cached && cached.data && Array.isArray(cached.data.subjects)) {
+            const newGrades = findNewGrades(cached.data.subjects, freshData.subjects);
+            for (const ng of newGrades) {
+              await notifyTelegramNewGrade(env, userId, ng);
+            }
+          }
+
+          // Save fresh cache
+          await kv.put(`dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: freshData }));
+
+        } catch (userErr) {
+          console.error(`[cron:dekanat] userId=${userId} error:`, userErr.message);
+        }
+      }
+    } catch (err) {
+      console.error('[cron:dekanat] Fatal error:', err);
+    }
+  },
 };
