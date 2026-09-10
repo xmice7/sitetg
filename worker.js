@@ -408,35 +408,63 @@ function extractStudentName(html, fallbackUserName = "") {
             .trim();
   }
 
-  // 1. Table cell: <th>Студент</th><td>...</td> or <td>Студент:</td><td>...</td>
-  const cellMatch = html.match(/<(?:th|td)[^>]*>(?:Студент|ПІБ|Прізвище,?\s*ім[\x27`’]я(?:\s*,\s*по\s+батькові)?)[\s:]*<\/(?:th|td)>\s*<(?:th|td)[^>]*>([\s\S]*?)<\/(?:th|td)>/i);
+  const UKR_NAME_RE = /([А-ЯІЇЄҐ][а-яіїєґ'\-]+(?:\s+[А-ЯІЇЄҐ][а-яіїєґ'\-]+){1,2})/;
+
+  // Strip all tags to plain text for reliable matching
+  const plain = html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ");
+
+  // 1. "Студент: Прізвище Ім'я По батькові" — most reliable pattern in plain text
+  const studentTextMatch = plain.match(/(?:Студент|ПІБ)[\s:]+([А-ЯІЇЄҐ][а-яіїєґ'\-]+(?:\s+[А-ЯІЇЄҐ][а-яіїєґ'\-]+){1,2})/i);
+  if (studentTextMatch) {
+    const name = studentTextMatch[1].trim();
+    if (name && name !== "Студент" && name.length > 4) return name;
+  }
+
+  // 2. "Прізвище, ім'я по батькові: Прізвище Ім'я По батькові"
+  const pibTextMatch = plain.match(/Прізвище[,\s]*(?:ім['\x27`]я)?[,\s]*(?:по батькові)?[\s:]+([А-ЯІЇЄҐ][а-яіїєґ'\-]+(?:\s+[А-ЯІЇЄҐ][а-яіїєґ'\-]+){1,2})/i);
+  if (pibTextMatch) {
+    const name = pibTextMatch[1].trim();
+    if (name && name !== "Студент" && name.length > 4) return name;
+  }
+
+  // 3. "Журнал успішності студента: Прізвище Ім'я По батькові"
+  const journalTextMatch = plain.match(/Журнал успішності студента:?\s+([А-ЯІЇЄҐ][а-яіїєґ'\-]+(?:\s+[А-ЯІЇЄҐ][а-яіїєґ'\-]+){1,2})/i);
+  if (journalTextMatch) {
+    const name = journalTextMatch[1].trim();
+    if (name && name !== "Студент" && name.length > 4) return name;
+  }
+
+  // 4. Try table cell format in raw HTML: <th>Студент</th><td>NAME</td>
+  const cellMatch = html.match(/<(?:th|td)[^>]*>\s*(?:Студент|ПІБ)\s*:?\s*<\/(?:th|td)>\s*<(?:th|td)[^>]*>([\s\S]*?)<\/(?:th|td)>/i);
   if (cellMatch) {
     const name = clean(cellMatch[1]);
     if (name && name !== "Студент" && name.length > 2) return name;
   }
 
-  // 2. Text match: Студент: Прізвище Ім'я По батькові
-  const inlineMatch = html.match(/(?:Студент|ПІБ|Прізвище,\s*ім[\x27`’]я)(?::|\s+)?\s*(?:<[^>]+>)*\s*([А-ЯІЇЄ][А-Яа-яІіЇїЄєҐґ'\s\-]+?)(?=(?:<|\(|\n|\r|Груп|Факультет|Спеціальність|$))/i);
-  if (inlineMatch) {
-    const name = clean(inlineMatch[1]);
-    if (name && name !== "Студент" && name.length > 2) return name;
+  // 5. <h3> that contains a Ukrainian name (not the auth/title strings)
+  const h3Matches = [...html.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/gi)];
+  for (const m of h3Matches) {
+    const text = clean(m[1]);
+    if (!text || /Авторизація|ПС-Журнал|успішності-Web/i.test(text)) continue;
+    const nameMatch = text.match(UKR_NAME_RE);
+    if (nameMatch && nameMatch[1].length > 4) return nameMatch[1].trim();
   }
 
-  // 3. Header: Журнал успішності студента: ...
-  const journalMatch = html.match(/Журнал успішності студента:\s*([^<]+)/i);
-  if (journalMatch) {
-    const name = clean(journalMatch[1]);
-    if (name && name !== "Студент" && name.length > 2) return name;
+  // 6. <li class="active"> containing a Ukrainian name
+  const liMatch = html.match(/<li[^>]*class=["\x27][^"'\x27]*active[^"'\x27]*["\x27][^>]*>([\s\S]*?)<\/li>/i);
+  if (liMatch) {
+    const text = clean(liMatch[1]);
+    if (text && !/Авторизація|ПС-Журнал/i.test(text)) {
+      const nameMatch = text.match(UKR_NAME_RE);
+      if (nameMatch && nameMatch[1].length > 4) return nameMatch[1].trim();
+    }
   }
 
-  // 4. H3 or active li
-  const h3Match = html.match(/<h3>([^<]+)<\/h3>/i) || html.match(/<li class=["\x27]active["\x27]>([^<]+)<\/li>/i);
-  if (h3Match) {
-    const name = clean(h3Match[1]);
-    if (name && name !== "Студент" && !name.includes("Авторизація") && name.length > 2) return name;
-  }
-
-  // 5. Fallback user_name passed during auth
+  // 7. Fallback: capitalise the login surname
   if (fallbackUserName && fallbackUserName.trim()) {
     const trimmed = fallbackUserName.trim();
     return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);

@@ -5748,19 +5748,52 @@ function initDekanatGrades() {
             tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) || null;
         } catch(e) {}
 
+        // If worker already found full ПІБ (2+ words) — use it directly
+        const parts = name.split(/\s+/).filter(Boolean);
+        if (parts.length >= 2) {
+            // Capitalize each word
+            return parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+        }
+
+        // Only surname or empty — try to enrich with Telegram profile
         if (!name || name === "Студент" || name === "Авторизація користувача") {
+            // Try saved full name first (from prev session)
+            const savedFull = localStorage.getItem('dekanat_student_fullname');
+            if (savedFull && savedFull.split(/\s+/).length >= 2) return savedFull;
+
             if (tgUser && (tgUser.last_name || tgUser.first_name)) {
-                name = [tgUser.last_name, tgUser.first_name].filter(Boolean).join(" ");
-            } else {
-                const stored = localStorage.getItem('dekanat_user_name');
-                name = stored ? (stored.charAt(0).toUpperCase() + stored.slice(1)) : "Студент";
+                // Telegram may have Ukrainian name, prefer last_name (surname) first
+                const tgName = [tgUser.last_name, tgUser.first_name].filter(Boolean).join(" ");
+                if (tgName.trim()) return tgName.trim();
             }
+            const stored = localStorage.getItem('dekanat_user_name');
+            name = stored ? (stored.charAt(0).toUpperCase() + stored.slice(1)) : "Студент";
         } else {
-            const parts = name.split(/\s+/).filter(Boolean);
-            if (parts.length === 1 && tgUser && tgUser.first_name) {
-                name = `${parts[0]} ${tgUser.first_name}`;
+            // Have single word surname from Dekanat (e.g. "Шевченко")
+            const surname = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+
+            // Check if we have a saved full name whose surname matches
+            const savedFull = localStorage.getItem('dekanat_student_fullname');
+            if (savedFull) {
+                const savedParts = savedFull.split(/\s+/).filter(Boolean);
+                if (savedParts.length >= 2 && savedParts[0].toLowerCase() === surname.toLowerCase()) {
+                    return savedFull;
+                }
+            }
+
+            // Try to add Telegram first_name to the Dekanat surname
+            if (tgUser && tgUser.first_name) {
+                name = `${surname} ${tgUser.first_name}`;
+            } else {
+                name = surname;
             }
         }
+
+        // Cache resolved full name for future sessions
+        if (name && name !== "Студент" && name.split(/\s+/).length >= 2) {
+            try { localStorage.setItem('dekanat_student_fullname', name); } catch(e) {}
+        }
+
         return name;
     }
 
@@ -6200,6 +6233,7 @@ function initDekanatGrades() {
             localStorage.removeItem('dekanat_user_pwd');
             localStorage.removeItem('dekanat_grades_cache');
             localStorage.removeItem('dekanat_last_sync');
+            localStorage.removeItem('dekanat_student_fullname');
 
             if (userPwdInput) userPwdInput.value = '';
             if (authError) authError.style.display = 'none';
