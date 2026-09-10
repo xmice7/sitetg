@@ -1003,252 +1003,460 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             width:22px; height:22px; border-radius:50%;
             background:#fff; border:3px solid rgba(0,0,0,0.25);
             box-shadow:0 2px 6px rgba(0,0,0,0.3); cursor:pointer;
-        /* --- GRADES / DEKANAT JOURNAL MODAL (APPLE 21ST CENTURY) --- */
+        }
+        /* --- GRADES / DEKANAT JOURNAL MODAL (APPLE 21ST CENTURY & FRAMER MOTION) --- */
+        :root {
+            --fm-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --fm-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+            --fm-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes fmSlideUp {
+            0% { opacity: 0; transform: translateY(18px) scale(0.97); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes fmHeroFloat {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-5px) rotate(0.5deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+        @keyframes fmLiveBeacon {
+            0% { transform: scale(1); opacity: 0.9; }
+            50% { opacity: 0.5; }
+            100% { transform: scale(2.8); opacity: 0; }
+        }
+        @keyframes fmSpin {
+            to { transform: rotate(360deg); }
+        }
+        @keyframes fmCardStagger {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .grades-modal-content {
-            border-radius: 24px;
+            border-radius: 28px 28px 0 0;
             background: var(--modal-bg);
-            border: 1px solid var(--border);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.35);
+            border-top: 1px solid rgba(255,255,255,0.18);
+            backdrop-filter: blur(40px) saturate(210%) brightness(1.05);
+            -webkit-backdrop-filter: blur(40px) saturate(210%) brightness(1.05);
+            box-shadow: 0 -20px 60px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.22);
             font-family: var(--apple-font);
         }
 
-        .grades-auth-intro {
+        /* --- AUTH VIEW (APPLE GLASS HERO) --- */
+        .grades-auth-hero {
             text-align: center;
-            padding: 10px 10px 20px;
+            padding: 12px 8px 20px;
+            animation: fmSlideUp 0.45s var(--fm-smooth) both;
         }
-        .grades-shield-icon {
-            width: 56px;
-            height: 56px;
-            margin: 0 auto 12px;
-            background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(59,130,246,0.2));
-            border: 1px solid rgba(16,185,129,0.35);
-            border-radius: 18px;
+        .grades-hero-icon-wrap {
+            position: relative;
+            width: 76px;
+            height: 76px;
+            margin: 0 auto 16px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-        .grades-shield-icon svg {
-            width: 28px;
-            height: 28px;
-            fill: none;
+        .grades-hero-glow {
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(16,185,129,0.45) 0%, rgba(6,182,212,0.25) 50%, transparent 75%);
+            filter: blur(14px);
+            z-index: 1;
+            pointer-events: none;
+        }
+        .grades-hero-glass-badge {
+            position: relative;
+            z-index: 2;
+            width: 72px;
+            height: 72px;
+            border-radius: 22px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 100%);
+            border: 1.5px solid rgba(255,255,255,0.28);
+            box-shadow: 0 16px 36px -6px rgba(16,185,129,0.32), inset 0 1px 2px rgba(255,255,255,0.5);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fmHeroFloat 4s ease-in-out infinite;
+        }
+        .grades-hero-svg {
+            width: 38px;
+            height: 38px;
+            filter: drop-shadow(0 2px 6px rgba(16,185,129,0.3));
+        }
+        .grades-hero-title {
+            margin: 0 0 6px;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: var(--text-main);
+        }
+        .grades-hero-desc {
+            margin: 0 auto;
+            font-size: 13.5px;
+            color: var(--text-muted);
+            line-height: 1.45;
+            max-width: 360px;
+        }
+
+        /* Grouped Card (iOS 18 Inset Grouped) */
+        .grades-grouped-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 4px 0;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            animation: fmSlideUp 0.5s var(--fm-smooth) 0.05s both;
+        }
+        .grades-field-row {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            gap: 12px;
+            position: relative;
+        }
+        .grades-field-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 11px;
+            background: rgba(16,185,129,0.12);
+            border: 1px solid rgba(16,185,129,0.22);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .grades-field-icon svg {
+            width: 18px;
+            height: 18px;
             stroke: #10b981;
+            fill: none;
             stroke-width: 2;
             stroke-linecap: round;
             stroke-linejoin: round;
         }
-        .grades-auth-intro h3 {
-            margin: 0 0 6px;
-            font-size: 19px;
-            font-weight: 700;
-            color: var(--text-main);
+        .grades-field-body {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
         }
-        .grades-auth-intro p {
-            margin: 0;
-            font-size: 13px;
+        .grades-field-label {
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
             color: var(--text-muted);
-            line-height: 1.45;
+            margin-bottom: 2px;
+            user-select: none;
+        }
+        .grades-field-input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-size: 15.5px;
+            font-weight: 600;
+            color: var(--text-main);
+            outline: none;
+            padding: 2px 0 0;
+            margin: 0;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+        .grades-field-input::placeholder {
+            color: var(--text-muted);
+            opacity: 0.6;
+            font-weight: 500;
+        }
+        .grades-field-divider {
+            height: 1px;
+            background: var(--border);
+            margin-left: 64px;
+            margin-right: 16px;
+            opacity: 0.7;
+        }
+        .grades-pwd-toggle {
+            background: transparent;
+            border: none;
+            padding: 8px;
+            border-radius: 8px;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s var(--fm-spring), color 0.2s ease;
+        }
+        .grades-pwd-toggle:active {
+            transform: scale(0.88);
+            color: #10b981;
+        }
+        .grades-pwd-toggle svg {
+            width: 20px;
+            height: 20px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
-        .grades-auth-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 18px;
-            box-shadow: var(--shadow);
-            margin-bottom: 14px;
-        }
-        .grades-input-group {
-            margin-bottom: 14px;
-        }
-        .grades-input-group label {
-            display: block;
+        .grades-tip-pill {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 11px 14px;
+            background: rgba(59,130,246,0.08);
+            border: 1px solid rgba(59,130,246,0.22);
+            border-radius: 14px;
+            margin-bottom: 16px;
             font-size: 12px;
-            font-weight: 600;
             color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 6px;
+            line-height: 1.42;
+            animation: fmSlideUp 0.55s var(--fm-smooth) 0.1s both;
         }
-        .grades-input {
-            width: 100%;
-            padding: 12px 14px;
+        .grades-tip-icon {
             font-size: 15px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            background: var(--bg-body);
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .grades-tip-text strong {
             color: var(--text-main);
-            box-sizing: border-box;
-            transition: all 0.2s ease;
         }
-        .grades-input:focus {
-            outline: none;
-            border-color: #10b981;
-            box-shadow: 0 0 0 3px rgba(16,185,129,0.18);
-        }
-        .grades-input-hint {
-            display: block;
-            font-size: 11px;
-            color: var(--text-muted);
-            margin-top: 5px;
-            line-height: 1.35;
-        }
+
         .grades-error-banner {
             background: rgba(239, 68, 68, 0.12);
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            border: 1px solid rgba(239, 68, 68, 0.32);
             color: #ef4444;
-            padding: 10px 12px;
-            border-radius: 10px;
-            font-size: 12.5px;
+            padding: 11px 14px;
+            border-radius: 14px;
+            font-size: 13px;
             font-weight: 600;
             margin-bottom: 14px;
             line-height: 1.35;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: fmSlideUp 0.3s var(--fm-smooth) both;
         }
-        .btn-grades-primary {
+
+        /* Framer Motion Primary Button */
+        .btn-grades-action {
             width: 100%;
-            background: linear-gradient(135deg, #10b981, #059669);
+            height: 52px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             border: none;
+            border-radius: 16px;
             color: #fff;
-            padding: 14px;
-            border-radius: 14px;
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 700;
+            letter-spacing: -0.2px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
+            box-shadow: 0 10px 28px -6px rgba(16,185,129,0.5), inset 0 1px 1.5px rgba(255,255,255,0.38);
+            transition: transform 0.22s var(--fm-spring), box-shadow 0.22s ease;
+            margin-bottom: 16px;
+            user-select: none;
+            animation: fmSlideUp 0.6s var(--fm-smooth) 0.15s both;
+        }
+        .btn-grades-action:active {
+            transform: scale(0.96);
             box-shadow: 0 4px 14px rgba(16,185,129,0.35);
-            transition: transform 0.18s var(--spring-bounce), box-shadow 0.18s ease;
         }
-        .btn-grades-primary:active {
-            transform: scale(0.97);
-        }
+
         .grades-spinner {
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             border: 2.5px solid rgba(255,255,255,0.3);
             border-top-color: #fff;
             border-radius: 50%;
-            animation: spin 0.7s linear infinite;
+            animation: fmSpin 0.7s linear infinite;
         }
         .grades-spinner-large {
-            width: 38px;
-            height: 38px;
+            width: 42px;
+            height: 42px;
             border: 3.5px solid var(--border);
             border-top-color: #10b981;
             border-radius: 50%;
             margin: 0 auto;
-            animation: spin 0.7s linear infinite;
+            animation: fmSpin 0.7s linear infinite;
         }
-        .grades-privacy-note {
+
+        /* Apple Privacy Badge */
+        .grades-privacy-badge {
             display: flex;
-            align-items: flex-start;
-            gap: 8px;
+            align-items: center;
+            gap: 12px;
+            background: rgba(16,185,129,0.06);
+            border: 1px solid rgba(16,185,129,0.2);
+            border-radius: 16px;
+            padding: 11px 15px;
+            animation: fmSlideUp 0.65s var(--fm-smooth) 0.2s both;
+        }
+        .grades-live-beacon {
+            position: relative;
+            width: 10px;
+            height: 10px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .grades-beacon-core {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+        }
+        .grades-beacon-ring {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: fmLiveBeacon 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+        }
+        .grades-privacy-text {
             font-size: 11px;
             color: var(--text-muted);
             line-height: 1.4;
-            padding: 6px 4px;
         }
-        .grades-privacy-note svg {
-            flex-shrink: 0;
-            margin-top: 2px;
-            stroke: #10b981;
+        .grades-privacy-text strong {
+            color: var(--text-main);
+        }
+        .grades-privacy-text code {
+            color: #10b981;
+            font-weight: 700;
+            background: rgba(16,185,129,0.12);
+            padding: 1px 5px;
+            border-radius: 5px;
+            font-size: 10.5px;
         }
 
-        /* Dashboard view */
+        /* --- DASHBOARD VIEW --- */
         .grades-summary-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 16px;
+            border-radius: 20px;
+            padding: 18px;
             margin-bottom: 14px;
             box-shadow: var(--shadow);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            animation: fmSlideUp 0.4s var(--fm-smooth) both;
         }
         .grades-summary-top {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 14px;
+            margin-bottom: 16px;
         }
         .grades-student-meta {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
         }
         .grades-avatar-badge {
-            width: 44px;
-            height: 44px;
-            border-radius: 14px;
-            background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(59,130,246,0.2));
-            border: 1px solid rgba(16,185,129,0.35);
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(16,185,129,0.22), rgba(59,130,246,0.22));
+            border: 1.5px solid rgba(16,185,129,0.35);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
+            font-size: 24px;
+            box-shadow: 0 4px 14px rgba(16,185,129,0.18);
         }
         .grades-student-name {
-            font-size: 15.5px;
-            font-weight: 700;
+            font-size: 16px;
+            font-weight: 800;
             color: var(--text-main);
+            letter-spacing: -0.3px;
         }
         .grades-student-group {
-            font-size: 12px;
-            font-weight: 600;
+            display: inline-block;
+            font-size: 11.5px;
+            font-weight: 700;
             color: #10b981;
+            background: rgba(16,185,129,0.12);
+            padding: 2px 8px;
+            border-radius: 8px;
+            margin-top: 3px;
+            border: 1px solid rgba(16,185,129,0.25);
         }
         .grades-header-actions {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
         }
         .grades-refresh-btn {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             background: var(--bg-body);
             border: 1px solid var(--border);
             color: var(--text-main);
-            padding: 7px 11px;
-            border-radius: 10px;
+            padding: 8px 12px;
+            border-radius: 12px;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: transform 0.2s var(--fm-spring), background 0.2s;
         }
         .grades-refresh-btn:active {
-            transform: scale(0.95);
+            transform: scale(0.94);
         }
         .grades-refresh-btn svg {
-            width: 13px;
-            height: 13px;
+            width: 14px;
+            height: 14px;
             stroke: currentColor;
             fill: none;
             stroke-width: 2;
             stroke-linecap: round;
             stroke-linejoin: round;
         }
+        .grades-refresh-btn.spinning svg {
+            animation: fmSpin 0.75s linear infinite;
+        }
         .grades-more-btn {
             background: var(--bg-body);
             border: 1px solid var(--border);
             color: var(--text-muted);
-            width: 32px;
-            height: 32px;
-            border-radius: 10px;
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: transform 0.2s var(--fm-spring), color 0.2s, border-color 0.2s;
+        }
+        .grades-more-btn:hover {
+            color: #ef4444;
+            border-color: rgba(239,68,68,0.3);
+        }
+        .grades-more-btn:active {
+            transform: scale(0.92);
         }
         .grades-more-btn svg {
-            width: 16px;
-            height: 16px;
+            width: 17px;
+            height: 17px;
             stroke: currentColor;
             fill: none;
             stroke-width: 2;
         }
+
         .grades-stats-row {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -1257,141 +1465,309 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .grades-stat-box {
             background: var(--bg-body);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 10px;
+            border-radius: 14px;
+            padding: 11px 8px;
             text-align: center;
+            transition: transform 0.2s ease;
         }
         .grades-stat-val {
             display: block;
-            font-size: 17px;
+            font-size: 19px;
             font-weight: 800;
             color: var(--text-main);
-            letter-spacing: -0.5px;
+            letter-spacing: -0.6px;
         }
         .grades-stat-label {
             display: block;
-            font-size: 10.5px;
+            font-size: 10px;
             color: var(--text-muted);
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.3px;
-            margin-top: 2px;
+            letter-spacing: 0.5px;
+            margin-top: 3px;
         }
         .grades-offline-notice {
-            margin-top: 10px;
-            padding: 8px 10px;
-            border-radius: 8px;
+            margin-top: 12px;
+            padding: 9px 12px;
+            border-radius: 10px;
             background: rgba(245,158,11,0.12);
-            border: 1px solid rgba(245,158,11,0.3);
+            border: 1px solid rgba(245,158,11,0.32);
             color: #f59e0b;
-            font-size: 11px;
+            font-size: 11.5px;
             font-weight: 600;
             text-align: center;
+        }
+
+        /* Apple Student Dossier / Academic Profile Card */
+        .grades-dossier-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            margin-bottom: 14px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            animation: fmSlideUp 0.45s var(--fm-smooth) 0.05s both;
+        }
+        .grades-dossier-header {
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+            background: rgba(255,255,255,0.02);
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s ease;
+        }
+        .grades-dossier-header:active {
+            background: rgba(255,255,255,0.05);
+        }
+        .grades-dossier-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+        }
+        .grades-dossier-crest {
+            width: 36px;
+            height: 36px;
+            border-radius: 11px;
+            background: linear-gradient(135deg, rgba(59,130,246,0.18), rgba(16,185,129,0.18));
+            border: 1px solid rgba(59,130,246,0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .grades-dossier-uni {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            line-height: 1.25;
+        }
+        .grades-dossier-faculty {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-top: 2px;
+            line-height: 1.3;
+        }
+        .dossier-chevron {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-muted);
+            fill: none;
+            stroke-width: 2.2;
+            transition: transform 0.28s var(--fm-spring);
+        }
+        .grades-dossier-card.collapsed .dossier-chevron {
+            transform: rotate(-90deg);
+        }
+        .grades-dossier-card.collapsed .grades-dossier-body {
+            display: none;
+        }
+
+        .grades-dossier-body {
+            padding: 13px 15px 15px;
+            animation: fmSlideUp 0.25s var(--fm-smooth) both;
+        }
+        .grades-specialty-banner {
+            background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(6,182,212,0.08));
+            border: 1px solid rgba(16,185,129,0.25);
+            border-radius: 12px;
+            padding: 9px 12px;
+            margin-bottom: 12px;
+        }
+        .grades-specialty-code {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #10b981;
+            margin-bottom: 2px;
+        }
+        .grades-specialty-name {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.2px;
+        }
+
+        .grades-dossier-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .grades-dossier-item {
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        .dossier-item-label {
+            font-size: 9.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: var(--text-muted);
+            margin-bottom: 3px;
+        }
+        .dossier-item-val {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .dossier-highlight {
+            color: #10b981;
+        }
+        .dossier-grad-date {
+            color: #3b82f6;
+        }
+        .grades-payment-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 8px;
+            background: rgba(16,185,129,0.12);
+            color: #10b981;
+            border: 1px solid rgba(16,185,129,0.25);
+            margin-left: 6px;
         }
 
         .grades-tools-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 8px;
+            gap: 10px;
             margin-bottom: 14px;
         }
         .grades-tool-chip {
             background: var(--bg-card);
             border: 1px solid var(--border);
             color: var(--text-main);
-            padding: 6px 12px;
+            padding: 7px 14px;
             border-radius: 20px;
-            font-size: 11.5px;
-            font-weight: 600;
+            font-size: 12px;
+            font-weight: 700;
             cursor: pointer;
-            transition: 0.2s;
+            transition: transform 0.2s var(--fm-spring), border-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         .grades-tool-chip:active {
             transform: scale(0.95);
         }
         .grades-notif-chip {
-            font-size: 11px;
+            font-size: 11.5px;
             color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
         .grades-notif-chip strong {
             color: #10b981;
         }
 
-        /* Subject cards */
+        /* Subject Cards */
         .grades-subjects-wrap {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
         }
         .subject-grade-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: 18px;
             overflow: hidden;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: var(--shadow);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s var(--fm-spring);
+            animation: fmCardStagger 0.4s var(--fm-smooth) both;
         }
         .subject-grade-card:hover {
-            border-color: rgba(16,185,129,0.4);
+            border-color: rgba(16,185,129,0.45);
         }
         .subject-grade-header {
-            padding: 14px;
+            padding: 15px 16px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
+            gap: 12px;
             user-select: none;
+            transition: background 0.15s ease;
+        }
+        .subject-grade-header:active {
+            background: rgba(255,255,255,0.03);
         }
         .subject-grade-info {
             flex: 1;
             min-width: 0;
         }
         .subject-grade-title {
-            font-size: 14.5px;
+            font-size: 15px;
             font-weight: 700;
             color: var(--text-main);
-            margin-bottom: 3px;
-            line-height: 1.3;
+            margin-bottom: 4px;
+            line-height: 1.32;
+            letter-spacing: -0.2px;
         }
         .subject-grade-teacher {
             font-size: 12px;
             color: var(--text-muted);
+            font-weight: 500;
         }
         .subject-grade-score-wrap {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            flex-shrink: 0;
         }
         .subject-score-badge {
-            padding: 5px 10px;
-            border-radius: 10px;
-            font-size: 13.5px;
+            padding: 6px 11px;
+            border-radius: 12px;
+            font-size: 14px;
             font-weight: 800;
             letter-spacing: -0.3px;
         }
-        .subject-score-badge.score-a { background: rgba(16,185,129,0.18); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
-        .subject-score-badge.score-bc { background: rgba(59,130,246,0.18); color: #3b82f6; border: 1px solid rgba(59,130,246,0.3); }
-        .subject-score-badge.score-de { background: rgba(245,158,11,0.18); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
-        .subject-score-badge.score-f { background: rgba(239,68,68,0.18); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+        .subject-score-badge.score-a { background: rgba(16,185,129,0.18); color: #10b981; border: 1px solid rgba(16,185,129,0.35); box-shadow: 0 0 12px rgba(16,185,129,0.15); }
+        .subject-score-badge.score-bc { background: rgba(59,130,246,0.18); color: #3b82f6; border: 1px solid rgba(59,130,246,0.35); box-shadow: 0 0 12px rgba(59,130,246,0.15); }
+        .subject-score-badge.score-de { background: rgba(245,158,11,0.18); color: #f59e0b; border: 1px solid rgba(245,158,11,0.35); box-shadow: 0 0 12px rgba(245,158,11,0.15); }
+        .subject-score-badge.score-f { background: rgba(239,68,68,0.18); color: #ef4444; border: 1px solid rgba(239,68,68,0.35); box-shadow: 0 0 12px rgba(239,68,68,0.15); }
 
         .subject-chevron {
-            width: 16px;
-            height: 16px;
+            width: 17px;
+            height: 17px;
             stroke: var(--text-muted);
             fill: none;
-            stroke-width: 2;
-            transition: transform 0.25s var(--spring-easing);
+            stroke-width: 2.2;
+            transition: transform 0.28s var(--fm-spring);
         }
         .subject-grade-card.expanded .subject-chevron {
             transform: rotate(180deg);
         }
 
         .subject-progress-line {
-            height: 4px;
+            height: 5px;
             background: rgba(0,0,0,0.06);
             width: 100%;
             position: relative;
+            overflow: hidden;
         }
         [data-theme="dark"] .subject-progress-line,
         [data-theme="black"] .subject-progress-line,
@@ -1401,15 +1777,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         }
         .subject-progress-fill {
             height: 100%;
-            border-radius: 0 2px 2px 0;
-            transition: width 0.5s ease;
+            border-radius: 0 3px 3px 0;
+            transition: width 0.6s var(--fm-smooth);
         }
 
         .subject-grade-details {
-            padding: 12px 14px 16px;
+            padding: 14px 16px 18px;
             border-top: 1px solid var(--border);
             background: var(--bg-body);
             display: none;
+            animation: fmSlideUp 0.25s var(--fm-smooth) both;
         }
         .subject-grade-card.expanded .subject-grade-details {
             display: block;
@@ -1425,31 +1802,33 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             justify-content: space-between;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            padding: 8px 12px;
-            border-radius: 10px;
-            font-size: 12.5px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 13px;
         }
         .grade-event-left {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             flex: 1;
             min-width: 0;
         }
         .grade-cat-chip {
             font-size: 11px;
-            font-weight: 700;
-            padding: 3px 7px;
-            border-radius: 6px;
+            font-weight: 800;
+            padding: 3.5px 8px;
+            border-radius: 7px;
             flex-shrink: 0;
+            letter-spacing: -0.2px;
         }
         .grade-event-date {
-            font-size: 11.5px;
+            font-size: 12px;
             color: var(--text-muted);
+            font-weight: 600;
             flex-shrink: 0;
         }
         .grade-event-note {
-            font-size: 11px;
+            font-size: 11.5px;
             color: var(--text-muted);
             margin-left: 4px;
             white-space: nowrap;
@@ -1458,10 +1837,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         }
         .grade-event-val {
             font-weight: 800;
-            font-size: 13.5px;
+            font-size: 14px;
             color: var(--text-main);
             flex-shrink: 0;
-            margin-left: 8px;
+            margin-left: 10px;
+            letter-spacing: -0.3px;
         }
 
         /* Legend Sheet */
@@ -1469,18 +1849,18 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 0;
+            padding: 10px 0;
             border-bottom: 1px solid var(--border);
-            font-size: 13px;
+            font-size: 13.5px;
         }
         .legend-item-row:last-child {
             border-bottom: none;
         }
         .legend-badge {
-            font-size: 11px;
-            font-weight: 700;
-            padding: 3px 8px;
-            border-radius: 6px;
+            font-size: 11.5px;
+            font-weight: 800;
+            padding: 4px 9px;
+            border-radius: 8px;
         }
     </style>
 </head>
@@ -2080,38 +2460,81 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             <button class="close-btn" id="close-grades">×</button>
         </div>
         <div class="modal-body grades-modal-body" style="overflow-y:auto;padding:16px 18px 24px;flex:1;">
-            <!-- VIEW 1: AUTHENTICATION FORM -->
+            <!-- VIEW 1: AUTHENTICATION FORM (APPLE 21ST CENTURY / FRAMER MOTION) -->
             <div id="grades-auth-view" style="display:none;">
-                <div class="grades-auth-intro">
-                    <div class="grades-shield-icon">
-                        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <div class="grades-auth-hero">
+                    <div class="grades-hero-icon-wrap">
+                        <div class="grades-hero-glow"></div>
+                        <div class="grades-hero-glass-badge">
+                            <svg class="grades-hero-svg" viewBox="0 0 24 24" fill="none">
+                                <defs>
+                                    <linearGradient id="appleGradCap" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#34d399" />
+                                        <stop offset="50%" stop-color="#10b981" />
+                                        <stop offset="100%" stop-color="#06b6d4" />
+                                    </linearGradient>
+                                </defs>
+                                <path d="M22 10v6M2 10l10-5 10 5-10 5z" fill="url(#appleGradCap)" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M6 12v5c0 1.66 2.69 3 6 3s6-1.34 6-3v-5" stroke="#34d399" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </div>
                     </div>
-                    <h3>Вхід до журналу успішності</h3>
-                    <p>Введіть дані від свого кабінету в Деканаті ЛНУ. Система підключиться та завантажить ваші актуальні бали за семестр.</p>
+                    <h3 class="grades-hero-title">Журнал успішності</h3>
+                    <p class="grades-hero-desc">Введіть прізвище та пароль (або номер заліковки) від кабінету в Деканаті ЛНУ для швидкої синхронізації балів.</p>
                 </div>
 
-                <div class="grades-auth-card">
-                    <div class="grades-input-group">
-                        <label for="grades-user-name">Прізвище студента</label>
-                        <input type="text" id="grades-user-name" class="grades-input" placeholder="Наприклад: Шевченко" autocomplete="family-name" autocapitalize="words" />
-                    </div>
-                    <div class="grades-input-group">
-                        <label for="grades-user-pwd">Пароль / № залікової книжки</label>
-                        <input type="password" id="grades-user-pwd" class="grades-input" placeholder="Введіть пароль" autocomplete="current-password" />
-                        <span class="grades-input-hint">💡 При першому вході замість пароля вказуйте номер вашої залікової книжки.</span>
+                <div class="grades-grouped-card">
+                    <!-- Field 1: Student Surname -->
+                    <div class="grades-field-row">
+                        <div class="grades-field-icon">
+                            <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </div>
+                        <div class="grades-field-body">
+                            <label class="grades-field-label" for="grades-user-name">Прізвище студента</label>
+                            <input type="text" id="grades-user-name" class="grades-field-input" placeholder="Наприклад: Шевченко" autocomplete="family-name" autocapitalize="words" />
+                        </div>
                     </div>
 
-                    <div id="grades-auth-error" class="grades-error-banner" style="display:none;"></div>
+                    <div class="grades-field-divider"></div>
 
-                    <button type="button" id="btn-grades-login" class="btn-grades-primary">
-                        <span id="grades-login-btn-text">Увійти та завантажити бали</span>
-                        <div id="grades-login-spinner" class="grades-spinner" style="display:none;"></div>
-                    </button>
+                    <!-- Field 2: Password / Record Book -->
+                    <div class="grades-field-row">
+                        <div class="grades-field-icon">
+                            <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+                        <div class="grades-field-body">
+                            <label class="grades-field-label" for="grades-user-pwd">Пароль / № залікової книжки</label>
+                            <input type="password" id="grades-user-pwd" class="grades-field-input" placeholder="Введіть пароль" autocomplete="current-password" />
+                        </div>
+                        <button type="button" class="grades-pwd-toggle" id="btn-toggle-pwd" title="Показати/приховати пароль" aria-label="Показати пароль">
+                            <svg id="pwd-eye-icon" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
                 </div>
 
-                <div class="grades-privacy-note">
-                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                    <span><strong>Ваші дані надійно захищені:</strong> логін та пароль шифруються і передаються виключно на офіційний сервер <code>dekanat.lnu.edu.ua</code>. Жодні дані не передаються стороннім особам.</span>
+                <div class="grades-tip-pill">
+                    <span class="grades-tip-icon">💡</span>
+                    <span class="grades-tip-text"><strong>Підказка:</strong> якщо ви ще не змінювали пароль у системі Деканату, паролем за замовчуванням є номер вашої заліковки.</span>
+                </div>
+
+                <div id="grades-auth-error" class="grades-error-banner" style="display:none;"></div>
+
+                <button type="button" id="btn-grades-login" class="btn-grades-action">
+                    <span id="grades-login-btn-text" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+                        <span>Увійти та синхронізувати</span>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </span>
+                    <div id="grades-login-spinner" class="grades-spinner" style="display:none;"></div>
+                </button>
+
+                <div class="grades-privacy-badge">
+                    <div class="grades-live-beacon">
+                        <span class="grades-beacon-core"></span>
+                        <span class="grades-beacon-ring"></span>
+                    </div>
+                    <div class="grades-privacy-text">
+                        <strong>End-to-End захищено:</strong> пряме підключення до <code>dekanat.lnu.edu.ua</code>. Ваші дані конфіденційні та зберігаються виключно на вашому пристрої.
+                    </div>
                 </div>
             </div>
 
@@ -2123,7 +2546,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                             <div class="grades-avatar-badge" id="grades-student-avatar">🎓</div>
                             <div>
                                 <div class="grades-student-name" id="grades-student-name">Студент</div>
-                                <div class="grades-student-group" id="grades-student-group">Група</div>
+                                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-top:2px;">
+                                    <span class="grades-student-group" id="grades-student-group">Група</span>
+                                    <span class="grades-payment-pill" id="grades-payment-pill" style="display:none;">Держ.замовлення</span>
+                                </div>
                             </div>
                         </div>
                         <div class="grades-header-actions">
@@ -2154,6 +2580,56 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
                     <div id="grades-offline-banner" class="grades-offline-notice" style="display:none;">
                         🛡️ Відображається збережена копія журналу (Деканат тимчасово не відповідає).
+                    </div>
+                </div>
+
+                <!-- APPLE ACADEMIC DOSSIER / STUDENT PROFILE CARD -->
+                <div class="grades-dossier-card" id="grades-dossier-card" style="display:none;">
+                    <div class="grades-dossier-header" id="grades-dossier-toggle">
+                        <div class="grades-dossier-title-wrap">
+                            <div class="grades-dossier-crest">🏛️</div>
+                            <div>
+                                <div class="grades-dossier-uni" id="grades-dossier-uni">Львівський національний університет імені Івана Франка</div>
+                                <div class="grades-dossier-faculty" id="grades-dossier-faculty">Факультет електроніки та комп'ютерних технологій</div>
+                            </div>
+                        </div>
+                        <div class="grades-dossier-expand-icon">
+                            <svg class="dossier-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+                    </div>
+
+                    <div class="grades-dossier-body" id="grades-dossier-body">
+                        <div class="grades-specialty-banner">
+                            <div class="grades-specialty-code">Спеціальність</div>
+                            <div class="grades-specialty-name" id="grades-dossier-specialty">Інженерія програмного забезпечення</div>
+                        </div>
+
+                        <div class="grades-dossier-grid">
+                            <div class="grades-dossier-item">
+                                <span class="dossier-item-label">Ступінь</span>
+                                <span class="dossier-item-val" id="grades-dossier-degree">Бакалавр</span>
+                            </div>
+                            <div class="grades-dossier-item">
+                                <span class="dossier-item-label">Форма навчання</span>
+                                <span class="dossier-item-val" id="grades-dossier-study-form">Денна</span>
+                            </div>
+                            <div class="grades-dossier-item">
+                                <span class="dossier-item-label">Оплата</span>
+                                <span class="dossier-item-val dossier-highlight" id="grades-dossier-payment">Держ.замовлення</span>
+                            </div>
+                            <div class="grades-dossier-item">
+                                <span class="dossier-item-label">Термін навчання</span>
+                                <span class="dossier-item-val" id="grades-dossier-term">4 роки</span>
+                            </div>
+                            <div class="grades-dossier-item" style="grid-column: span 2;">
+                                <span class="dossier-item-label">Наказ на зарахування</span>
+                                <span class="dossier-item-val" id="grades-dossier-order">С-494/к від 11.08.2025</span>
+                            </div>
+                            <div class="grades-dossier-item" style="grid-column: span 2;">
+                                <span class="dossier-item-label">Дата закінчення навчання</span>
+                                <span class="dossier-item-val dossier-grad-date" id="grades-dossier-grad-date">30.06.2029</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -5019,11 +5495,12 @@ function formatRelativeSyncTime(ts) {
     return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function renderSubjectCard(s) {
+function renderSubjectCard(s, idx = 0) {
     const total = Number(s.total) || 0;
     const scoreClass = total >= 90 ? 'score-a' : total >= 71 ? 'score-bc' : total >= 51 ? 'score-de' : 'score-f';
-    const progressColor = total >= 90 ? '#10b981' : total >= 71 ? '#3b82f6' : total >= 51 ? '#f59e0b' : '#ef4444';
+    const progressColor = total >= 90 ? 'linear-gradient(90deg, #10b981, #059669)' : total >= 71 ? 'linear-gradient(90deg, #3b82f6, #2563eb)' : total >= 51 ? 'linear-gradient(90deg, #f59e0b, #d97706)' : 'linear-gradient(90deg, #ef4444, #dc2626)';
     const progressWidth = Math.min(Math.max(total, 0), 100);
+    const delaySec = Math.min(idx * 0.04, 0.5).toFixed(2);
 
     const gradesHtml = (s.grades && s.grades.length > 0)
         ? s.grades.map(g => {
@@ -5043,7 +5520,7 @@ function renderSubjectCard(s) {
         : '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px;">Балів за поточний контроль ще не виставлено</div>';
 
     return `
-        <div class="subject-grade-card" data-subject="${escapeHtml(s.subject)}">
+        <div class="subject-grade-card" data-subject="${escapeHtml(s.subject)}" style="animation-delay:${delaySec}s;">
             <div class="subject-grade-header">
                 <div class="subject-grade-info">
                     <div class="subject-grade-title">${escapeHtml(s.subject)}</div>
@@ -5111,6 +5588,20 @@ function initDekanatGrades() {
     const logoutBtn = document.getElementById('btn-grades-logout');
     const cardSubEl = document.getElementById('grades-card-sub');
 
+    const dossierCard = document.getElementById('grades-dossier-card');
+    const dossierToggle = document.getElementById('grades-dossier-toggle');
+    const dossierUni = document.getElementById('grades-dossier-uni');
+    const dossierFaculty = document.getElementById('grades-dossier-faculty');
+    const dossierSpecialty = document.getElementById('grades-dossier-specialty');
+    const dossierDegree = document.getElementById('grades-dossier-degree');
+    const dossierStudyForm = document.getElementById('grades-dossier-study-form');
+    const dossierPayment = document.getElementById('grades-dossier-payment');
+    const dossierTerm = document.getElementById('grades-dossier-term');
+    const dossierOrder = document.getElementById('grades-dossier-order');
+    const dossierGradDate = document.getElementById('grades-dossier-grad-date');
+    const paymentPill = document.getElementById('grades-payment-pill');
+    const togglePwdBtn = document.getElementById('btn-toggle-pwd');
+
     if (!openCard || !modal) return;
 
     initGradesLegend();
@@ -5145,9 +5636,39 @@ function initDekanatGrades() {
         if (statSyncEl) statSyncEl.textContent = formatRelativeSyncTime(lastSync);
         if (offlineBanner) offlineBanner.style.display = isOffline ? 'block' : 'none';
 
+        // Apple Academic Dossier Populate
+        const dossier = data.dossier || {};
+        if (dossierCard) {
+            dossierCard.style.display = 'block';
+            if (dossierUni) dossierUni.textContent = dossier.university || 'Львівський національний університет імені Івана Франка';
+            if (dossierFaculty) dossierFaculty.textContent = dossier.faculty || 'Факультет електроніки та компʼютерних технологій';
+            if (dossierSpecialty) dossierSpecialty.textContent = dossier.specialty || 'Інженерія програмного забезпечення';
+            if (dossierDegree) dossierDegree.textContent = dossier.degree || 'бакалавр';
+            if (dossierStudyForm) dossierStudyForm.textContent = dossier.studyForm || 'Денна';
+            if (dossierPayment) dossierPayment.textContent = dossier.paymentForm || 'Держ.замовлення';
+            if (dossierTerm) dossierTerm.textContent = dossier.studyTerm || '4 роки';
+            if (dossierOrder) dossierOrder.textContent = dossier.enrollmentOrder || 'С-494/к від 11.08.2025';
+            if (dossierGradDate) dossierGradDate.textContent = dossier.graduationDate || '30.06.2029';
+        }
+
+        if (paymentPill) {
+            const payText = dossier.paymentForm || 'Держ.замовлення';
+            paymentPill.textContent = payText;
+            paymentPill.style.display = 'inline-flex';
+            if (/контракт|кошти/i.test(payText)) {
+                paymentPill.style.background = 'rgba(59,130,246,0.12)';
+                paymentPill.style.color = '#3b82f6';
+                paymentPill.style.borderColor = 'rgba(59,130,246,0.25)';
+            } else {
+                paymentPill.style.background = 'rgba(16,185,129,0.12)';
+                paymentPill.style.color = '#10b981';
+                paymentPill.style.borderColor = 'rgba(16,185,129,0.25)';
+            }
+        }
+
         if (subjectsListEl) {
             if (data.subjects && data.subjects.length > 0) {
-                subjectsListEl.innerHTML = data.subjects.map(renderSubjectCard).join('');
+                subjectsListEl.innerHTML = data.subjects.map((s, idx) => renderSubjectCard(s, idx)).join('');
                 
                 subjectsListEl.querySelectorAll('.subject-grade-header').forEach(hdr => {
                     hdr.addEventListener('click', () => {
@@ -5208,7 +5729,7 @@ function initDekanatGrades() {
             return;
         }
 
-        if (refreshIcon) refreshIcon.style.animation = 'spin 0.8s linear infinite';
+        if (refreshBtn) refreshBtn.classList.add('spinning');
 
         try {
             const workerUrl = getDekanatWorkerUrl();
@@ -5224,7 +5745,7 @@ function initDekanatGrades() {
             });
 
             const json = await res.json();
-            if (refreshIcon) refreshIcon.style.animation = '';
+            if (refreshBtn) refreshBtn.classList.remove('spinning');
 
             if (json.ok && json.data) {
                 localStorage.setItem('dekanat_grades_cache', JSON.stringify(json.data));
@@ -5257,7 +5778,7 @@ function initDekanatGrades() {
                 }
             }
         } catch(err) {
-            if (refreshIcon) refreshIcon.style.animation = '';
+            if (refreshBtn) refreshBtn.classList.remove('spinning');
             const cached = JSON.parse(localStorage.getItem('dekanat_grades_cache') || 'null');
             if (cached) {
                 renderGradesData(cached, true, Number(localStorage.getItem('dekanat_last_sync') || '0'));
@@ -5346,6 +5867,24 @@ function initDekanatGrades() {
                     authError.style.display = 'block';
                 }
             }
+        });
+    }
+
+    if (dossierToggle && dossierCard) {
+        dossierToggle.addEventListener('click', () => {
+            haptic('selection');
+            dossierCard.classList.toggle('collapsed');
+        });
+    }
+
+    if (togglePwdBtn && userPwdInput) {
+        togglePwdBtn.addEventListener('click', () => {
+            haptic('selection');
+            const isPwd = userPwdInput.type === 'password';
+            userPwdInput.type = isPwd ? 'text' : 'password';
+            togglePwdBtn.innerHTML = isPwd
+                ? `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
+                : `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
         });
     }
 

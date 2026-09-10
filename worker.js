@@ -294,6 +294,79 @@ const GRADE_CATEGORIES = {
   "ЗалДз": { label: "Залік / диф. зал.", icon: "✅", color: "#059669" }
 };
 
+function extractStudentDossier(html, detectedGroup = "") {
+  const plainText = stripTags(html);
+  function matchField(regex) {
+    const m = plainText.match(regex);
+    return m ? m[1].replace(/^[":\s]+|[":\s]+$/g, "").trim() : "";
+  }
+
+  let faculty = matchField(/Факультет(?:\s+Факультет)?(?::|\s+)?([^\n\r|<]+?)(?=(?:Спеціальність|Ступінь|Освітній|Груп+а|Форма|Наказ|$))/i);
+  if (!faculty) faculty = matchField(/Факультет(?::|\s+)?([^\n\r|<]+)/i);
+  faculty = (faculty || "").replace(/^Факультет\s+/i, "").trim();
+  if (faculty && !faculty.toLowerCase().startsWith("факультет")) {
+    faculty = "Факультет " + faculty;
+  }
+
+  let specialty = matchField(/Спеціальність(?::|\s+)?([^\n\r|<]+?)(?=(?:Ступінь|Освітній|Груп+а|Форма|Наказ|$))/i);
+  if (!specialty) specialty = matchField(/Спеціальність(?::|\s+)?([^\n\r|<]+)/i);
+  if (specialty) specialty = specialty.replace(/^["«]|["»]$/g, '').trim();
+
+  let degree = matchField(/(?:Ступінь(?:\s*\/\s*Освітньо-професійний ступінь)?|Освітній ступінь|Освітньо-професійний ступінь)(?::|\s+)?([^\n\r|<]+?)(?=(?:Груп+а|Форма|Наказ|$))/i);
+  if (!degree) degree = matchField(/(?:Ступінь|Освітній ступінь)(?::|\s+)?([^\n\r|<]+)/i);
+
+  let group = matchField(/Груп+а(?::|\s+)?([^\n\r|<|]+?)(?=(?:Форма|Наказ|Термін|$))/i);
+  if (!group) group = matchField(/Груп+а(?::|\s+)?([^\n\r|<|]+)/i);
+  if (!group && detectedGroup) group = detectedGroup;
+
+  let studyForm = matchField(/Форма навчання(?::|\s+)?([^\n\r|<]+?)(?=(?:Форма оплати|Наказ|Термін|$))/i);
+  if (!studyForm) studyForm = matchField(/Форма навчання(?::|\s+)?([^\n\r|<]+)/i);
+
+  let paymentForm = matchField(/Форма оплати(?:\s+навчання)?(?::|\s+)?([^\n\r|<]+?)(?=(?:Наказ|Термін|Дата|$))/i);
+  if (!paymentForm) paymentForm = matchField(/Форма оплати(?:\s+навчання)?(?::|\s+)?([^\n\r|<]+)/i);
+
+  let enrollmentOrder = matchField(/Наказ на зарахування(?::|\s+)?([^\n\r|<]+?)(?=(?:Термін|Дата|$))/i);
+  if (!enrollmentOrder) enrollmentOrder = matchField(/Наказ на зарахування(?::|\s+)?([^\n\r|<]+)/i);
+
+  let studyTerm = matchField(/Термін навчання(?::|\s+)?([^\n\r|<]+?)(?=(?:Дата|$))/i);
+  if (!studyTerm) studyTerm = matchField(/Термін навчання(?::|\s+)?([^\n\r|<]+)/i);
+
+  let graduationDate = matchField(/Дата закінчення(?:\s+навчання)?(?::|\s+)?([^\n\r|<]+)/i);
+
+  // Fallback defaults from group prefix if any field is not explicitly present in journal HTML table
+  const grp = (group || detectedGroup || "").toUpperCase();
+  if (!faculty && (grp.startsWith("ФЕ") || grp.startsWith("FE"))) {
+    faculty = "Факультет електроніки та комп'ютерних технологій";
+  }
+  if (!specialty) {
+    if (grp.startsWith("ФЕП")) specialty = "Інженерія програмного забезпечення";
+    else if (grp.startsWith("ФЕІ")) specialty = "Інформаційні системи та технології";
+    else if (grp.startsWith("ФЕС")) specialty = "Комп'ютерні науки";
+    else if (grp.startsWith("ФЕК")) specialty = "Комп'ютерна інженерія";
+    else if (grp.startsWith("ФЕА")) specialty = "Автоматизація та комп'ютерно-інтегровані технології";
+    else if (grp.startsWith("ФЕМ")) specialty = "Мікро- та наносистемна техніка";
+    else if (grp.startsWith("ФЕТ")) specialty = "Телекомунікації та радіотехніка";
+  }
+  if (!degree) {
+    degree = grp.includes("М") && !grp.startsWith("ФЕМ") ? "магістр" : "бакалавр";
+  }
+  if (!studyForm) studyForm = "Денна";
+  if (!studyTerm) studyTerm = degree.toLowerCase().includes("магістр") ? "1.5 роки" : "4 роки";
+
+  return {
+    university: "Львівський національний університет імені Івана Франка",
+    faculty: faculty || "Львівський національний університет імені Івана Франка",
+    specialty: specialty || "",
+    degree: degree || "бакалавр",
+    group: group || detectedGroup || "",
+    studyForm: studyForm || "Денна",
+    paymentForm: paymentForm || "",
+    enrollmentOrder: enrollmentOrder || "",
+    studyTerm: studyTerm || "",
+    graduationDate: graduationDate || ""
+  };
+}
+
 function parseDekanatGrades(html) {
   const studentMatch = html.match(/Журнал успішності студента:\s*([^<]+)/i) || 
                        html.match(/<h3>([^<]+)<\/h3>/i) ||
@@ -304,8 +377,10 @@ function parseDekanatGrades(html) {
   const groupMatch = html.match(/Група:\s*<b>([^<]+)<\/b>/i) || html.match(/Група:\s*([^|<]+)/i);
   const group = groupMatch ? stripTags(groupMatch[1]).trim() : "";
 
+  const dossier = extractStudentDossier(html, group);
+
   const tableMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
-  if (!tableMatch) return { studentName, group, subjects: [], average: "0" };
+  if (!tableMatch) return { studentName, group: dossier.group || group, dossier, subjects: [], average: "0" };
 
   const tableHtml = tableMatch[1];
   const trMatches = [...tableHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
@@ -400,7 +475,13 @@ function parseDekanatGrades(html) {
   }
 
   const average = subjects.length ? (subjects.reduce((sum, s) => sum + s.total, 0) / subjects.length).toFixed(1) : "0";
-  return { studentName, group, subjects, average };
+  return {
+    studentName,
+    group: dossier.group || group,
+    dossier,
+    subjects,
+    average
+  };
 }
 
 async function fetchDekanatGrades(user_name, user_pwd) {
