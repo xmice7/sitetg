@@ -1040,11 +1040,18 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .card-qr-hint span { font-size: 8px; color: rgba(255, 255, 255, 0.7); line-height: 1.3; }
         .card-back-footer { font-size: 7px; color: rgba(255, 255, 255, 0.5); text-align: center; line-height: 1.3; }
         .student-card-hint { text-align: center; font-size: 11.5px; color: var(--text-muted); margin-bottom: 12px; font-weight: 500; }
-        .student-card-actions { display: flex; flex-direction: column; gap: 9px; }
-        .btn-apple-wallet { width: 100%; background: #000; color: #fff; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 16px; padding: 12px 18px; font-size: 14.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); transition: transform 0.2s var(--spring-easing), opacity 0.2s; font-family: var(--apple-font); }
-        .btn-apple-wallet:active { transform: scale(0.97); }
-        .btn-apple-wallet:hover { background: #111; }
-        .apple-wallet-badge-svg { width: 22px; height: 22px; flex-shrink: 0; }
+        .student-card-actions { display: flex; flex-direction: column; gap: 10px; }
+        .btn-apple-wallet { width: 100%; background: #000; color: #fff; border: 1.5px solid rgba(255, 255, 255, 0.28); border-radius: 16px; padding: 10px 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); transition: transform 0.2s var(--spring-easing), border-color 0.2s, background 0.2s; font-family: var(--apple-font); text-decoration: none; user-select: none; -webkit-user-select: none; }
+        .btn-apple-wallet:active { transform: scale(0.975); background: #111; border-color: rgba(255, 255, 255, 0.5); }
+        .btn-apple-wallet:hover { background: #0a0a0a; border-color: rgba(255, 255, 255, 0.38); }
+        .apple-wallet-badge-svg { width: 44px; height: 38px; flex-shrink: 0; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.3)); }
+        .apple-wallet-btn-text { display: flex; flex-direction: column; align-items: flex-start; text-align: left; line-height: 1.15; }
+        .apple-wallet-subtext { font-size: 13px; font-weight: 500; color: #ffffff; opacity: 0.92; letter-spacing: -0.1px; }
+        .apple-wallet-maintext { font-size: 19px; font-weight: 700; color: #ffffff; letter-spacing: -0.4px; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", sans-serif; }
+        .wallet-guide-box { padding: 10px 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); border-radius: 14px; font-size: 11px; color: var(--text-muted); line-height: 1.45; text-align: left; }
+        .wallet-guide-header { display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--text-main); margin-bottom: 4px; font-size: 11.5px; }
+        .wallet-guide-steps { display: flex; flex-direction: column; gap: 4px; }
+        .wallet-link { color: #60a5fa; text-decoration: underline; font-weight: 600; }
         .student-card-sub-actions { display: flex; gap: 8px; }
         .btn-card-action { flex: 1; padding: 10px 6px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 12px; color: var(--text-main); font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s var(--spring-easing); display: flex; align-items: center; justify-content: center; gap: 4px; font-family: inherit; }
         .btn-card-action:hover { border-color: var(--primary); background: var(--bg-card); }
@@ -1734,14 +1741,29 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             </div>
 
             <div class="student-card-actions">
-                <button type="button" id="btn-add-apple-wallet" class="btn-apple-wallet">
-                    <svg class="apple-wallet-badge-svg" viewBox="0 0 32 32" fill="none">
-                        <path d="M26 8H6a3 3 0 00-3 3v10a3 3 0 003 3h20a3 3 0 003-3V11a3 3 0 00-3-3z" fill="#fff" fill-opacity="0.15"/>
-                        <path d="M25 10H7a2 2 0 00-2 2v8a2 2 0 002 2h18a2 2 0 002-2v-8a2 2 0 00-2-2z" stroke="#fff" stroke-width="2"/>
-                        <path d="M21 16a2 2 0 104 0 2 2 0 00-4 0z" fill="#fff"/>
+                <button type="button" id="btn-add-apple-wallet" class="btn-apple-wallet" aria-label="Додати в Гаманець Apple">
+                    <svg class="apple-wallet-badge-svg" viewBox="0 0 52 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="6" y="2" width="40" height="24" rx="5" fill="#2997ff"/>
+                        <rect x="6" y="6" width="40" height="20" rx="5" fill="#ffb340"/>
+                        <rect x="6" y="10" width="40" height="16" rx="5" fill="#30d158"/>
+                        <path d="M 6 18 C 6 15 8 13.5 11 13.5 L 18 13.5 C 18 18 21.5 21.5 26 21.5 C 30.5 21.5 34 18 34 13.5 L 41 13.5 C 44 13.5 46 15 46 18 L 46 32 C 46 35 44 37 41 37 L 11 37 C 8 37 6 35 6 32 Z" fill="#ff453a"/>
+                        <path d="M 4 20 C 4 16.5 6.5 14.5 10 14.5 L 18 14.5 C 18 19 21.5 22.5 26 22.5 C 30.5 22.5 34 19 34 14.5 L 42 14.5 C 45.5 14.5 48 16.5 48 20 L 48 37 C 48 40.5 45.5 43 42 43 L 10 43 C 6.5 43 4 40.5 4 37 Z" fill="#f5f5f7" stroke="rgba(0,0,0,0.1)" stroke-width="0.8"/>
                     </svg>
-                    <span>Додати в Apple Wallet</span>
+                    <div class="apple-wallet-btn-text">
+                        <span class="apple-wallet-subtext">Додати в</span>
+                        <span class="apple-wallet-maintext">Гаманець Apple</span>
+                    </div>
                 </button>
+                <div class="wallet-guide-box">
+                    <div class="wallet-guide-header">
+                        <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                        <span>Як активувати квиток на iPhone:</span>
+                    </div>
+                    <div class="wallet-guide-steps">
+                        <div>1. Натисніть кнопку вище — збережеться підготовлений <strong>.pkpass</strong> (штрих-код та іконки).</div>
+                        <div>2. Відкрийте його через безкоштовний <a href="https://apps.apple.com/app/pass2u-wallet-cards-coupons/id1142473931" target="_blank" class="wallet-link">Pass2U Wallet ↗</a> в App Store — квиток автоматично додасться у системний <strong>Гаманець Apple</strong>.</div>
+                    </div>
+                </div>
                 <div class="student-card-sub-actions">
                     <button type="button" id="btn-flip-card" class="btn-card-action">
                         <span>🔄 Перевернути</span>
@@ -4872,7 +4894,32 @@ function updateStudentCardUI() {
     }
 }
 
-function downloadAppleWalletPass() {
+function generatePassPngBlob(w, h, renderFn) {
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (ctx) renderFn(ctx, w, h);
+    const dataUrl = canvas.toDataURL('image/png');
+    const binStr = atob(dataUrl.split(',')[1]);
+    const bytes = new Uint8Array(binStr.length);
+    for (let i = 0; i < binStr.length; i++) {
+        bytes[i] = binStr.charCodeAt(i);
+    }
+    return bytes;
+}
+
+async function sha1Hex(buffer) {
+    try {
+        const hashBuf = await crypto.subtle.digest('SHA-1', buffer);
+        const hashArr = Array.from(new Uint8Array(hashBuf));
+        return hashArr.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch(e) {
+        return '0000000000000000000000000000000000000000';
+    }
+}
+
+async function downloadAppleWalletPass() {
     const data = getStudentCardData();
     haptic('success');
 
@@ -4885,7 +4932,7 @@ function downloadAppleWalletPass() {
         description: 'Цифровий студентський квиток ЛНУ',
         logoText: 'ЛНУ ім. Івана Франка',
         foregroundColor: 'rgb(255, 255, 255)',
-        backgroundColor: 'rgb(11, 30, 54)',
+        backgroundColor: 'rgb(8, 22, 40)',
         labelColor: 'rgb(245, 158, 11)',
         generic: {
             primaryFields: [
@@ -4918,22 +4965,72 @@ function downloadAppleWalletPass() {
 
     try {
         const passString = JSON.stringify(passJson, null, 2);
-        const zipBlob = buildClientZip([
-            { name: 'pass.json', data: passString }
-        ], 'application/vnd.apple.pkpass');
 
-        const url = URL.createObjectURL(zipBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `LNU-Student-Pass-${data.group}.pkpass`;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+        const iconBytes = generatePassPngBlob(58, 58, (ctx, w, h) => {
+            ctx.fillStyle = '#0a1f38';
+            ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = '#f59e0b';
+            ctx.font = '32px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🎓', w / 2, h / 2);
+        });
 
-        alert('🎉 Студентський квиток сформовано!\nФайл .pkpass завантажено для додавання в Apple Wallet.');
+        const logoBytes = generatePassPngBlob(320, 100, (ctx, w, h) => {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 24px -apple-system, sans-serif';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('ЛНУ ім. І. Франка', 12, h / 2);
+        });
+
+        const filesToHash = [
+            { name: 'pass.json', data: passString },
+            { name: 'icon.png', data: iconBytes },
+            { name: 'icon@2x.png', data: iconBytes },
+            { name: 'logo.png', data: logoBytes },
+            { name: 'logo@2x.png', data: logoBytes }
+        ];
+
+        const manifest = {};
+        for (const file of filesToHash) {
+            const bytes = typeof file.data === 'string' ? new TextEncoder().encode(file.data) : file.data;
+            manifest[file.name] = await sha1Hex(bytes);
+        }
+
+        const zipFiles = [
+            ...filesToHash,
+            { name: 'manifest.json', data: JSON.stringify(manifest, null, 2) }
+        ];
+
+        const zipBlob = buildClientZip(zipFiles, 'application/vnd.apple.pkpass');
+        const fileName = `LNU-Student-Pass-${data.group}.pkpass`;
+        const pkpassFile = new File([zipBlob], fileName, { type: 'application/vnd.apple.pkpass' });
+
+        let shared = false;
+        if (navigator.canShare && navigator.canShare({ files: [pkpassFile] })) {
+            try {
+                await navigator.share({
+                    title: 'Цифровий студак ЛНУ',
+                    text: 'Студентський квиток ЛНУ ім. Івана Франка для Apple Wallet',
+                    files: [pkpassFile]
+                });
+                shared = true;
+            } catch(e) {
+                if (e && e.name !== 'AbortError') console.warn('Share error:', e);
+            }
+        }
+
+        if (!shared) {
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 600);
+        }
     } catch(e) {
-        console.error('Wallet export error:', e);
-        saveStudentCardAsImage();
+        console.error('Wallet pass generation error:', e);
     }
 }
 
