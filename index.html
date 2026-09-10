@@ -252,6 +252,21 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             } catch(e) { console.error('fbUnlinkUser error:', e); return false; }
         };
 
+        window.fbSaveDekanatState = async (userId, data) => {
+            try {
+                const userRef = doc(db, 'users', String(userId));
+                await setDoc(userRef, { dekanat: data }, { merge: true });
+                return true;
+            } catch(e) { console.error('fbSaveDekanatState error:', e); return false; }
+        };
+
+        window.fbGetDekanatState = async (userId) => {
+            try {
+                const snap = await getDoc(doc(db, 'users', String(userId)));
+                return snap.exists() && snap.data().dekanat ? snap.data().dekanat : null;
+            } catch(e) { console.error('fbGetDekanatState error:', e); return null; }
+        };
+
         window.firebaseReady = true;
         window.dispatchEvent(new Event("firebase-ready"));
 </script>
@@ -988,8 +1003,485 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             width:22px; height:22px; border-radius:50%;
             background:#fff; border:3px solid rgba(0,0,0,0.25);
             box-shadow:0 2px 6px rgba(0,0,0,0.3); cursor:pointer;
+        /* --- GRADES / DEKANAT JOURNAL MODAL (APPLE 21ST CENTURY) --- */
+        .grades-modal-content {
+            border-radius: 24px;
+            background: var(--modal-bg);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.35);
+            font-family: var(--apple-font);
         }
 
+        .grades-auth-intro {
+            text-align: center;
+            padding: 10px 10px 20px;
+        }
+        .grades-shield-icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 12px;
+            background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(59,130,246,0.2));
+            border: 1px solid rgba(16,185,129,0.35);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .grades-shield-icon svg {
+            width: 28px;
+            height: 28px;
+            fill: none;
+            stroke: #10b981;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .grades-auth-intro h3 {
+            margin: 0 0 6px;
+            font-size: 19px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .grades-auth-intro p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.45;
+        }
+
+        .grades-auth-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 18px;
+            box-shadow: var(--shadow);
+            margin-bottom: 14px;
+        }
+        .grades-input-group {
+            margin-bottom: 14px;
+        }
+        .grades-input-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .grades-input {
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-body);
+            color: var(--text-main);
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+        }
+        .grades-input:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16,185,129,0.18);
+        }
+        .grades-input-hint {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 5px;
+            line-height: 1.35;
+        }
+        .grades-error-banner {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 12.5px;
+            font-weight: 600;
+            margin-bottom: 14px;
+            line-height: 1.35;
+        }
+        .btn-grades-primary {
+            width: 100%;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border: none;
+            color: #fff;
+            padding: 14px;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 14px rgba(16,185,129,0.35);
+            transition: transform 0.18s var(--spring-bounce), box-shadow 0.18s ease;
+        }
+        .btn-grades-primary:active {
+            transform: scale(0.97);
+        }
+        .grades-spinner {
+            width: 18px;
+            height: 18px;
+            border: 2.5px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        .grades-spinner-large {
+            width: 38px;
+            height: 38px;
+            border: 3.5px solid var(--border);
+            border-top-color: #10b981;
+            border-radius: 50%;
+            margin: 0 auto;
+            animation: spin 0.7s linear infinite;
+        }
+        .grades-privacy-note {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.4;
+            padding: 6px 4px;
+        }
+        .grades-privacy-note svg {
+            flex-shrink: 0;
+            margin-top: 2px;
+            stroke: #10b981;
+        }
+
+        /* Dashboard view */
+        .grades-summary-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 16px;
+            margin-bottom: 14px;
+            box-shadow: var(--shadow);
+        }
+        .grades-summary-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .grades-student-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .grades-avatar-badge {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(59,130,246,0.2));
+            border: 1px solid rgba(16,185,129,0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+        .grades-student-name {
+            font-size: 15.5px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .grades-student-group {
+            font-size: 12px;
+            font-weight: 600;
+            color: #10b981;
+        }
+        .grades-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .grades-refresh-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 7px 11px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .grades-refresh-btn:active {
+            transform: scale(0.95);
+        }
+        .grades-refresh-btn svg {
+            width: 13px;
+            height: 13px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .grades-more-btn {
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .grades-more-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+        }
+        .grades-stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .grades-stat-box {
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px;
+            text-align: center;
+        }
+        .grades-stat-val {
+            display: block;
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+        }
+        .grades-stat-label {
+            display: block;
+            font-size: 10.5px;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-top: 2px;
+        }
+        .grades-offline-notice {
+            margin-top: 10px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(245,158,11,0.12);
+            border: 1px solid rgba(245,158,11,0.3);
+            color: #f59e0b;
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .grades-tools-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+        .grades-tool-chip {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .grades-tool-chip:active {
+            transform: scale(0.95);
+        }
+        .grades-notif-chip {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .grades-notif-chip strong {
+            color: #10b981;
+        }
+
+        /* Subject cards */
+        .grades-subjects-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .subject-grade-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .subject-grade-card:hover {
+            border-color: rgba(16,185,129,0.4);
+        }
+        .subject-grade-header {
+            padding: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            user-select: none;
+        }
+        .subject-grade-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .subject-grade-title {
+            font-size: 14.5px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 3px;
+            line-height: 1.3;
+        }
+        .subject-grade-teacher {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .subject-grade-score-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .subject-score-badge {
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 13.5px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+        }
+        .subject-score-badge.score-a { background: rgba(16,185,129,0.18); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
+        .subject-score-badge.score-bc { background: rgba(59,130,246,0.18); color: #3b82f6; border: 1px solid rgba(59,130,246,0.3); }
+        .subject-score-badge.score-de { background: rgba(245,158,11,0.18); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+        .subject-score-badge.score-f { background: rgba(239,68,68,0.18); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+
+        .subject-chevron {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-muted);
+            fill: none;
+            stroke-width: 2;
+            transition: transform 0.25s var(--spring-easing);
+        }
+        .subject-grade-card.expanded .subject-chevron {
+            transform: rotate(180deg);
+        }
+
+        .subject-progress-line {
+            height: 4px;
+            background: rgba(0,0,0,0.06);
+            width: 100%;
+            position: relative;
+        }
+        [data-theme="dark"] .subject-progress-line,
+        [data-theme="black"] .subject-progress-line,
+        [data-theme="cyber"] .subject-progress-line,
+        [data-theme="aurora"] .subject-progress-line {
+            background: rgba(255,255,255,0.08);
+        }
+        .subject-progress-fill {
+            height: 100%;
+            border-radius: 0 2px 2px 0;
+            transition: width 0.5s ease;
+        }
+
+        .subject-grade-details {
+            padding: 12px 14px 16px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-body);
+            display: none;
+        }
+        .subject-grade-card.expanded .subject-grade-details {
+            display: block;
+        }
+        .grade-events-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .grade-event-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 12.5px;
+        }
+        .grade-event-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 0;
+        }
+        .grade-cat-chip {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 7px;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+        .grade-event-date {
+            font-size: 11.5px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .grade-event-note {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-left: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .grade-event-val {
+            font-weight: 800;
+            font-size: 13.5px;
+            color: var(--text-main);
+            flex-shrink: 0;
+            margin-left: 8px;
+        }
+
+        /* Legend Sheet */
+        .legend-item-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+        .legend-item-row:last-child {
+            border-bottom: none;
+        }
+        .legend-badge {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
     </style>
 </head>
 <body>
@@ -1146,6 +1638,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             </div>
 
             <div class="useful-grid">
+                <div class="useful-card" id="open-grades" style="border-color:rgba(16,185,129,0.35);background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(59,130,246,0.08));">
+                    <div class="useful-icon" style="background:linear-gradient(135deg,#10b981,#059669);color:#fff;">
+                        <svg viewBox="0 0 24 24" style="stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    </div>
+                    <div><h3>Мої бали</h3><p id="grades-card-sub">Журнал успішності Деканату ЛНУ</p></div>
+                </div>
                 <a href="https://dekanat.lnu.edu.ua" target="_blank" class="useful-card">
                     <div class="useful-icon"><svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 18h6"></path><path d="M12 10v.01"></path></svg></div>
                     <div><h3>Мій «Деканат»</h3><p>Оцінки, документи та важливі оповіщення</p></div>
@@ -1566,6 +2064,131 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="grades-modal" style="z-index:9100;">
+    <div class="modal-content grades-modal-content" style="max-width:540px;max-height:88vh;display:flex;flex-direction:column;">
+        <div class="modal-header">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:24px;">📊</span>
+                <div>
+                    <h2 style="margin:0;font-size:17px;font-weight:700;line-height:1.2;">Мої бали</h2>
+                    <span style="font-size:11px;color:var(--text-muted);font-weight:500;">Електронний журнал Деканату ЛНУ</span>
+                </div>
+            </div>
+            <button class="close-btn" id="close-grades">×</button>
+        </div>
+        <div class="modal-body grades-modal-body" style="overflow-y:auto;padding:16px 18px 24px;flex:1;">
+            <!-- VIEW 1: AUTHENTICATION FORM -->
+            <div id="grades-auth-view" style="display:none;">
+                <div class="grades-auth-intro">
+                    <div class="grades-shield-icon">
+                        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <h3>Вхід до журналу успішності</h3>
+                    <p>Введіть дані від свого кабінету в Деканаті ЛНУ. Система підключиться та завантажить ваші актуальні бали за семестр.</p>
+                </div>
+
+                <div class="grades-auth-card">
+                    <div class="grades-input-group">
+                        <label for="grades-user-name">Прізвище студента</label>
+                        <input type="text" id="grades-user-name" class="grades-input" placeholder="Наприклад: Шевченко" autocomplete="family-name" autocapitalize="words" />
+                    </div>
+                    <div class="grades-input-group">
+                        <label for="grades-user-pwd">Пароль / № залікової книжки</label>
+                        <input type="password" id="grades-user-pwd" class="grades-input" placeholder="Введіть пароль" autocomplete="current-password" />
+                        <span class="grades-input-hint">💡 При першому вході замість пароля вказуйте номер вашої залікової книжки.</span>
+                    </div>
+
+                    <div id="grades-auth-error" class="grades-error-banner" style="display:none;"></div>
+
+                    <button type="button" id="btn-grades-login" class="btn-grades-primary">
+                        <span id="grades-login-btn-text">Увійти та завантажити бали</span>
+                        <div id="grades-login-spinner" class="grades-spinner" style="display:none;"></div>
+                    </button>
+                </div>
+
+                <div class="grades-privacy-note">
+                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span><strong>Ваші дані надійно захищені:</strong> логін та пароль шифруються і передаються виключно на офіційний сервер <code>dekanat.lnu.edu.ua</code>. Жодні дані не передаються стороннім особам.</span>
+                </div>
+            </div>
+
+            <!-- VIEW 2: GRADES DASHBOARD -->
+            <div id="grades-dashboard-view" style="display:none;">
+                <div class="grades-summary-card">
+                    <div class="grades-summary-top">
+                        <div class="grades-student-meta">
+                            <div class="grades-avatar-badge" id="grades-student-avatar">🎓</div>
+                            <div>
+                                <div class="grades-student-name" id="grades-student-name">Студент</div>
+                                <div class="grades-student-group" id="grades-student-group">Група</div>
+                            </div>
+                        </div>
+                        <div class="grades-header-actions">
+                            <button type="button" class="grades-refresh-btn" id="btn-grades-refresh" title="Оновити бали">
+                                <svg id="grades-refresh-icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                <span id="grades-refresh-label">Оновити</span>
+                            </button>
+                            <button type="button" class="grades-more-btn" id="btn-grades-logout" title="Вийти / Змінити пароль">
+                                <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grades-stats-row">
+                        <div class="grades-stat-box">
+                            <span class="grades-stat-val" id="grades-stat-gpa">0.0</span>
+                            <span class="grades-stat-label">Середній бал</span>
+                        </div>
+                        <div class="grades-stat-box">
+                            <span class="grades-stat-val" id="grades-stat-count">0</span>
+                            <span class="grades-stat-label">Предметів</span>
+                        </div>
+                        <div class="grades-stat-box">
+                            <span class="grades-stat-val" id="grades-stat-sync">Щойно</span>
+                            <span class="grades-stat-label">Оновлено</span>
+                        </div>
+                    </div>
+
+                    <div id="grades-offline-banner" class="grades-offline-notice" style="display:none;">
+                        🛡️ Відображається збережена копія журналу (Деканат тимчасово не відповідає).
+                    </div>
+                </div>
+
+                <div class="grades-tools-row">
+                    <button type="button" class="grades-tool-chip" id="btn-grades-legend">
+                        <span>ℹ️ Умовні позначення</span>
+                    </button>
+                    <div class="grades-notif-chip" id="grades-notif-status">
+                        <span>🔔 Сповіщення в Telegram: <strong>Увімкнено</strong></span>
+                    </div>
+                </div>
+
+                <div class="grades-subjects-wrap" id="grades-subjects-list"></div>
+            </div>
+
+            <!-- VIEW 3: LOADING SKELETON -->
+            <div id="grades-loading-view" style="display:none;text-align:center;padding:40px 20px;">
+                <div class="grades-spinner-large"></div>
+                <div style="margin-top:14px;font-weight:600;font-size:14px;color:var(--text-main);">Завантаження журналу з Деканату...</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Підключення до dekanat.lnu.edu.ua</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="grades-legend-modal" style="z-index:9200;">
+    <div class="modal-content" style="max-width:440px;">
+        <div class="modal-header">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:20px;">ℹ️</span>
+                <h2>Умовні позначення балів</h2>
+            </div>
+            <button class="close-btn" id="close-grades-legend">×</button>
+        </div>
+        <div class="modal-body" style="padding:10px 18px 20px;max-height:70vh;overflow-y:auto;" id="grades-legend-content"></div>
     </div>
 </div>
 
@@ -4349,7 +4972,456 @@ function initWelcomeModal() {
     else setTimeout(() => searchInput.focus(), 350);
 }
 
-document.addEventListener('DOMContentLoaded', () => { initAdminPanel(); loadAdminData(); });
+/* =========================================================================
+   DEKANAT GRADES ENGINE & CLIENT
+   ========================================================================= */
+
+const DEKANAT_CATEGORIES_MAP = {
+    "Лек": { label: "Контроль на лекції", icon: "📖", color: "#3b82f6", bg: "rgba(59,130,246,0.15)" },
+    "ПрСем": { label: "Практич./Семін. зан.", icon: "✍️", color: "#8b5cf6", bg: "rgba(139,92,246,0.15)" },
+    "Лаб": { label: "Лабораторні роб.", icon: "🔬", color: "#10b981", bg: "rgba(16,185,129,0.15)" },
+    "ІнЗан": { label: "Інд. заняття", icon: "👤", color: "#06b6d4", bg: "rgba(6,182,212,0.15)" },
+    "Сам": { label: "Контроль самостійної", icon: "📝", color: "#f59e0b", bg: "rgba(245,158,11,0.15)" },
+    "ІндЗд": { label: "Інд. завд: КП, КР, РГР", icon: "📑", color: "#ec4899", bg: "rgba(236,72,153,0.15)" },
+    "Доп": { label: "Доповідь", icon: "🎤", color: "#6366f1", bg: "rgba(99,102,241,0.15)" },
+    "ПрЗд": { label: "Перездача (відпрац.)", icon: "🔄", color: "#f97316", bg: "rgba(249,115,22,0.15)" },
+    "МК": { label: "Модульний контроль", icon: "📊", color: "#ef4444", bg: "rgba(239,68,68,0.15)" },
+    "КтР": { label: "Контрольна робота", icon: "📋", color: "#e11d48", bg: "rgba(225,29,72,0.15)" },
+    "Тест": { label: "Тест", icon: "⏱️", color: "#14b8a6", bg: "rgba(20,184,166,0.15)" },
+    "Кол": { label: "Колоквіум", icon: "🗣️", color: "#a855f7", bg: "rgba(168,85,247,0.15)" },
+    "Інше": { label: "Інше", icon: "📌", color: "#64748b", bg: "rgba(100,116,139,0.15)" },
+    "Екз": { label: "Екзамен", icon: "🎓", color: "#dc2626", bg: "rgba(220,38,38,0.15)" },
+    "ЗалДз": { label: "Залік / диф. зал.", icon: "✅", color: "#059669", bg: "rgba(5,150,105,0.15)" }
+};
+
+function getDekanatWorkerUrl() {
+    return localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
+}
+
+function getTelegramUserId() {
+    try {
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+            return String(window.Telegram.WebApp.initDataUnsafe.user.id);
+        }
+        const cached = JSON.parse(localStorage.getItem('tg_user_cache') || 'null');
+        if (cached && cached.id) return String(cached.id);
+    } catch(e) {}
+    return null;
+}
+
+function formatRelativeSyncTime(ts) {
+    if (!ts) return "Щойно";
+    const diff = Math.floor((Date.now() - ts) / 1000);
+    if (diff < 60) return "Щойно";
+    if (diff < 3600) return `${Math.floor(diff / 60)} хв тому`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} год тому`;
+    const d = new Date(ts);
+    return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function renderSubjectCard(s) {
+    const total = Number(s.total) || 0;
+    const scoreClass = total >= 90 ? 'score-a' : total >= 71 ? 'score-bc' : total >= 51 ? 'score-de' : 'score-f';
+    const progressColor = total >= 90 ? '#10b981' : total >= 71 ? '#3b82f6' : total >= 51 ? '#f59e0b' : '#ef4444';
+    const progressWidth = Math.min(Math.max(total, 0), 100);
+
+    const gradesHtml = (s.grades && s.grades.length > 0)
+        ? s.grades.map(g => {
+            const cat = DEKANAT_CATEGORIES_MAP[g.category] || { label: g.category, color: '#64748b', bg: 'rgba(100,116,139,0.15)', icon: '📌' };
+            const noteText = g.note && g.note !== g.categoryLabel ? `<span class="grade-event-note" title="${escapeHtml(g.note)}">(${escapeHtml(g.note)})</span>` : '';
+            return `
+                <div class="grade-event-row">
+                    <div class="grade-event-left">
+                        <span class="grade-cat-chip" style="background:${cat.bg};color:${cat.color};">${cat.icon} ${escapeHtml(g.category)}</span>
+                        ${g.date ? `<span class="grade-event-date">${escapeHtml(g.date)}</span>` : ''}
+                        ${noteText}
+                    </div>
+                    <span class="grade-event-val">${typeof g.value === 'number' && g.value > 0 ? '+' : ''}${escapeHtml(String(g.value))} б.</span>
+                </div>
+            `;
+        }).join('')
+        : '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px;">Балів за поточний контроль ще не виставлено</div>';
+
+    return `
+        <div class="subject-grade-card" data-subject="${escapeHtml(s.subject)}">
+            <div class="subject-grade-header">
+                <div class="subject-grade-info">
+                    <div class="subject-grade-title">${escapeHtml(s.subject)}</div>
+                    ${s.teacher ? `<div class="subject-grade-teacher">👨‍🏫 ${escapeHtml(s.teacher)}</div>` : ''}
+                </div>
+                <div class="subject-grade-score-wrap">
+                    <span class="subject-score-badge ${scoreClass}">${total} / 100 ${s.ects ? `[${escapeHtml(s.ects)}]` : ''}</span>
+                    <svg class="subject-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+            </div>
+            <div class="subject-progress-line">
+                <div class="subject-progress-fill" style="width:${progressWidth}%;background:${progressColor};"></div>
+            </div>
+            <div class="subject-grade-details">
+                <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Оцінки за заняття:</div>
+                <div class="grade-events-timeline">
+                    ${gradesHtml}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function initGradesLegend() {
+    const container = document.getElementById('grades-legend-content');
+    if (!container) return;
+    container.innerHTML = Object.entries(DEKANAT_CATEGORIES_MAP).map(([code, meta]) => `
+        <div class="legend-item-row">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span class="legend-badge" style="background:${meta.bg};color:${meta.color};">${meta.icon} ${code}</span>
+                <span style="font-weight:600;color:var(--text-main);">${meta.label}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function initDekanatGrades() {
+    const openCard = document.getElementById('open-grades');
+    const modal = document.getElementById('grades-modal');
+    const closeBtn = document.getElementById('close-grades');
+    const legendModal = document.getElementById('grades-legend-modal');
+    const legendOpenBtn = document.getElementById('btn-grades-legend');
+    const legendCloseBtn = document.getElementById('close-grades-legend');
+
+    const authView = document.getElementById('grades-auth-view');
+    const dashboardView = document.getElementById('grades-dashboard-view');
+    const loadingView = document.getElementById('grades-loading-view');
+
+    const userNameInput = document.getElementById('grades-user-name');
+    const userPwdInput = document.getElementById('grades-user-pwd');
+    const loginBtn = document.getElementById('btn-grades-login');
+    const loginBtnText = document.getElementById('grades-login-btn-text');
+    const loginSpinner = document.getElementById('grades-login-spinner');
+    const authError = document.getElementById('grades-auth-error');
+
+    const studentNameEl = document.getElementById('grades-student-name');
+    const studentGroupEl = document.getElementById('grades-student-group');
+    const statGpaEl = document.getElementById('grades-stat-gpa');
+    const statCountEl = document.getElementById('grades-stat-count');
+    const statSyncEl = document.getElementById('grades-stat-sync');
+    const offlineBanner = document.getElementById('grades-offline-banner');
+    const subjectsListEl = document.getElementById('grades-subjects-list');
+    const refreshBtn = document.getElementById('btn-grades-refresh');
+    const refreshIcon = document.getElementById('grades-refresh-icon');
+    const logoutBtn = document.getElementById('btn-grades-logout');
+    const cardSubEl = document.getElementById('grades-card-sub');
+
+    if (!openCard || !modal) return;
+
+    initGradesLegend();
+
+    function updateCardPreview() {
+        try {
+            const cached = JSON.parse(localStorage.getItem('dekanat_grades_cache') || 'null');
+            if (cached && cached.subjects && cached.subjects.length > 0) {
+                if (cardSubEl) {
+                    cardSubEl.textContent = `Сер. бал: ${cached.average || '—'} • ${cached.subjects.length} предм.`;
+                }
+            } else {
+                if (cardSubEl) cardSubEl.textContent = 'Журнал успішності Деканату ЛНУ';
+            }
+        } catch(e) {}
+    }
+    updateCardPreview();
+
+    function showView(view) {
+        if (authView) authView.style.display = view === 'auth' ? 'block' : 'none';
+        if (dashboardView) dashboardView.style.display = view === 'dashboard' ? 'block' : 'none';
+        if (loadingView) loadingView.style.display = view === 'loading' ? 'block' : 'none';
+    }
+
+    function renderGradesData(data, isOffline = false, lastSync = Date.now()) {
+        if (!data) return;
+
+        if (studentNameEl) studentNameEl.textContent = data.studentName || 'Студент';
+        if (studentGroupEl) studentGroupEl.textContent = data.group || (state && state.groupName) || 'ЛНУ';
+        if (statGpaEl) statGpaEl.textContent = data.average || '0.0';
+        if (statCountEl) statCountEl.textContent = String((data.subjects && data.subjects.length) || 0);
+        if (statSyncEl) statSyncEl.textContent = formatRelativeSyncTime(lastSync);
+        if (offlineBanner) offlineBanner.style.display = isOffline ? 'block' : 'none';
+
+        if (subjectsListEl) {
+            if (data.subjects && data.subjects.length > 0) {
+                subjectsListEl.innerHTML = data.subjects.map(renderSubjectCard).join('');
+                
+                subjectsListEl.querySelectorAll('.subject-grade-header').forEach(hdr => {
+                    hdr.addEventListener('click', () => {
+                        haptic('selection');
+                        const card = hdr.closest('.subject-grade-card');
+                        if (card) card.classList.toggle('expanded');
+                    });
+                });
+            } else {
+                subjectsListEl.innerHTML = '<div style="text-align:center;padding:30px 15px;color:var(--text-muted);font-size:13px;">У журналі Деканату поки що немає предметів за обраний період.</div>';
+            }
+        }
+
+        updateCardPreview();
+        showView('dashboard');
+    }
+
+    async function loadDashboard() {
+        const storedName = localStorage.getItem('dekanat_user_name');
+        const storedPwd = localStorage.getItem('dekanat_user_pwd');
+
+        if (!storedName || !storedPwd) {
+            try {
+                const tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) || null;
+                if (tgUser && tgUser.last_name && userNameInput && !userNameInput.value) {
+                    userNameInput.value = tgUser.last_name;
+                }
+            } catch(e) {}
+            showView('auth');
+            return;
+        }
+
+        let cached = null;
+        let lastSync = 0;
+        try {
+            cached = JSON.parse(localStorage.getItem('dekanat_grades_cache') || 'null');
+            lastSync = Number(localStorage.getItem('dekanat_last_sync') || '0');
+        } catch(e) {}
+
+        if (cached && cached.subjects) {
+            renderGradesData(cached, false, lastSync);
+            if (Date.now() - lastSync > 15 * 60 * 1000) {
+                refreshGrades(false);
+            }
+        } else {
+            showView('loading');
+            refreshGrades(false);
+        }
+    }
+
+    async function refreshGrades(forceRefresh = true) {
+        const storedName = localStorage.getItem('dekanat_user_name');
+        const storedPwd = localStorage.getItem('dekanat_user_pwd');
+        const userId = getTelegramUserId();
+
+        if (!storedName || !storedPwd) {
+            showView('auth');
+            return;
+        }
+
+        if (refreshIcon) refreshIcon.style.animation = 'spin 0.8s linear infinite';
+
+        try {
+            const workerUrl = getDekanatWorkerUrl();
+            const res = await fetch(`${workerUrl}/dekanat/grades`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_name: storedName,
+                    user_pwd: storedPwd,
+                    userId,
+                    forceRefresh
+                })
+            });
+
+            const json = await res.json();
+            if (refreshIcon) refreshIcon.style.animation = '';
+
+            if (json.ok && json.data) {
+                localStorage.setItem('dekanat_grades_cache', JSON.stringify(json.data));
+                localStorage.setItem('dekanat_last_sync', String(json.lastSync || Date.now()));
+
+                if (window.fbSaveDekanatState && userId) {
+                    window.fbSaveDekanatState(userId, {
+                        userName: storedName,
+                        lastSync: json.lastSync || Date.now(),
+                        data: json.data
+                    }).catch(() => {});
+                }
+
+                renderGradesData(json.data, !!json.offline, json.lastSync || Date.now());
+                if (forceRefresh) haptic('success');
+            } else if (json.error === 'AUTH_INVALID_CREDENTIALS') {
+                haptic('error');
+                if (authError) {
+                    authError.textContent = '⚠️ Пароль було змінено або вказано невірно в Деканаті. Будь ласка, введіть новий пароль.';
+                    authError.style.display = 'block';
+                }
+                showView('auth');
+            } else {
+                const cached = JSON.parse(localStorage.getItem('dekanat_grades_cache') || 'null');
+                if (cached) {
+                    renderGradesData(cached, true, Number(localStorage.getItem('dekanat_last_sync') || '0'));
+                } else {
+                    alert(json.error || 'Не вдалося завантажити журнал Деканату. Спробуйте пізніше.');
+                    showView('auth');
+                }
+            }
+        } catch(err) {
+            if (refreshIcon) refreshIcon.style.animation = '';
+            const cached = JSON.parse(localStorage.getItem('dekanat_grades_cache') || 'null');
+            if (cached) {
+                renderGradesData(cached, true, Number(localStorage.getItem('dekanat_last_sync') || '0'));
+            } else {
+                showView('auth');
+            }
+        }
+    }
+
+    if (loginBtn) {
+        loginBtn.addEventListener('click', async () => {
+            const userName = (userNameInput && userNameInput.value.trim()) || '';
+            const userPwd = (userPwdInput && userPwdInput.value.trim()) || '';
+
+            if (!userName) {
+                if (authError) {
+                    authError.textContent = 'Будь ласка, вкажіть ваше прізвище.';
+                    authError.style.display = 'block';
+                }
+                userNameInput && userNameInput.focus();
+                return;
+            }
+            if (!userPwd) {
+                if (authError) {
+                    authError.textContent = 'Будь ласка, введіть пароль (або № залікової книжки).';
+                    authError.style.display = 'block';
+                }
+                userPwdInput && userPwdInput.focus();
+                return;
+            }
+
+            if (authError) authError.style.display = 'none';
+            loginBtn.disabled = true;
+            if (loginBtnText) loginBtnText.textContent = 'Перевірка входу...';
+            if (loginSpinner) loginSpinner.style.display = 'block';
+            haptic('selection');
+
+            const userId = getTelegramUserId();
+
+            try {
+                const workerUrl = getDekanatWorkerUrl();
+                const res = await fetch(`${workerUrl}/dekanat/login-check`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_name: userName,
+                        user_pwd: userPwd,
+                        userId
+                    })
+                });
+
+                const json = await res.json();
+                loginBtn.disabled = false;
+                if (loginBtnText) loginBtnText.textContent = 'Увійти та завантажити бали';
+                if (loginSpinner) loginSpinner.style.display = 'none';
+
+                if (json.ok && json.data) {
+                    haptic('success');
+                    localStorage.setItem('dekanat_user_name', userName);
+                    localStorage.setItem('dekanat_user_pwd', userPwd);
+                    localStorage.setItem('dekanat_grades_cache', JSON.stringify(json.data));
+                    localStorage.setItem('dekanat_last_sync', String(json.lastSync || Date.now()));
+
+                    if (window.fbSaveDekanatState && userId) {
+                        window.fbSaveDekanatState(userId, {
+                            userName,
+                            lastSync: json.lastSync || Date.now(),
+                            data: json.data
+                        }).catch(() => {});
+                    }
+
+                    renderGradesData(json.data, false, json.lastSync || Date.now());
+                } else {
+                    haptic('error');
+                    if (authError) {
+                        authError.textContent = json.error || 'Ви невірно вказали прізвище або пароль.';
+                        authError.style.display = 'block';
+                    }
+                }
+            } catch(e) {
+                loginBtn.disabled = false;
+                if (loginBtnText) loginBtnText.textContent = 'Увійти та завантажити бали';
+                if (loginSpinner) loginSpinner.style.display = 'none';
+                if (authError) {
+                    authError.textContent = 'Помилка підключення до сервера. Перевірте зʼєднання з інтернетом.';
+                    authError.style.display = 'block';
+                }
+            }
+        });
+    }
+
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            haptic('selection');
+            refreshGrades(true);
+        });
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            haptic('impact');
+            if (!confirm('Вийти з журналу успішності Деканату?')) return;
+
+            const userId = getTelegramUserId();
+            localStorage.removeItem('dekanat_user_name');
+            localStorage.removeItem('dekanat_user_pwd');
+            localStorage.removeItem('dekanat_grades_cache');
+            localStorage.removeItem('dekanat_last_sync');
+
+            if (userPwdInput) userPwdInput.value = '';
+            if (authError) authError.style.display = 'none';
+
+            try {
+                const workerUrl = getDekanatWorkerUrl();
+                fetch(`${workerUrl}/dekanat/logout`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                }).catch(() => {});
+            } catch(e) {}
+
+            updateCardPreview();
+            showView('auth');
+        });
+    }
+
+    openCard.addEventListener('click', () => {
+        haptic('impact');
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        loadDashboard();
+    });
+
+    closeBtn.addEventListener('click', () => {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    });
+
+    if (legendOpenBtn && legendModal) {
+        legendOpenBtn.addEventListener('click', () => {
+            haptic('selection');
+            legendModal.classList.add('active');
+        });
+    }
+    if (legendCloseBtn && legendModal) {
+        legendCloseBtn.addEventListener('click', () => {
+            legendModal.classList.remove('active');
+        });
+    }
+    if (legendModal) {
+        legendModal.addEventListener('click', (e) => {
+            if (e.target === legendModal) legendModal.classList.remove('active');
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => { initAdminPanel(); loadAdminData(); initDekanatGrades(); });
 document.addEventListener('DOMContentLoaded', init);
 document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGroupPicker(); });
 

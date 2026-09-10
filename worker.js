@@ -16,8 +16,8 @@ const DEKANAT = 'https://dekanat.lnu.edu.ua/cgi-bin/timetable.cgi';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
 const win1251Decoder = new TextDecoder('windows-1251');
@@ -270,22 +270,401 @@ async function handleScheduleRoutes(request, env, ctx) {
   }
 }
 
+/* =========================================================================
+   DEKANAT LNU JOURNAL & GRADES ENGINE
+   ========================================================================= */
+
+const DEKANAT_CLASSMAN_URL = 'https://dekanat.lnu.edu.ua/cgi-bin/classman.cgi';
+
+const GRADE_CATEGORIES = {
+  "Лек": { label: "Контроль на лекції", icon: "📖", color: "#3b82f6" },
+  "ПрСем": { label: "Практич./Семін. зан.", icon: "✍️", color: "#8b5cf6" },
+  "Лаб": { label: "Лабораторні роб.", icon: "🔬", color: "#10b981" },
+  "ІнЗан": { label: "Інд. заняття", icon: "👤", color: "#06b6d4" },
+  "Сам": { label: "Контроль самостійної", icon: "📝", color: "#f59e0b" },
+  "ІндЗд": { label: "Інд. завд: КП, КР, РГР", icon: "📑", color: "#ec4899" },
+  "Доп": { label: "Доповідь", icon: "🎤", color: "#6366f1" },
+  "ПрЗд": { label: "Перездача (відпрац.)", icon: "🔄", color: "#f97316" },
+  "МК": { label: "Модульний контроль", icon: "📊", color: "#ef4444" },
+  "КтР": { label: "Контрольна робота", icon: "📋", color: "#e11d48" },
+  "Тест": { label: "Тест", icon: "⏱️", color: "#14b8a6" },
+  "Кол": { label: "Колоквіум", icon: "🗣️", color: "#a855f7" },
+  "Інше": { label: "Інше", icon: "📌", color: "#64748b" },
+  "Екз": { label: "Екзамен", icon: "🎓", color: "#dc2626" },
+  "ЗалДз": { label: "Залік / диф. зал.", icon: "✅", color: "#059669" }
+};
+
+function parseDekanatGrades(html) {
+  const studentMatch = html.match(/Журнал успішності студента:\s*([^<]+)/i) || 
+                       html.match(/<h3>([^<]+)<\/h3>/i) ||
+                       html.match(/<li class=["\x27]active["\x27]>([^<]+)<\/li>/i);
+  let studentName = studentMatch ? stripTags(studentMatch[1]).replace(/ПС-Журнал.*?Web/i, '').trim() : "Студент";
+  if (!studentName || studentName === "Авторизація користувача") studentName = "Студент";
+
+  const groupMatch = html.match(/Група:\s*<b>([^<]+)<\/b>/i) || html.match(/Група:\s*([^|<]+)/i);
+  const group = groupMatch ? stripTags(groupMatch[1]).trim() : "";
+
+  const tableMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
+  if (!tableMatch) return { studentName, group, subjects: [], average: "0" };
+
+  const tableHtml = tableMatch[1];
+  const trMatches = [...tableHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
+  if (trMatches.length < 2) return { studentName, group, subjects: [], average: "0" };
+
+  const headerRow = trMatches[0][1];
+  const thMatches = [...headerRow.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gi)];
+  const headers = thMatches.map((m, idx) => {
+    const raw = m[1];
+    const titleMatch = m[0].match(/title=["\x27]([^"\x27]*)["\x27]/i);
+    const title = titleMatch ? titleMatch[1] : "";
+    const text = stripTags(raw);
+    const dateMatch = raw.match(/(\d{2}\.\d{2}(?:\.\d{2,4})?)/);
+    const date = dateMatch ? dateMatch[1] : "";
+
+    let category = "Інше";
+    const catList = ["Лек", "ПрСем", "Лаб", "ІнЗан", "Сам", "ІндЗд", "Доп", "ПрЗд", "МК", "КтР", "Тест", "Кол", "Екз", "ЗалДз"];
+    for (const c of catList) {
+      if (text.includes(c) || title.includes(c)) {
+        category = c;
+        break;
+      }
+    }
+
+    const isBal = /бал|всього|разом/i.test(text) || /class=["\x27][^"\x27]*bal/i.test(m[0]);
+    const isEcts = /ects/i.test(text) || /class=["\x27][^"\x27]*ects/i.test(m[0]);
+
+    return { idx, text, title, date, category, isBal, isEcts };
+  });
+
+  const subjects = [];
+  for (let i = 1; i < trMatches.length; i++) {
+    const rowHtml = trMatches[i][1];
+    const tdMatches = [...rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)];
+    if (tdMatches.length < 2) continue;
+
+    const firstTd = stripTags(tdMatches[0][1]);
+    if (!firstTd || /разом|всього|підсумок/i.test(firstTd)) continue;
+
+    let subject = firstTd;
+    let teacher = "";
+    if (tdMatches.length > 1 && !headers[1]?.isBal && !headers[1]?.isEcts && headers[1]?.category === "Інше") {
+      teacher = stripTags(tdMatches[1][1]);
+    }
+
+    let total = 0;
+    let ects = "";
+    const grades = [];
+
+    tdMatches.forEach((td, colIdx) => {
+      const colHeader = headers[colIdx];
+      if (!colHeader) return;
+      const tdContent = stripTags(td[1]);
+      const tdTitle = (td[0].match(/title=["\x27]([^"\x27]*)["\x27]/i) || [])[1] || "";
+
+      if (colHeader.isBal) {
+        const num = parseFloat(tdContent.replace(",", "."));
+        if (!isNaN(num)) total = num;
+      } else if (colHeader.isEcts) {
+        ects = tdContent;
+      } else if (colIdx > (teacher ? 1 : 0)) {
+        if (tdContent && tdContent !== "-" && tdContent !== "0" && tdContent !== "&nbsp;") {
+          const numVal = parseFloat(tdContent.replace(",", "."));
+          grades.push({
+            category: colHeader.category,
+            categoryLabel: GRADE_CATEGORIES[colHeader.category]?.label || colHeader.title || colHeader.category,
+            date: colHeader.date || "",
+            value: isNaN(numVal) ? tdContent : numVal,
+            note: tdTitle
+          });
+        }
+      }
+    });
+
+    if (!ects) {
+      if (total >= 90) ects = "A";
+      else if (total >= 81) ects = "B";
+      else if (total >= 71) ects = "C";
+      else if (total >= 61) ects = "D";
+      else if (total >= 51) ects = "E";
+      else if (total >= 35) ects = "FX";
+      else if (total > 0) ects = "F";
+    }
+
+    subjects.push({
+      subject,
+      teacher,
+      total,
+      ects,
+      grades
+    });
+  }
+
+  const average = subjects.length ? (subjects.reduce((sum, s) => sum + s.total, 0) / subjects.length).toFixed(1) : "0";
+  return { studentName, group, subjects, average };
+}
+
+async function fetchDekanatGrades(user_name, user_pwd) {
+  const initRes = await fetch(`${DEKANAT_CLASSMAN_URL}?n=999`, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
+    }
+  });
+  if (!initRes.ok) throw new Error("DEKANAT_UNAVAILABLE");
+
+  const initBuf = await initRes.arrayBuffer();
+  const initHtml = win1251Decoder.decode(initBuf);
+
+  const actionMatch = initHtml.match(/action=["\x27]([^"\x27]+)["\x27]/i);
+  const tMatch = initHtml.match(/name=["\x27]t["\x27][^>]*value=["\x27]([^"\x27]*)["\x27]/i);
+  const actionUrl = actionMatch
+    ? (actionMatch[1].startsWith("http") ? actionMatch[1] : "https://dekanat.lnu.edu.ua/cgi-bin/" + actionMatch[1].replace("./", "").replace(/&amp;/g, "&"))
+    : `${DEKANAT_CLASSMAN_URL}?n=1`;
+  const tVal = tMatch ? tMatch[1] : "";
+
+  const formBody = encodeForm({
+    user_name: String(user_name).trim(),
+    user_pwd: String(user_pwd).trim(),
+    n: "1",
+    rout: "",
+    t: tVal,
+    butsubm: "Увійти"
+  });
+
+  const postRes = await fetch(actionUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Referer": `${DEKANAT_CLASSMAN_URL}?n=999`,
+      "User-Agent": 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
+    },
+    body: formBody
+  });
+
+  const postBuf = await postRes.arrayBuffer();
+  const postHtml = win1251Decoder.decode(postBuf);
+
+  if (/Ви невірно вказали Прізвище або № залікової книжки/i.test(postHtml)) {
+    throw new Error("AUTH_INVALID_CREDENTIALS");
+  }
+
+  if (/Access violation/i.test(postHtml) || /Internal Application Error/i.test(postHtml)) {
+    throw new Error("DEKANAT_SERVER_ERROR");
+  }
+
+  return parseDekanatGrades(postHtml);
+}
+
+function findNewGrades(oldSubjects, newSubjects) {
+  const newItems = [];
+  const oldGradeKeys = new Set();
+
+  for (const s of oldSubjects || []) {
+    for (const g of s.grades || []) {
+      oldGradeKeys.add(`${s.subject}__${g.category}__${g.date}__${g.value}`);
+    }
+  }
+
+  for (const s of newSubjects || []) {
+    for (const g of s.grades || []) {
+      const key = `${s.subject}__${g.category}__${g.date}__${g.value}`;
+      if (!oldGradeKeys.has(key)) {
+        newItems.push({
+          subject: s.subject,
+          teacher: s.teacher,
+          category: g.category,
+          categoryLabel: g.categoryLabel || g.category,
+          date: g.date,
+          value: g.value,
+          total: s.total
+        });
+      }
+    }
+  }
+
+  return newItems;
+}
+
+async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
+  if (!env.BOT_TOKEN || !tgChatId) return;
+  const { subject, teacher, category, categoryLabel, value, date, total } = newGradeInfo;
+
+  const text =
+    `🎓 *Нова оцінка в Деканаті ЛНУ!*\n\n` +
+    `📖 *Предмет:* ${subject}\n` +
+    (teacher ? `👨‍🏫 *Викладач:* ${teacher}\n` : '') +
+    `📊 *Оцінка:* *+${value} б.* (${category} — ${categoryLabel})\n` +
+    (date ? `📅 *Дата:* ${date}\n` : '') +
+    (total ? `📈 *Поточний бал з предмета:* *${total} / 100*\n` : '') +
+    `\nПереглянути журнал: у додатку в розділі «Корисне» ➡️ «Мої бали» ↗️`;
+
+  try {
+    await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: tgChatId,
+        text: text,
+        parse_mode: "Markdown"
+      })
+    });
+  } catch (err) {
+    console.error("notifyTelegramNewGrade error:", err);
+  }
+}
+
+async function handleDekanatRoutes(request, env, ctx) {
+  const url = new URL(request.url);
+  if (!url.pathname.startsWith('/dekanat')) return null;
+
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  const kv = env.PREFS_KV;
+
+  // 1. POST /dekanat/login-check
+  if (url.pathname === '/dekanat/login-check' && request.method === 'POST') {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: 'Bad JSON' }, 400); }
+    const { user_name, user_pwd, userId } = body || {};
+
+    if (!user_name || !user_pwd) {
+      return json({ ok: false, error: 'Вкажіть прізвище та пароль (№ залікової книжки)' }, 400);
+    }
+
+    try {
+      const parsedData = await fetchDekanatGrades(user_name, user_pwd);
+
+      if (kv && userId) {
+        await kv.put(`dekanat_creds:${userId}`, JSON.stringify({ user_name, user_pwd }));
+        await kv.put(`dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: parsedData }));
+      }
+
+      return json({
+        ok: true,
+        data: parsedData,
+        lastSync: Date.now()
+      });
+    } catch (err) {
+      if (err.message === 'AUTH_INVALID_CREDENTIALS') {
+        return json({ ok: false, error: 'Ви невірно вказали прізвище або пароль (№ залікової книжки).' }, 401);
+      }
+      return json({ ok: false, error: 'Сервер Деканату ЛНУ тимчасово недоступний. Спробуйте пізніше.' }, 502);
+    }
+  }
+
+  // 2. POST /dekanat/grades
+  if (url.pathname === '/dekanat/grades' && request.method === 'POST') {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: 'Bad JSON' }, 400); }
+    let { user_name, user_pwd, userId, forceRefresh } = body || {};
+
+    let cached = null;
+    if (kv && userId) {
+      try {
+        const rawCache = await kv.get(`dekanat_cache:${userId}`);
+        if (rawCache) cached = JSON.parse(rawCache);
+
+        if (!user_name || !user_pwd) {
+          const rawCreds = await kv.get(`dekanat_creds:${userId}`);
+          if (rawCreds) {
+            const creds = JSON.parse(rawCreds);
+            user_name = creds.user_name;
+            user_pwd = creds.user_pwd;
+          }
+        }
+      } catch {}
+    }
+
+    if (!user_name || !user_pwd) {
+      return json({ ok: false, error: 'NO_CREDENTIALS' }, 401);
+    }
+
+    // Cache TTL: 15 minutes if not forceRefresh
+    const CACHE_TTL_MS = 15 * 60 * 1000;
+    if (!forceRefresh && cached && cached.data && (Date.now() - (cached.ts || 0) < CACHE_TTL_MS)) {
+      return json({
+        ok: true,
+        data: cached.data,
+        cached: true,
+        lastSync: cached.ts
+      });
+    }
+
+    try {
+      const freshData = await fetchDekanatGrades(user_name, user_pwd);
+
+      // Check for new grades and send Telegram alerts
+      if (cached && cached.data && Array.isArray(cached.data.subjects)) {
+        const newGrades = findNewGrades(cached.data.subjects, freshData.subjects);
+        if (newGrades.length > 0 && userId && env.BOT_TOKEN) {
+          for (const ng of newGrades) {
+            if (ctx && ctx.waitUntil) {
+              ctx.waitUntil(notifyTelegramNewGrade(env, userId, ng));
+            } else {
+              notifyTelegramNewGrade(env, userId, ng).catch(() => {});
+            }
+          }
+        }
+      }
+
+      if (kv && userId) {
+        await kv.put(`dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: freshData }));
+      }
+
+      return json({
+        ok: true,
+        data: freshData,
+        cached: false,
+        lastSync: Date.now()
+      });
+    } catch (err) {
+      if (err.message === 'AUTH_INVALID_CREDENTIALS') {
+        return json({ ok: false, error: 'AUTH_INVALID_CREDENTIALS' }, 401);
+      }
+      if (cached && cached.data) {
+        return json({
+          ok: true,
+          data: cached.data,
+          cached: true,
+          offline: true,
+          lastSync: cached.ts
+        });
+      }
+      return json({ ok: false, error: 'Сервер Деканату ЛНУ тимчасово недоступний.' }, 502);
+    }
+  }
+
+  // 3. POST /dekanat/logout
+  if (url.pathname === '/dekanat/logout' && request.method === 'POST') {
+    let body;
+    try { body = await request.json(); } catch { body = {}; }
+    const { userId } = body || {};
+    if (kv && userId) {
+      await kv.delete(`dekanat_creds:${userId}`);
+      await kv.delete(`dekanat_cache:${userId}`);
+    }
+    return json({ ok: true });
+  }
+
+  return json({ error: 'Not found' }, 404);
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
       return new Response(null, {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        },
+        headers: CORS_HEADERS,
       });
     }
 
     const scheduleResponse = await handleScheduleRoutes(request, env, ctx);
     if (scheduleResponse) return scheduleResponse;
+
+    const dekanatResponse = await handleDekanatRoutes(request, env, ctx);
+    if (dekanatResponse) return dekanatResponse;
 
     
     
