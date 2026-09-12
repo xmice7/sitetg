@@ -2384,6 +2384,15 @@ if (text.startsWith("/start code_")) {
     const kv = env.PREFS_KV;
     if (!kv || !env.BOT_TOKEN) return;
 
+    // ── Night mode: Kyiv time = UTC+3 ────────────────────────────────────────
+    // Daytime  07:00–23:59 → check every hour
+    // Nighttime 00:00–06:59 → check only at 00, 03, 06
+    const kyivHour = (new Date().getUTCHours() + 3) % 24;
+    const isNight = kyivHour >= 0 && kyivHour < 7;
+    if (isNight && kyivHour % 3 !== 0) {
+      return; // skip this run — next check at the 3-hour mark
+    }
+
     // Skip if cache was updated within last 50 min (user opened app themselves)
     const SKIP_IF_NEWER_MS = 50 * 60 * 1000;
     // Max users to process per cron run (stay within 30-sec wall-clock limit)
