@@ -1006,30 +1006,30 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         }
         /* --- GRADES / DEKANAT JOURNAL MODAL (APPLE 21ST CENTURY & FRAMER MOTION) --- */
         :root {
-            --fm-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-            --fm-smooth: cubic-bezier(0.16, 1, 0.3, 1);
-            --fm-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            --fm-spring: cubic-bezier(0.28, 1.1, 0.45, 1);
+            --fm-smooth: cubic-bezier(0.25, 1, 0.5, 1);
+            --fm-bounce: cubic-bezier(0.34, 1.3, 0.64, 1);
         }
 
         @keyframes fmSlideUp {
-            0% { opacity: 0; transform: translateY(18px) scale(0.97); }
+            0% { opacity: 0; transform: translateY(8px) scale(0.988); }
             100% { opacity: 1; transform: translateY(0) scale(1); }
         }
         @keyframes fmHeroFloat {
             0% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-5px) rotate(0.5deg); }
+            50% { transform: translateY(-3px) rotate(0.4deg); }
             100% { transform: translateY(0) rotate(0deg); }
         }
         @keyframes fmLiveBeacon {
-            0% { transform: scale(1); opacity: 0.9; }
-            50% { opacity: 0.5; }
-            100% { transform: scale(2.8); opacity: 0; }
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { opacity: 0.35; }
+            100% { transform: scale(1.9); opacity: 0; }
         }
         @keyframes fmSpin {
             to { transform: rotate(360deg); }
         }
         @keyframes fmCardStagger {
-            from { opacity: 0; transform: translateY(12px); }
+            from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
@@ -1037,10 +1037,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             border-radius: 28px 28px 0 0;
             background: var(--modal-bg);
             border-top: 1px solid rgba(255,255,255,0.18);
-            backdrop-filter: blur(40px) saturate(210%) brightness(1.05);
-            -webkit-backdrop-filter: blur(40px) saturate(210%) brightness(1.05);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
             box-shadow: 0 -20px 60px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.22);
             font-family: var(--apple-font);
+            will-change: transform;
+            transform: translateZ(0);
         }
 
         /* --- AUTH VIEW (APPLE GLASS HERO) --- */
@@ -1353,7 +1355,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             box-shadow: var(--shadow);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            animation: fmSlideUp 0.4s var(--fm-smooth) both;
+            animation: fmSlideUp 0.5s var(--fm-smooth) both;
+            will-change: transform, opacity;
+            transform: translateZ(0);
         }
         .grades-summary-top {
             display: flex;
@@ -1380,17 +1384,19 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             font-size: 16px;
             font-weight: 800;
             color: #10b981;
-            box-shadow: 0 4px 14px rgba(16,185,129,0.18);
             flex-shrink: 0;
-            user-select: none;
+            box-shadow: 0 4px 12px rgba(16,185,129,0.2);
         }
         .grades-student-name {
             font-size: 15.5px;
             font-weight: 800;
             color: var(--text-main);
             letter-spacing: -0.3px;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
             line-height: 1.25;
-            word-break: break-word;
         }
         .grades-student-group {
             display: inline-block;
@@ -1410,12 +1416,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             margin-left: 10px;
         }
         .grades-refresh-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
             background: var(--bg-body);
             border: 1px solid var(--border);
             color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
             padding: 8px 12px;
             border-radius: 12px;
             font-size: 12px;
@@ -1517,7 +1523,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             box-shadow: var(--shadow);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
-            animation: fmSlideUp 0.45s var(--fm-smooth) 0.05s both;
+            animation: fmSlideUp 0.52s var(--fm-smooth) 0.06s both;
+            will-change: transform, opacity;
+            transform: translateZ(0);
         }
         .grades-dossier-header {
             padding: 12px 15px;
@@ -1529,10 +1537,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             user-select: none;
             background: rgba(255,255,255,0.02);
             border-bottom: 1px solid var(--border);
-            transition: background 0.2s ease;
+            transition: background 0.15s ease;
         }
         .grades-dossier-header:active {
-            background: rgba(255,255,255,0.05);
+            background: rgba(255,255,255,0.06);
         }
         .grades-dossier-title-wrap {
             display: flex;
@@ -1542,39 +1550,44 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             flex: 1;
         }
         .grades-dossier-crest {
+            font-size: 22px;
             width: 36px;
             height: 36px;
-            border-radius: 11px;
-            background: linear-gradient(135deg, rgba(59,130,246,0.18), rgba(16,185,129,0.18));
-            border: 1px solid rgba(59,130,246,0.25);
+            border-radius: 10px;
+            background: rgba(16,185,129,0.12);
+            border: 1px solid rgba(16,185,129,0.25);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
             flex-shrink: 0;
         }
         .grades-dossier-uni {
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 700;
+            color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: var(--text-muted);
-            line-height: 1.25;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .grades-dossier-faculty {
-            font-size: 13px;
+            font-size: 13.5px;
             font-weight: 700;
             color: var(--text-main);
-            margin-top: 2px;
-            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .dossier-chevron {
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             stroke: var(--text-muted);
             fill: none;
             stroke-width: 2.2;
-            transition: transform 0.28s var(--fm-spring);
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: transform 0.3s var(--fm-spring);
         }
         .grades-dossier-card.collapsed .dossier-chevron {
             transform: rotate(-90deg);
@@ -1585,7 +1598,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
         .grades-dossier-body {
             padding: 13px 15px 15px;
-            animation: fmSlideUp 0.25s var(--fm-smooth) both;
+            animation: fmSlideUp 0.35s var(--fm-smooth) both;
         }
         .grades-specialty-banner {
             background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(6,182,212,0.08));
@@ -1800,8 +1813,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             border-radius: 18px;
             overflow: hidden;
             box-shadow: var(--shadow);
-            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s var(--fm-spring);
-            animation: fmCardStagger 0.4s var(--fm-smooth) both;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s var(--fm-spring);
+            animation: fmCardStagger 0.48s var(--fm-smooth) both;
+            will-change: transform, opacity;
+            transform: translateZ(0);
         }
         .subject-grade-card:hover {
             border-color: rgba(16,185,129,0.45);
@@ -2694,7 +2709,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                             <div class="grades-dossier-crest">🏛️</div>
                             <div>
                                 <div class="grades-dossier-uni" id="grades-dossier-uni">Львівський національний університет імені Івана Франка</div>
-                                <div class="grades-dossier-faculty" id="grades-dossier-faculty">Факультет електроніки та комп'ютерних технологій</div>
+                                <div class="grades-dossier-faculty" id="grades-dossier-faculty">—</div>
                             </div>
                         </div>
                         <div class="grades-dossier-expand-icon">
@@ -2705,49 +2720,49 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                     <div class="grades-dossier-body" id="grades-dossier-body">
                         <div class="grades-specialty-banner">
                             <div class="grades-specialty-code">Спеціальність</div>
-                            <div class="grades-specialty-name" id="grades-dossier-specialty">Інженерія програмного забезпечення</div>
+                            <div class="grades-specialty-name" id="grades-dossier-specialty">—</div>
                         </div>
 
                         <div class="grades-dossier-grid">
                             <div class="grades-dossier-item">
                                 <span class="dossier-item-label">Курс</span>
-                                <span class="dossier-item-val" id="grades-dossier-course">1-й курс</span>
+                                <span class="dossier-item-val" id="grades-dossier-course">—</span>
                             </div>
                             <div class="grades-dossier-item">
                                 <span class="dossier-item-label">Ступінь</span>
-                                <span class="dossier-item-val" id="grades-dossier-degree">Бакалавр</span>
+                                <span class="dossier-item-val" id="grades-dossier-degree">—</span>
                             </div>
                             <div class="grades-dossier-item">
                                 <span class="dossier-item-label">Форма навчання</span>
-                                <span class="dossier-item-val" id="grades-dossier-study-form">Денна</span>
+                                <span class="dossier-item-val" id="grades-dossier-study-form">—</span>
                             </div>
                             <div class="grades-dossier-item">
                                 <span class="dossier-item-label">Оплата</span>
-                                <span class="dossier-item-val dossier-highlight" id="grades-dossier-payment">Держ.замовлення</span>
+                                <span class="dossier-item-val dossier-highlight" id="grades-dossier-payment">—</span>
                             </div>
                             <div class="grades-dossier-item">
                                 <span class="dossier-item-label">Термін навчання</span>
-                                <span class="dossier-item-val" id="grades-dossier-term">4 роки</span>
+                                <span class="dossier-item-val" id="grades-dossier-term">—</span>
                             </div>
                             <div class="grades-dossier-item">
                                 <span class="dossier-item-label">Наказ про зарахування</span>
-                                <span class="dossier-item-val" id="grades-dossier-order">С-494/к від 11.08.2025</span>
+                                <span class="dossier-item-val" id="grades-dossier-order">—</span>
                             </div>
                             <div class="grades-dossier-item" style="grid-column: span 2;">
                                 <span class="dossier-item-label">Дата закінчення навчання</span>
-                                <span class="dossier-item-val dossier-grad-date" id="grades-dossier-grad-date">30.06.2029</span>
+                                <span class="dossier-item-val dossier-grad-date" id="grades-dossier-grad-date">—</span>
                             </div>
                         </div>
 
                         <!-- Academic Timeline Progress Bar -->
                         <div class="grades-timeline-box" id="grades-dossier-timeline">
                             <div class="grades-timeline-track">
-                                <div class="grades-timeline-bar" id="grades-dossier-timeline-bar" style="width: 25%;"></div>
+                                <div class="grades-timeline-bar" id="grades-dossier-timeline-bar" style="width: 0%;"></div>
                             </div>
                             <div class="grades-timeline-labels">
-                                <span id="grades-dossier-start-year">Вступ: 2025</span>
-                                <span id="grades-dossier-progress-text">Прогрес: 25%</span>
-                                <span id="grades-dossier-end-year">Випуск: 2029</span>
+                                <span id="grades-dossier-start-year">Вступ: —</span>
+                                <span id="grades-dossier-progress-text">Прогрес: —</span>
+                                <span id="grades-dossier-end-year">Випуск: —</span>
                             </div>
                         </div>
                     </div>
@@ -5630,7 +5645,7 @@ function renderSubjectCard(s, idx = 0) {
     const scoreClass = total >= 90 ? 'score-a' : total >= 71 ? 'score-bc' : total >= 51 ? 'score-de' : 'score-f';
     const progressColor = total >= 90 ? 'linear-gradient(90deg, #10b981, #059669)' : total >= 71 ? 'linear-gradient(90deg, #3b82f6, #2563eb)' : total >= 51 ? 'linear-gradient(90deg, #f59e0b, #d97706)' : 'linear-gradient(90deg, #ef4444, #dc2626)';
     const progressWidth = Math.min(Math.max(total, 0), 100);
-    const delaySec = Math.min(idx * 0.04, 0.5).toFixed(2);
+    const delaySec = Math.min(idx * 0.06, 0.42).toFixed(2);
 
     const gradesHtml = (s.grades && s.grades.length > 0)
         ? s.grades.map(g => {
@@ -5813,26 +5828,36 @@ function initDekanatGrades() {
     }
 
     function calculateAcademicProgress(dossier, groupName) {
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth() + 1;
-        const effectiveAcademicYear = currentMonth >= 9 ? currentYear : (currentYear - 1);
+        const grp = (groupName || (dossier && dossier.group) || "").trim();
+        
+        // Course: determined by the first digit after letters/hyphen (e.g., ФЕП-23с -> 2, ФПМ-11 -> 1, ФЕІ-32 -> 3)
+        let courseNum = (dossier && dossier.course) || null;
+        if (!courseNum && grp) {
+            const courseMatch = grp.match(/[А-ЯІЇЄҐA-Z]+-?(\d)/i);
+            if (courseMatch) {
+                const c = parseInt(courseMatch[1], 10);
+                if (c >= 1 && c <= 6) courseNum = c;
+            }
+        }
+
+        let termYears = 4;
+        if (dossier && dossier.studyTerm) {
+            const m = dossier.studyTerm.match(/(\d+(?:\.\d+)?)/);
+            if (m) termYears = Math.round(parseFloat(m[1]));
+        } else if (dossier && dossier.degree && dossier.degree.toLowerCase().includes("магістр")) {
+            termYears = 2;
+        }
 
         let startYear = null;
         let endYear = null;
 
-        if (dossier.enrollmentOrder) {
+        if (dossier && dossier.enrollmentOrder) {
             const m = dossier.enrollmentOrder.match(/\b(20\d\d)\b/);
             if (m) startYear = parseInt(m[1], 10);
         }
-        if (dossier.graduationDate) {
+        if (dossier && dossier.graduationDate) {
             const m = dossier.graduationDate.match(/\b(20\d\d)\b/);
             if (m) endYear = parseInt(m[1], 10);
-        }
-        let termYears = 4;
-        if (dossier.studyTerm) {
-            const m = dossier.studyTerm.match(/(\d+(?:\.\d+)?)/);
-            if (m) termYears = Math.round(parseFloat(m[1]));
         }
 
         if (startYear && !endYear) {
@@ -5841,35 +5866,34 @@ function initDekanatGrades() {
             startYear = endYear - termYears;
         }
 
-        if (!startYear) {
-            const grp = (groupName || dossier.group || "").trim();
-            const grpMatch = grp.match(/-(\d{2})/);
-            if (grpMatch) {
-                const y = parseInt(grpMatch[1], 10);
-                if (y >= 18 && y <= 35) {
-                    startYear = 2000 + y;
-                    endYear = startYear + termYears;
-                }
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+        const academicYear = currentMonth >= 9 ? currentYear : (currentYear - 1);
+
+        if (!startYear && courseNum) {
+            startYear = academicYear - (courseNum - 1);
+            endYear = startYear + termYears;
+        }
+
+        if (!courseNum) {
+            if (startYear) {
+                courseNum = (academicYear - startYear) + 1;
+                if (courseNum < 1) courseNum = 1;
+                if (courseNum > termYears) courseNum = termYears;
+            } else {
+                courseNum = null;
             }
         }
 
-        if (!startYear) startYear = effectiveAcademicYear;
-        if (!endYear) endYear = startYear + termYears;
-
-        let courseNum = (effectiveAcademicYear - startYear) + 1;
-        if (courseNum < 1) courseNum = 1;
-        if (courseNum > termYears) courseNum = termYears;
-
-        let progressPercent = Math.round(((courseNum - 0.5) / termYears) * 100);
-        if (progressPercent < 15) progressPercent = 25;
-        if (progressPercent > 100) progressPercent = 100;
+        let progressPercent = courseNum ? Math.min(100, Math.max(15, Math.round((courseNum / termYears) * 100))) : 0;
 
         return {
-            courseText: `${courseNum}-й курс`,
-            startYearText: `Вступ: ${startYear}`,
-            endYearText: `Випуск: ${endYear}`,
+            courseText: courseNum ? `${courseNum}-й курс` : '—',
+            startYearText: startYear ? `Вступ: ${startYear}` : 'Вступ: —',
+            endYearText: endYear ? `Випуск: ${endYear}` : 'Випуск: —',
             progressPercent,
-            progressText: `Прогрес: ${progressPercent}%`
+            progressText: progressPercent ? `Прогрес: ${progressPercent}%` : 'Прогрес: —'
         };
     }
 
@@ -5957,14 +5981,14 @@ function initDekanatGrades() {
         if (dossierCard) {
             dossierCard.style.display = 'block';
             if (dossierUni) dossierUni.textContent = dossier.university || 'Львівський національний університет імені Івана Франка';
-            if (dossierFaculty) dossierFaculty.textContent = dossier.faculty || 'Факультет електроніки та компʼютерних технологій';
-            if (dossierSpecialty) dossierSpecialty.textContent = dossier.specialty || 'Інженерія програмного забезпечення';
-            if (dossierDegree) dossierDegree.textContent = dossier.degree || 'бакалавр';
-            if (dossierStudyForm) dossierStudyForm.textContent = dossier.studyForm || 'Денна';
-            if (dossierPayment) dossierPayment.textContent = dossier.paymentForm || 'Держ.замовлення';
-            if (dossierTerm) dossierTerm.textContent = dossier.studyTerm || '4 роки';
-            if (dossierOrder) dossierOrder.textContent = dossier.enrollmentOrder || 'С-494/к від 11.08.2025';
-            if (dossierGradDate) dossierGradDate.textContent = dossier.graduationDate || '30.06.2029';
+            if (dossierFaculty) dossierFaculty.textContent = dossier.faculty || '—';
+            if (dossierSpecialty) dossierSpecialty.textContent = dossier.specialty || '—';
+            if (dossierDegree) dossierDegree.textContent = dossier.degree || '—';
+            if (dossierStudyForm) dossierStudyForm.textContent = dossier.studyForm || '—';
+            if (dossierPayment) dossierPayment.textContent = dossier.paymentForm || '—';
+            if (dossierTerm) dossierTerm.textContent = dossier.studyTerm || '—';
+            if (dossierOrder) dossierOrder.textContent = dossier.enrollmentOrder || '—';
+            if (dossierGradDate) dossierGradDate.textContent = dossier.graduationDate || '—';
 
             // Calculate Course & Academic Timeline
             const prog = calculateAcademicProgress(dossier, data.group);
@@ -5976,17 +6000,21 @@ function initDekanatGrades() {
         }
 
         if (paymentPill) {
-            const payText = dossier.paymentForm || 'Держ.замовлення';
-            paymentPill.textContent = payText;
-            paymentPill.style.display = 'inline-flex';
-            if (/контракт|кошти/i.test(payText)) {
-                paymentPill.style.background = 'rgba(59,130,246,0.12)';
-                paymentPill.style.color = '#3b82f6';
-                paymentPill.style.borderColor = 'rgba(59,130,246,0.25)';
+            const payText = dossier.paymentForm || '';
+            if (payText && payText !== '—') {
+                paymentPill.textContent = payText;
+                paymentPill.style.display = 'inline-flex';
+                if (/контракт|кошти/i.test(payText)) {
+                    paymentPill.style.background = 'rgba(59,130,246,0.12)';
+                    paymentPill.style.color = '#3b82f6';
+                    paymentPill.style.borderColor = 'rgba(59,130,246,0.25)';
+                } else {
+                    paymentPill.style.background = 'rgba(16,185,129,0.12)';
+                    paymentPill.style.color = '#10b981';
+                    paymentPill.style.borderColor = 'rgba(16,185,129,0.25)';
+                }
             } else {
-                paymentPill.style.background = 'rgba(16,185,129,0.12)';
-                paymentPill.style.color = '#10b981';
-                paymentPill.style.borderColor = 'rgba(16,185,129,0.25)';
+                paymentPill.style.display = 'none';
             }
         }
 

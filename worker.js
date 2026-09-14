@@ -301,65 +301,75 @@ function extractStudentDossier(html, detectedGroup = "") {
     return m ? m[1].replace(/^[":\s]+|[":\s]+$/g, "").trim() : "";
   }
 
-  let faculty = matchField(/Факультет(?:\s+Факультет)?(?::|\s+)?([^\n\r|<]+?)(?=(?:Спеціальність|Ступінь|Освітній|Груп+а|Форма|Наказ|$))/i);
-  if (!faculty) faculty = matchField(/Факультет(?::|\s+)?([^\n\r|<]+)/i);
-  faculty = (faculty || "").replace(/^Факультет\s+/i, "").trim();
-  if (faculty && !faculty.toLowerCase().startsWith("факультет")) {
-    faculty = "Факультет " + faculty;
+  // University
+  let university = matchField(/(?:Університет(?::|\s+)?|(?:^|\s))((?:Львівський\s+національний\s+університет[^\n\r|<]*?)|(?:[^\n\r|<]+університет[^\n\r|<]*?))(?=(?:Факультет|Спеціальність|Ступінь|$))/i);
+  if (!university || university.length < 8 || /Загальна|інформація/i.test(university)) {
+    university = "Львівський національний університет імені Івана Франка";
+  } else {
+    university = university.replace(/^(?:Загальна\s+інформація\s+)+/i, "").trim();
   }
 
+  // Faculty: handles e.g. "Факультет Факультет електроніки..." or "Географічний факультет"
+  let faculty = matchField(/Факультет(?:\s+Факультет)?(?::|\s+)?([^\n\r|<]+?)(?=(?:Спеціальність|Ступінь|Освітній|Груп+а|Форма|Наказ|$))/i);
+  if (!faculty) faculty = matchField(/Факультет(?::|\s+)?([^\n\r|<]+)/i);
+  if (faculty) {
+    faculty = faculty.replace(/^(?:Факультет\s+)+/i, "Факультет ").trim();
+    if (!faculty.toLowerCase().includes("факультет")) {
+      faculty = "Факультет " + faculty;
+    }
+  }
+
+  // Specialty: strip quotes
   let specialty = matchField(/Спеціальність(?::|\s+)?([^\n\r|<]+?)(?=(?:Ступінь|Освітній|Груп+а|Форма|Наказ|$))/i);
   if (!specialty) specialty = matchField(/Спеціальність(?::|\s+)?([^\n\r|<]+)/i);
-  if (specialty) specialty = specialty.replace(/^["«]|["»]$/g, '').trim();
+  if (specialty) specialty = specialty.replace(/^["'«`]|["'»`]$/g, '').trim();
 
+  // Degree
   let degree = matchField(/(?:Ступінь(?:\s*\/\s*Освітньо-професійний ступінь)?|Освітній ступінь|Освітньо-професійний ступінь)(?::|\s+)?([^\n\r|<]+?)(?=(?:Груп+а|Форма|Наказ|$))/i);
   if (!degree) degree = matchField(/(?:Ступінь|Освітній ступінь)(?::|\s+)?([^\n\r|<]+)/i);
 
+  // Group: handles "Група" and "Группа"
   let group = matchField(/Груп+а(?::|\s+)?([^\n\r|<|]+?)(?=(?:Форма|Наказ|Термін|$))/i);
   if (!group) group = matchField(/Груп+а(?::|\s+)?([^\n\r|<|]+)/i);
   if (!group && detectedGroup) group = detectedGroup;
+  group = (group || "").trim();
 
+  // Form of study
   let studyForm = matchField(/Форма навчання(?::|\s+)?([^\n\r|<]+?)(?=(?:Форма оплати|Наказ|Термін|$))/i);
   if (!studyForm) studyForm = matchField(/Форма навчання(?::|\s+)?([^\n\r|<]+)/i);
 
+  // Form of payment
   let paymentForm = matchField(/Форма оплати(?:\s+навчання)?(?::|\s+)?([^\n\r|<]+?)(?=(?:Наказ|Термін|Дата|$))/i);
   if (!paymentForm) paymentForm = matchField(/Форма оплати(?:\s+навчання)?(?::|\s+)?([^\n\r|<]+)/i);
 
+  // Enrollment order
   let enrollmentOrder = matchField(/Наказ на зарахування(?::|\s+)?([^\n\r|<]+?)(?=(?:Термін|Дата|$))/i);
   if (!enrollmentOrder) enrollmentOrder = matchField(/Наказ на зарахування(?::|\s+)?([^\n\r|<]+)/i);
 
+  // Study term
   let studyTerm = matchField(/Термін навчання(?::|\s+)?([^\n\r|<]+?)(?=(?:Дата|$))/i);
   if (!studyTerm) studyTerm = matchField(/Термін навчання(?::|\s+)?([^\n\r|<]+)/i);
 
+  // Graduation date
   let graduationDate = matchField(/Дата закінчення(?:\s+навчання)?(?::|\s+)?([^\n\r|<]+)/i);
 
-  // Fallback defaults from group prefix if any field is not explicitly present in journal HTML table
-  const grp = (group || detectedGroup || "").toUpperCase();
-  if (!faculty && (grp.startsWith("ФЕ") || grp.startsWith("FE"))) {
-    faculty = "Факультет електроніки та комп'ютерних технологій";
+  // Course: determined by the first digit after letters/hyphen in group name (e.g. ФЕП-23с -> 2, ФПМ-11 -> 1)
+  let course = null;
+  const grpForCourse = group || detectedGroup || "";
+  const courseMatch = grpForCourse.match(/[А-ЯІЇЄҐA-Z]+-?(\d)/i);
+  if (courseMatch) {
+    const c = parseInt(courseMatch[1], 10);
+    if (c >= 1 && c <= 6) course = c;
   }
-  if (!specialty) {
-    if (grp.startsWith("ФЕП")) specialty = "Інженерія програмного забезпечення";
-    else if (grp.startsWith("ФЕІ")) specialty = "Інформаційні системи та технології";
-    else if (grp.startsWith("ФЕС")) specialty = "Комп'ютерні науки";
-    else if (grp.startsWith("ФЕК")) specialty = "Комп'ютерна інженерія";
-    else if (grp.startsWith("ФЕА")) specialty = "Автоматизація та комп'ютерно-інтегровані технології";
-    else if (grp.startsWith("ФЕМ")) specialty = "Мікро- та наносистемна техніка";
-    else if (grp.startsWith("ФЕТ")) specialty = "Телекомунікації та радіотехніка";
-  }
-  if (!degree) {
-    degree = grp.includes("М") && !grp.startsWith("ФЕМ") ? "магістр" : "бакалавр";
-  }
-  if (!studyForm) studyForm = "Денна";
-  if (!studyTerm) studyTerm = degree.toLowerCase().includes("магістр") ? "1.5 роки" : "4 роки";
 
   return {
-    university: "Львівський національний університет імені Івана Франка",
-    faculty: faculty || "Львівський національний університет імені Івана Франка",
+    university: university || "Львівський національний університет імені Івана Франка",
+    faculty: faculty || "",
     specialty: specialty || "",
-    degree: degree || "бакалавр",
+    degree: degree || "",
     group: group || detectedGroup || "",
-    studyForm: studyForm || "Денна",
+    course: course,
+    studyForm: studyForm || "",
     paymentForm: paymentForm || "",
     enrollmentOrder: enrollmentOrder || "",
     studyTerm: studyTerm || "",
@@ -404,11 +414,12 @@ function extractStudentName(html, fallbackUserName = "") {
             .replace(/&nbsp;/g, " ")
             .replace(/ПС-Журнал.*?Web/i, "")
             .replace(/Авторизація користувача/i, "")
+            .replace(/Загальна інформація/i, "")
             .replace(/\s+/g, " ")
             .trim();
   }
 
-  const UKR_NAME_RE = /([А-ЯІЇЄҐ][а-яіїєґ'\-]+(?:\s+[А-ЯІЇЄҐ][а-яіїєґ'\-]+){1,2})/;
+  const UKR_NAME_3_RE = /([А-ЯІЇЄҐ][а-яіїєґ'\-]+(?:\s+[А-ЯІЇЄҐ][а-яіїєґ'\-]+){1,2})/;
 
   // Strip all tags to plain text for reliable matching
   const plain = html
@@ -417,54 +428,71 @@ function extractStudentName(html, fallbackUserName = "") {
     .replace(/&amp;/g, "&")
     .replace(/\s+/g, " ");
 
-  // 1. "Студент: Прізвище Ім'я По батькові" — most reliable pattern in plain text
+  // 1. PRIMARY: Match login surname + first name + patronymic in plain text or HTML
+  // (In Dekanat, student logs in with user_name, and navbar displays full "Корж Олексій Олександрович")
+  if (fallbackUserName && fallbackUserName.trim().length >= 2) {
+    const s = fallbackUserName.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const mSurnameFirst = plain.match(new RegExp(`(?:^|[^А-Яа-яІіЇїЄєҐґ'\`])(${s}\\s+[А-ЯІЇЄҐ][а-яіїєґ'\`\\-]+\\s+[А-ЯІЇЄҐ][а-яіїєґ'\`\\-]+)(?:$|[^А-Яа-яІіЇїЄєҐґ'\`])`, "i"));
+    if (mSurnameFirst) {
+      const name = clean(mSurnameFirst[1]);
+      if (name && name.length > 5) return name;
+    }
+    const mSurnameLast = plain.match(new RegExp(`(?:^|[^А-Яа-яІіЇїЄєҐґ'\`])([А-ЯІЇЄҐ][а-яіїєґ'\`\\-]+\\s+[А-ЯІЇЄҐ][а-яіїєґ'\`\\-]+\\s+${s})(?:$|[^А-Яа-яІіЇїЄєҐґ'\`])`, "i"));
+    if (mSurnameLast) {
+      const name = clean(mSurnameLast[1]);
+      if (name && name.length > 5) return name;
+    }
+  }
+
+  // 2. Look in Bootstrap navbar brand / navbar-text / navbar-nav
+  const navBrandMatches = [...html.matchAll(/<(?:a|span|div|p|li)[^>]*class=["\x27][^"'\x27]*(?:navbar-brand|navbar-text|user-name|student-name)[^"'\x27]*["\x27][^>]*>([\s\S]*?)<\/(?:a|span|div|p|li)>/gi)];
+  for (const m of navBrandMatches) {
+    const text = clean(m[1]);
+    const nm = text.match(UKR_NAME_3_RE);
+    if (nm && nm[1].length > 4 && !/Загальна|Авторизація|ПС-Журнал/i.test(nm[1])) {
+      return nm[1].trim();
+    }
+  }
+
+  // 3. Look in text immediately preceding navbar menu items ("Навчання студента", "Заборгованості", "Розклад", "Опитування")
+  const beforeNavMatch = html.match(/([А-ЯІЇЄҐ][а-яіїєґ'\`\\-]+(?:\s+[А-ЯІЇЄҐ][а-яіїєґ'\`\\-]+){1,2})[\s\S]{0,140}?(?:Навчання студента|Заборгованості|Розклад|Опитування)/i);
+  if (beforeNavMatch) {
+    const text = clean(beforeNavMatch[1]);
+    const nm = text.match(UKR_NAME_3_RE);
+    if (nm && nm[1].length > 4 && !/Загальна|Авторизація|інформація/i.test(nm[1])) {
+      return nm[1].trim();
+    }
+  }
+
+  // 4. "Студент: Прізвище Ім'я По батькові" in plain text
   const studentTextMatch = plain.match(/(?:Студент|ПІБ)[\s:]+([А-ЯІЇЄҐ][а-яіїєґ'\-]+(?:\s+[А-ЯІЇЄҐ][а-яіїєґ'\-]+){1,2})/i);
   if (studentTextMatch) {
-    const name = studentTextMatch[1].trim();
+    const name = clean(studentTextMatch[1]);
     if (name && name !== "Студент" && name.length > 4) return name;
   }
 
-  // 2. "Прізвище, ім'я по батькові: Прізвище Ім'я По батькові"
+  // 5. "Прізвище, ім'я по батькові: Прізвище Ім'я По батькові"
   const pibTextMatch = plain.match(/Прізвище[,\s]*(?:ім['\x27`]я)?[,\s]*(?:по батькові)?[\s:]+([А-ЯІЇЄҐ][а-яіїєґ'\-]+(?:\s+[А-ЯІЇЄҐ][а-яіїєґ'\-]+){1,2})/i);
   if (pibTextMatch) {
-    const name = pibTextMatch[1].trim();
+    const name = clean(pibTextMatch[1]);
     if (name && name !== "Студент" && name.length > 4) return name;
   }
 
-  // 3. "Журнал успішності студента: Прізвище Ім'я По батькові"
+  // 6. "Журнал успішності студента: Прізвище Ім'я По батькові"
   const journalTextMatch = plain.match(/Журнал успішності студента:?\s+([А-ЯІЇЄҐ][а-яіїєґ'\-]+(?:\s+[А-ЯІЇЄҐ][а-яіїєґ'\-]+){1,2})/i);
   if (journalTextMatch) {
-    const name = journalTextMatch[1].trim();
+    const name = clean(journalTextMatch[1]);
     if (name && name !== "Студент" && name.length > 4) return name;
   }
 
-  // 4. Try table cell format in raw HTML: <th>Студент</th><td>NAME</td>
+  // 7. Table cell format in raw HTML: <th>Студент</th><td>NAME</td>
   const cellMatch = html.match(/<(?:th|td)[^>]*>\s*(?:Студент|ПІБ)\s*:?\s*<\/(?:th|td)>\s*<(?:th|td)[^>]*>([\s\S]*?)<\/(?:th|td)>/i);
   if (cellMatch) {
     const name = clean(cellMatch[1]);
     if (name && name !== "Студент" && name.length > 2) return name;
   }
 
-  // 5. <h3> that contains a Ukrainian name (not the auth/title strings)
-  const h3Matches = [...html.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/gi)];
-  for (const m of h3Matches) {
-    const text = clean(m[1]);
-    if (!text || /Авторизація|ПС-Журнал|успішності-Web/i.test(text)) continue;
-    const nameMatch = text.match(UKR_NAME_RE);
-    if (nameMatch && nameMatch[1].length > 4) return nameMatch[1].trim();
-  }
-
-  // 6. <li class="active"> containing a Ukrainian name
-  const liMatch = html.match(/<li[^>]*class=["\x27][^"'\x27]*active[^"'\x27]*["\x27][^>]*>([\s\S]*?)<\/li>/i);
-  if (liMatch) {
-    const text = clean(liMatch[1]);
-    if (text && !/Авторизація|ПС-Журнал/i.test(text)) {
-      const nameMatch = text.match(UKR_NAME_RE);
-      if (nameMatch && nameMatch[1].length > 4) return nameMatch[1].trim();
-    }
-  }
-
-  // 7. Fallback: capitalise the login surname
+  // 8. Fallback: capitalise the login surname
   if (fallbackUserName && fallbackUserName.trim()) {
     const trimmed = fallbackUserName.trim();
     return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
