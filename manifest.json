@@ -1,15 +1,21 @@
 {
-  "name": "Schedule App",
-  "short_name": "Schedule",
+  "name": "Розклад ЛНУ",
+  "short_name": "Розклад",
+  "description": "Розклад занять, викладачі, аудиторії та щоденник студентів ЛНУ",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "background_color": "#080a10",
   "theme_color": "#3b82f6",
+  "lang": "uk",
+  "categories": ["education", "productivity"],
   "icons": [
     {
       "src": "https://image2url.com/r2/default/images/1772730855081-a7e47bc5-e094-4349-96fa-caccfcd436c9.jpeg",
       "sizes": "1024x1024",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

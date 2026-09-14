@@ -14,6 +14,14 @@
 
 const SCHEDULE_API = 'https://telegram2.korglosa.workers.dev';
 
+function getApiBase() {
+  try {
+    return localStorage.getItem('_worker_url') || SCHEDULE_API;
+  } catch {
+    return SCHEDULE_API;
+  }
+}
+
 function formatDate(date) {
   const dd = String(date.getDate()).padStart(2, '0');
   const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -28,28 +36,36 @@ function getTwoWeekRange(now = new Date()) {
   return { sdate: formatDate(start), edate: formatDate(end) };
 }
 
-async function apiGet(path, params) {
+async function apiGet(path, params = {}) {
   const query = new URLSearchParams(params).toString();
-  const response = await fetch(`${SCHEDULE_API}${path}?${query}`);
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  const url = `${getApiBase()}${path}${query ? '?' + query : ''}`;
+  const response = await fetch(url, { signal: AbortSignal.timeout(9000) });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || `HTTP ${response.status}`);
+  }
   return data;
 }
 
 async function getSuggestionGroups(title) {
   try {
-    return await apiGet('/groups', { q: title });
+    getSuggestionGroups.lastError = null;
+    const res = await apiGet('/groups', { q: title });
+    return Array.isArray(res) ? res : [];
   } catch (error) {
-    console.error('getSuggestionGroups failed:', error.message);
+    console.warn('getSuggestionGroups failed:', error.message);
+    getSuggestionGroups.lastError = error.message;
     return [];
   }
 }
 
-async function getSchedule(group, range=getTwoWeekRange()) {
+async function getSchedule(group, range = getTwoWeekRange()) {
   try {
+    getSchedule.lastError = null;
     return await apiGet('/schedule', { group, ...(range || {}) });
   } catch (error) {
-    console.error('getSchedule failed:', error.message);
+    console.warn('getSchedule failed:', error.message);
+    getSchedule.lastError = error.message;
     return null;
   }
 }

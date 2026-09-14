@@ -43,7 +43,7 @@
     <script src="./script.js"></script>
     <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
         const firebaseConfig = {
             apiKey: "AIzaSyBH8JKNOBWTjxSIiHNVI8LiwK8u9sPyVTo",
             authDomain: "telegram-xmice.firebaseapp.com",
@@ -225,13 +225,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
         window.fbUpdateUserLastSeen = async (userId, group) => {
             try {
-                const { arrayUnion, arrayRemove } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
                 const deviceId = getDeviceId();
                 const { label } = detectDevice();
                 const now = Date.now();
                 const userRef = doc(db, 'users', String(userId));
 
-                
                 const snap = await getDoc(userRef);
                 const existingData = snap.exists() ? snap.data() : {};
                 const existingDevices = existingData.devices || [];
@@ -254,7 +252,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             } catch(e) { console.error('fbUpdateUserLastSeen error:', e); }
         };
 
-        
         window.fbUnlinkDevice = async (userId, deviceId) => {
             try {
                 const snap = await getDoc(doc(db, 'users', String(userId)));
@@ -267,7 +264,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
         window.fbUnlinkUser = async (userId) => {
             try {
-                const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
                 await deleteDoc(doc(db, 'users', String(userId)));
                 return true;
             } catch(e) { console.error('fbUnlinkUser error:', e); return false; }
@@ -292,7 +288,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         window.dispatchEvent(new Event("firebase-ready"));
 </script>
     <style>
-        :root {
+        :root,
+        [data-theme="light"] {
             --fs-title: 15.5px; --fs-meta: 13px; --fs-time: 18px; --fs-time-end: 13px; --fs-day-title: 18px;
             --bg-body: #f1f5f9; --bg-card: #ffffff; --text-main: #0f172a; --text-muted: #64748b;
             --border: #e2e8f0; --accent-green: #059669; --bg-green: #d1fae5; --accent-purple: #7c3aed;
@@ -311,7 +308,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             --shadow: 0 4px 6px -1px rgba(0,0,0,0.3); --shadow-hover: 0 10px 15px -3px rgba(0,0,0,0.4);
             --modal-bg: rgba(30,41,59,0.95); --orb-opacity: 0.18;
         }
-        [data-theme="black"] {
+        [data-theme="black"],
+        [data-theme="oled"] {
             --bg-body: #000000; --bg-card: #121212; --text-main: #ffffff; --text-muted: #888888;
             --border: #222222; --accent-green: #00ff88; --bg-green: rgba(0,255,136,0.1);
             --accent-purple: #b388ff; --bg-purple: rgba(179,136,255,0.1); --bg-blue: rgba(59,130,246,0.1);
@@ -427,6 +425,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         }
         [data-theme="dotted"] .shader-bg-canvas,
         [data-theme="dotted"] .shader-dotted-overlay {
+            display: block;
             opacity: 1;
         }
 
@@ -4284,11 +4283,17 @@ const CloudSync = {
                 }
                 renderNeeded = true;
             }
-            if (cloud.theme && cloud.theme !== document.documentElement.getAttribute('data-theme')) {
-                document.documentElement.setAttribute('data-theme', cloud.theme);
-                storage.set('theme', cloud.theme);
-                if (typeof state !== 'undefined') state.theme = cloud.theme;
-                if (typeof updateThemeUI === 'function') updateThemeUI();
+            if (cloud.theme) {
+                let syncTheme = cloud.theme === 'oled' ? 'black' : cloud.theme;
+                if (syncTheme !== document.documentElement.getAttribute('data-theme')) {
+                    document.documentElement.setAttribute('data-theme', syncTheme);
+                    storage.set('theme', syncTheme);
+                    if (typeof state !== 'undefined') {
+                        state.theme = syncTheme;
+                        gset(state.scheduleGroup, 'theme', syncTheme);
+                    }
+                    if (typeof updateThemeUI === 'function') updateThemeUI();
+                }
             }
             if (cloud.customDisplayName && cloud.customDisplayName !== storage.get('custom_display_name', '')) {
                 storage.set('custom_display_name', cloud.customDisplayName);
@@ -4617,12 +4622,14 @@ const colors = {
     lime:    { main:'#84cc16', hover:'#65a30d', light:'rgba(132,204,22,0.12)',  btnBg:'linear-gradient(135deg,#84cc16,#65a30d)', btnShadow:'0 4px 14px rgba(132,204,22,0.5)' },
     red:     { main:'#ef4444', hover:'#dc2626', light:'rgba(239,68,68,0.12)',   btnBg:'linear-gradient(135deg,#ef4444,#dc2626)', btnShadow:'0 4px 14px rgba(239,68,68,0.5)'  },
 };
+let rawTheme = gget(ACTIVE_GROUP,'theme','dark');
+if (rawTheme === 'oled') rawTheme = 'black';
 let state = {
     scheduleGroup: ACTIVE_GROUP,       
     groupName: ACTIVE_GROUP_NAME,      
     tab: 'today',
     group: gget(ACTIVE_GROUP,'saved_group','all'),
-    theme: gget(ACTIVE_GROUP,'theme','dark'),
+    theme: rawTheme,
     engTeacher: gget(ACTIVE_GROUP,'eng_teacher','all'),
     color: gget(ACTIVE_GROUP,'color','blue'),
     fontSize: gget(ACTIVE_GROUP,'font_size','normal'),
@@ -4729,7 +4736,9 @@ async function fetchGroupSchedule(groupName, force = false) {
     }
     const fresh = await window.getSchedule(groupName);
     if (fresh && Array.isArray(fresh.days)) {
-        writeScheduleCache(groupName, fresh);
+        if (fresh.days.length > 0) {
+            writeScheduleCache(groupName, fresh);
+        }
         updateFallbackBanner(!!fresh._isStaleFallback, fresh._cachedAt);
         return fresh;
     }
@@ -4738,7 +4747,8 @@ async function fetchGroupSchedule(groupName, force = false) {
         return cached.data;
     }
     updateFallbackBanner(false);
-    throw new Error('Не вдалося завантажити розклад');
+    const errDetails = window.getSchedule?.lastError || 'Не вдалося завантажити розклад';
+    throw new Error(errDetails);
 }
 
 function applySchedule(raw) {
@@ -5253,7 +5263,7 @@ function initNewSettings() {
 
                 const themeContainer = sec.querySelector('.ios-themes-container');
                 if (themeContainer) {
-                    const themeMatch = secMatch || 'тема оформлення колір light dark oled cyber aurora dotted'.includes(query);
+                    const themeMatch = secMatch || 'тема оформлення колір light dark black oled cyber aurora dotted'.includes(query);
                     themeContainer.style.display = themeMatch ? '' : 'none';
                     if (themeMatch) hasVisibleItem = true;
                 }
@@ -5525,6 +5535,22 @@ void main() {
         };
         window.addEventListener('pointermove', onPointerMove, { passive: true });
         window.addEventListener('pointerleave', () => { targetPointer.force = 0; }, { passive: true });
+
+        if (!canvas._glLossHandled) {
+            canvas._glLossHandled = true;
+            canvas.addEventListener('webglcontextlost', (e) => {
+                e.preventDefault();
+                if (window.ShaderBg) window.ShaderBg.stop();
+                gl = null;
+                program = null;
+            }, false);
+            canvas.addEventListener('webglcontextrestored', () => {
+                const curTheme = document.documentElement.getAttribute('data-theme');
+                if (curTheme === 'dotted' && window.ShaderBg) {
+                    window.ShaderBg.start();
+                }
+            }, false);
+        }
 
         return true;
     }
@@ -5898,7 +5924,8 @@ function render() {
     else if(state.tab==='this_week'){html=renderWeek(getLocalMonday(nowKyiv));}
     else if(state.tab==='next_week'){const nm=getLocalMonday(nowKyiv);nm.setDate(nm.getDate()+7);html=renderWeek(nm);}
     
-    const notice = gSchedule.totalLessons===0 ? `<div class="empty-state" style="margin-bottom:12px"><span>📭</span><p>Деканат ще не опублікував розклад групи ${state.groupName} на ці два тижні</p></div>` : '';
+    const emptyMsg = (gSchedule.raw && gSchedule.raw.error) ? gSchedule.raw.error : `Деканат ще не опублікував розклад для групи ${state.groupName} на цей період`;
+    const notice = gSchedule.totalLessons===0 ? `<div class="empty-state" style="margin-bottom:12px"><span>📭</span><p>${emptyMsg}</p></div>` : '';
     els.scheduleContainer.innerHTML=notice+html;
     updateLiveTimers();
     renderDeadlines();
@@ -6715,7 +6742,10 @@ async function switchGroup(groupName) {
         if (bGroupName) bGroupName.textContent = groupName;
     } catch(e) {}
 
+    if (typeof renderProfileBar === 'function') renderProfileBar();
+    if (typeof syncProfileBannerUI === 'function') syncProfileBannerUI();
     if (typeof updateStudentCardUI === 'function') updateStudentCardUI();
+    if (typeof updateAdminBtnVisibility === 'function') updateAdminBtnVisibility();
     if (typeof haptic === 'function') haptic('selection');
 
     gSchedule = null;
@@ -7050,6 +7080,8 @@ function initGroupPicker() {
             input,
             results,
             onPick: (picked) => {
+                input.value = '';
+                results.innerHTML = '';
                 addSavedGroup(picked);
                 switchGroup(picked);
             }
@@ -8364,7 +8396,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
     }
     function saveVisitData(d) { try { localStorage.setItem('user_visit_data', JSON.stringify(d)); } catch{} }
     function trackVisit() {
-        if (!storage.get('toggle-track-visits_v', 'true') === 'false') return;
+        if (storage.get('toggle-track-visits_v', 'true') === 'false') return;
         const today = getToday();
         const d = loadVisitData();
         if (d.lastDate === today) return; 
@@ -9082,13 +9114,6 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             setTimeout(() => {
                 overlay.style.pointerEvents = 'none';
                 overlay.style.display = 'flex';
-                
-                const cb = document.getElementById('tg-code-box');
-                if (cb) cb.style.display = 'none';
-                const ci = document.getElementById('tg-code-input');
-                if (ci) ci.value = '';
-                const ch = document.getElementById('tg-code-hint');
-                if (ch) ch.textContent = '';
             }, 300);
             document.body.style.overflow = '';
         }

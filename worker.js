@@ -143,9 +143,15 @@ async function fetchWin1251(url, init = {}, timeoutMs = 7000) {
 }
 
 async function getSuggestionGroups(title) {
-  const query = new URLSearchParams({ n: 701, lev: 142, faculty: 0, course: 0, query: title }).toString();
-  const json = JSON.parse(await fetchWin1251(`${DEKANAT}?${query}`));
-  return json.suggestions || [];
+  try {
+    const query = new URLSearchParams({ n: 701, lev: 142, faculty: 0, course: 0, query: title }).toString();
+    const raw = await fetchWin1251(`${DEKANAT}?${query}`, {}, 5000);
+    const json = JSON.parse(raw);
+    return json.suggestions || [];
+  } catch (e) {
+    console.warn('getSuggestionGroups warning:', e.message);
+    return [];
+  }
 }
 
 async function getSchedule(group, range) {
@@ -213,8 +219,12 @@ async function handleScheduleRoutes(request, env, ctx) {
         });
       }
 
+      let fresh = null;
+      let dekanatReachable = false;
+      let lastErr = null;
       try {
-        const fresh = await getSchedule(cleanGroup, range);
+        fresh = await getSchedule(cleanGroup, range);
+        dekanatReachable = true;
         if (fresh && Array.isArray(fresh.days) && fresh.days.length > 0) {
           if (kv) {
             const entry = JSON.stringify({ ts: Date.now(), schedule: fresh });
@@ -230,10 +240,12 @@ async function handleScheduleRoutes(request, env, ctx) {
           });
         }
       } catch (err) {
+        lastErr = err;
         console.warn('Dekanat fetch failed, trying fallback cache:', err.message);
+        dekanatReachable = false;
       }
 
-      if (cachedEntry && cachedEntry.schedule) {
+      if (cachedEntry && cachedEntry.schedule && cachedEntry.schedule.days?.length > 0) {
         return json({
           ...cachedEntry.schedule,
           _isStaleFallback: true,
@@ -249,7 +261,7 @@ async function handleScheduleRoutes(request, env, ctx) {
           const rawFb = await kv.get(fallbackKey);
           if (rawFb) {
             const fb = JSON.parse(rawFb);
-            if (fb && fb.schedule) {
+            if (fb && fb.schedule && fb.schedule.days?.length > 0) {
               return json({
                 ...fb.schedule,
                 _isStaleFallback: true,
@@ -263,7 +275,20 @@ async function handleScheduleRoutes(request, env, ctx) {
         } catch {}
       }
 
-      return json({ error: 'Сервер деканату тимчасово недоступний, резервна копія для цієї групи ще не збережена' }, 502);
+      // If Dekanat was reachable and returned empty timetable for this group:
+      if (dekanatReachable) {
+        return json({
+          group: cleanGroup,
+          days: [],
+          notPublished: true,
+          error: `Деканат ще не опублікував розклад для групи ${cleanGroup} на цей період`
+        }, 200, {
+          'Cache-Control': 'public, max-age=180',
+          'X-Cache-Status': 'EMPTY'
+        });
+      }
+
+      return json({ error: 'Сервер деканату тимчасово недоступний, резервна копія для цієї групи ще не збережена', details: lastErr?.message || null }, 502);
     }
   } catch (error) {
     return json({ error: error.message }, 502);
@@ -1328,29 +1353,33 @@ export default {
         const cursor = url.searchParams.get("cursor") || undefined;
         let synced = 0;
         const LEGACY = { fep11: "ФЕП-11с", fep12: "ФЕП-12с", fep13: "ФЕП-13с" };
-        const page = await kv.list({ prefix: "u:", limit: 20, cursor });
-        for (const key of page.keys) {
+        const page = await kv.list({ prefix: "u:", limit: 25, cursor });
+        const tasks = page.keys.map(async (key) => {
           const uid = key.name.slice(2);
-          if (!uid) continue;
+          if (!uid) return false;
           const raw = await kv.get(key.name);
-          if (!raw) continue;
+          if (!raw) return false;
           let p;
-          try { p = JSON.parse(raw); } catch { continue; }
+          try { p = JSON.parse(raw); } catch { return false; }
           let grp = p?.group;
-          if (!grp) continue;
+          if (!grp) return false;
           if (LEGACY[grp]) grp = LEGACY[grp];
 
           const firestoreUrl =
             `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/users/${uid}` +
             `?key=${env.FIREBASE_API_KEY}&updateMask.fieldPaths=group`;
 
-          await fetch(firestoreUrl, {
+          const res = await fetch(firestoreUrl, {
             method: "PATCH",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ fields: { group: { stringValue: grp } } })
+            body: JSON.stringify({ fields: { group: { stringValue: grp } } }),
+            signal: AbortSignal.timeout(6000)
           });
-          synced++;
-        }
+          return res.ok;
+        });
+
+        const results = await Promise.all(tasks);
+        synced = results.filter(Boolean).length;
 
         return jsonRes({ ok: true, synced, cursor: page.list_complete ? null : page.cursor, done: page.list_complete });
       } catch (e) {
