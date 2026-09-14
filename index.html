@@ -180,6 +180,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                         username: f.username?.stringValue || '',
                         photo_url: f.photo_url?.stringValue || '',
                         last_seen: parseInt(f.last_seen?.integerValue || f.last_seen?.doubleValue || '0'),
+                        last_seen_web: parseInt(f.last_seen_web?.integerValue || f.last_seen_web?.doubleValue || '0'),
+                        last_seen_bot: parseInt(f.last_seen_bot?.integerValue || f.last_seen_bot?.doubleValue || '0'),
                         group: f.group?.stringValue || '',
                         devices,
                     };
@@ -242,6 +244,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
                 await setDoc(userRef, {
                     last_seen: now,
+                    last_seen_web: now,
                     group: group || 'fep13',
                     devices: updatedDevices,
                 }, { merge: true });
@@ -353,6 +356,77 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         [data-theme="aurora"] .bg-orb-2 { background: #6366f1; }
         [data-theme="aurora"] .bg-orb-3 { background: #a855f7; }
         [data-theme="aurora"] .bg-orb-4 { background: #38bdf8; }
+
+        /* --- Dotted Animation (Liquid Metal) Theme --- */
+        [data-theme="dotted"] {
+            --bg-body: #080a10;
+            --bg-card: rgba(18, 24, 38, 0.72);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: rgba(148, 163, 184, 0.16);
+            --accent-green: #34d399;
+            --bg-green: rgba(52, 211, 153, 0.15);
+            --accent-purple: #818cf8;
+            --bg-purple: rgba(129, 140, 248, 0.15);
+            --bg-blue: rgba(56, 189, 248, 0.15);
+            --primary: #38bdf8;
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+            --shadow-hover: 0 12px 40px rgba(56, 189, 248, 0.22);
+            --modal-bg: rgba(15, 20, 32, 0.88);
+            --orb-opacity: 0;
+        }
+        [data-theme="dotted"] .lesson-card {
+            background: rgba(18, 24, 38, 0.68) !important;
+            backdrop-filter: blur(20px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+        }
+        [data-theme="dotted"] .lesson-card:hover {
+            border-color: rgba(56, 189, 248, 0.45) !important;
+            box-shadow: 0 12px 32px rgba(56, 189, 248, 0.15) !important;
+        }
+        [data-theme="dotted"] .days-nav,
+        [data-theme="dotted"] .bottom-nav {
+            background: rgba(15, 20, 32, 0.75) !important;
+            backdrop-filter: blur(25px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+        [data-theme="dotted"] .bg-canvas {
+            display: none !important;
+        }
+
+        .shader-bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            display: none;
+        }
+        .shader-dotted-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.22) 1.2px, transparent 1.2px);
+            background-size: 24px 24px;
+            display: none;
+        }
+        [data-theme="dotted"] .shader-bg-canvas,
+        [data-theme="dotted"] .shader-dotted-overlay {
+            opacity: 1;
+        }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--apple-font); -webkit-tap-highlight-color: transparent; }
         body { background-color: var(--bg-body); color: var(--text-main); line-height: 1.5; padding-bottom: calc(96px + env(safe-area-inset-bottom)); transition: background-color 0.3s ease,color 0.3s ease; overflow-x: hidden; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
@@ -675,6 +749,477 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         [data-theme="light"] body.glass-cards .lesson-card{background:rgba(255,255,255,0.6);border-color:rgba(255,255,255,0.7)}
         body.hide-teacher .lesson-meta-teacher{display:none} body.hide-room .lesson-meta-room{display:none}
         body.simple-mode .bg-canvas{display:none} body.simple-mode .lesson-card{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;animation:none!important;transition:none!important;box-shadow:none!important} body.simple-mode .lesson-card::before{display:none} body.simple-mode .lesson-card:hover{transform:none!important} body.simple-mode .day-btn{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;transition:none!important} body.simple-mode .days-nav{position:static;background:var(--bg-body)!important} body.simple-mode *{animation-duration:0.001s!important;transition-duration:0.001s!important} body.simple-mode .current-badge{animation:none!important;opacity:1!important} body.simple-mode .live-timer-text svg{animation:none!important} body.simple-mode .modal-content{transition:none!important;transform:translateY(0)!important} body.simple-mode .modal-overlay{backdrop-filter:none!important}
+
+        /* =========================================================
+           APPLE iOS SETTINGS THEME & INSET GROUPED DESIGN
+           ========================================================= */
+        :root {
+            --ios-bg: #f2f2f7;
+            --ios-card-bg: #ffffff;
+            --ios-card-border: rgba(0, 0, 0, 0.08);
+            --ios-separator: rgba(60, 60, 67, 0.12);
+            --ios-row-hover: rgba(0, 0, 0, 0.04);
+            --ios-subtext: #8e8e93;
+            --ios-switch-off: #e9e9ea;
+            --ios-switch-on: #34c759;
+            --ios-nav-bg: rgba(242, 242, 247, 0.88);
+            --ios-pill-bg: rgba(120, 120, 128, 0.12);
+            --ios-pill-text: #636366;
+        }
+        [data-theme="dark"],
+        [data-theme="black"],
+        [data-theme="cyber"],
+        [data-theme="aurora"],
+        [data-theme="dotted"] {
+            --ios-bg: #000000;
+            --ios-card-bg: #1c1c1e;
+            --ios-card-border: rgba(255, 255, 255, 0.09);
+            --ios-separator: rgba(84, 84, 88, 0.42);
+            --ios-row-hover: rgba(255, 255, 255, 0.05);
+            --ios-subtext: #98989d;
+            --ios-switch-off: #39393d;
+            --ios-nav-bg: rgba(28, 28, 30, 0.85);
+            --ios-pill-bg: rgba(120, 120, 128, 0.24);
+            --ios-pill-text: #aeaeb2;
+        }
+        [data-theme="dotted"] {
+            --ios-bg: #0b0f19;
+            --ios-card-bg: rgba(20, 27, 44, 0.72);
+            --ios-card-border: rgba(255, 255, 255, 0.12);
+            --ios-separator: rgba(255, 255, 255, 0.08);
+            --ios-row-hover: rgba(255, 255, 255, 0.08);
+            --ios-nav-bg: rgba(15, 22, 36, 0.85);
+        }
+
+        #settings-modal .modal-content {
+            background: var(--ios-bg) !important;
+            border-radius: 28px 28px 0 0;
+            max-width: 620px;
+            max-height: 90vh;
+            max-height: 90dvh;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--ios-card-border);
+            box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.35);
+            overflow: hidden;
+            padding: 0;
+        }
+        @media (min-width: 680px) {
+            #settings-modal {
+                align-items: center;
+                padding: 24px;
+            }
+            #settings-modal .modal-content {
+                border-radius: 24px;
+                max-height: 85vh;
+                transform: translateY(24px) scale(0.97);
+                transition: transform 0.36s var(--spring-easing), opacity 0.3s ease;
+            }
+            #settings-modal.active .modal-content {
+                transform: translateY(0) scale(1);
+            }
+        }
+        #settings-modal .modal-content::before { display: none; }
+
+        .ios-sheet-header {
+            background: var(--ios-nav-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 0.5px solid var(--ios-separator);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            flex-shrink: 0;
+            padding-top: 8px;
+        }
+        .ios-drag-handle {
+            width: 36px;
+            height: 5px;
+            border-radius: 10px;
+            background: rgba(120, 120, 128, 0.35);
+            margin: 0 auto 8px;
+        }
+        .ios-nav-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px 10px;
+        }
+        .ios-nav-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.4px;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ios-nav-close {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(120, 120, 128, 0.18);
+            color: var(--text-main);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.15s ease, background 0.2s;
+        }
+        .ios-nav-close:hover { background: rgba(120, 120, 128, 0.3); }
+        .ios-nav-close:active { transform: scale(0.9); }
+
+        .ios-category-bar {
+            display: flex;
+            gap: 8px;
+            padding: 0 16px 12px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .ios-category-bar::-webkit-scrollbar { display: none; }
+        .ios-cat-pill {
+            flex-shrink: 0;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12.5px;
+            font-weight: 600;
+            letter-spacing: -0.2px;
+            background: var(--ios-pill-bg);
+            color: var(--ios-pill-text);
+            border: none;
+            cursor: pointer;
+            transition: all 0.25s var(--spring-bounce);
+            user-select: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .ios-cat-pill:active { transform: scale(0.94); }
+        .ios-cat-pill.active {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            transform: scale(1.02);
+        }
+
+        .ios-body {
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 18px 16px 40px;
+            flex: 1;
+            scroll-behavior: smooth;
+        }
+
+        .ios-group {
+            margin-bottom: 22px;
+            transition: opacity 0.3s ease;
+        }
+        .ios-group-title {
+            font-size: 11.5px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--ios-subtext);
+            padding: 0 12px 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .ios-group-caption {
+            font-size: 12px;
+            color: var(--ios-subtext);
+            padding: 6px 12px 0;
+            line-height: 1.35;
+        }
+        .ios-card {
+            background: var(--ios-card-bg);
+            border-radius: 16px;
+            border: 1px solid var(--ios-card-border);
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+
+        .ios-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 11px 14px;
+            min-height: 48px;
+            gap: 12px;
+            position: relative;
+            transition: background 0.15s ease;
+        }
+        .ios-row:active {
+            background: var(--ios-row-hover);
+        }
+        .ios-row-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 0;
+        }
+        .ios-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+        }
+        .ios-icon-blue   { background: linear-gradient(135deg, #007aff, #0056b3); }
+        .ios-icon-green  { background: linear-gradient(135deg, #34c759, #248a3d); }
+        .ios-icon-orange { background: linear-gradient(135deg, #ff9500, #c97100); }
+        .ios-icon-red    { background: linear-gradient(135deg, #ff3b30, #c92a2a); }
+        .ios-icon-purple { background: linear-gradient(135deg, #af52de, #7e22ce); }
+        .ios-icon-indigo { background: linear-gradient(135deg, #5856d6, #3730a3); }
+        .ios-icon-pink   { background: linear-gradient(135deg, #ff2d55, #be123c); }
+        .ios-icon-teal   { background: linear-gradient(135deg, #5ac8fa, #0284c7); }
+        .ios-icon-yellow { background: linear-gradient(135deg, #ffcc00, #d97706); }
+        .ios-icon-gray   { background: linear-gradient(135deg, #8e8e93, #4b5563); }
+
+        .ios-row-body {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+        .ios-row-title {
+            font-size: 14.5px;
+            font-weight: 500;
+            letter-spacing: -0.2px;
+            color: var(--text-main);
+        }
+        .ios-row-sub {
+            font-size: 12px;
+            color: var(--ios-subtext);
+            line-height: 1.3;
+        }
+        .ios-row-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .ios-divider {
+            height: 0.5px;
+            background: var(--ios-separator);
+            margin-left: 56px;
+        }
+
+        .ios-switch {
+            position: relative;
+            width: 51px;
+            height: 31px;
+            flex-shrink: 0;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .ios-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            position: absolute;
+        }
+        .ios-switch-slider {
+            position: absolute;
+            inset: 0;
+            background: var(--ios-switch-off);
+            border-radius: 31px;
+            transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+        }
+        .ios-switch-slider::before {
+            content: '';
+            position: absolute;
+            width: 27px;
+            height: 27px;
+            left: 2px;
+            top: 2px;
+            background: #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18), 0 1px 1px rgba(0, 0, 0, 0.14);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .ios-switch input:checked + .ios-switch-slider {
+            background: var(--ios-switch-on);
+        }
+        .ios-switch input:checked + .ios-switch-slider::before {
+            transform: translateX(20px);
+        }
+
+        .ios-theme-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 12px;
+        }
+        @media (max-width: 440px) {
+            .ios-theme-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        .ios-theme-card {
+            background: rgba(120, 120, 128, 0.08);
+            border: 2px solid transparent;
+            border-radius: 14px;
+            padding: 10px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.25s var(--spring-bounce);
+            position: relative;
+            user-select: none;
+            outline: none;
+        }
+        .ios-theme-card:hover {
+            transform: translateY(-2px);
+            background: rgba(120, 120, 128, 0.14);
+        }
+        .ios-theme-card:active {
+            transform: scale(0.95);
+        }
+        .ios-theme-card.active {
+            border-color: var(--primary);
+            background: rgba(120, 120, 128, 0.12);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+        }
+        .ios-theme-preview {
+            width: 100%;
+            height: 48px;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+        .preview-light  { background: linear-gradient(135deg, #ffffff, #e2e8f0); color: #0f172a; border: 1px solid rgba(0,0,0,0.1); }
+        .preview-dark   { background: linear-gradient(135deg, #1e293b, #0f172a); color: #f8fafc; border: 1px solid rgba(255,255,255,0.1); }
+        .preview-black  { background: #000000; color: #ffffff; border: 1px solid #333333; }
+        .preview-cyber  { background: linear-gradient(135deg, #080915, #1e1035); color: #00f0ff; border: 1px solid rgba(0,240,255,0.4); }
+        .preview-aurora { background: linear-gradient(135deg, #06141d, #064e3b); color: #10e7aa; border: 1px solid rgba(16,231,170,0.4); }
+        .preview-dotted { background: radial-gradient(circle at 50% 50%, #38bdf8 0%, #0b0f19 80%); color: #38bdf8; border: 1px solid #38bdf8; }
+        .ios-theme-name {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text-main);
+            text-align: center;
+            white-space: nowrap;
+        }
+        .ios-theme-check {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 800;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+        }
+        .ios-theme-card.active .ios-theme-check {
+            display: flex;
+            animation: springPop 0.3s var(--spring-bounce);
+        }
+
+        .ios-segmented {
+            display: flex;
+            background: rgba(120, 120, 128, 0.15);
+            border-radius: 10px;
+            padding: 3px;
+            gap: 3px;
+            width: 100%;
+        }
+        .ios-segmented .size-btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+        .ios-segmented .size-btn.active {
+            background: var(--bg-card);
+            color: var(--text-main);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12), 0 0.5px 1px rgba(0, 0, 0, 0.08);
+        }
+
+        .ios-input-field {
+            width: 100%;
+            background: rgba(120, 120, 128, 0.08);
+            border: 1px solid var(--ios-card-border);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 14.5px;
+            font-family: inherit;
+            padding: 11px 14px;
+            outline: none;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .ios-input-field:focus {
+            border-color: var(--primary);
+            background: rgba(120, 120, 128, 0.12);
+        }
+        .ios-btn-pill {
+            padding: 11px 18px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s;
+            border: none;
+            user-select: none;
+        }
+        .ios-btn-pill:active { transform: scale(0.97); }
+        .ios-btn-primary {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+        }
+        .ios-btn-primary:hover { opacity: 0.92; }
+        .ios-btn-secondary {
+            background: rgba(120, 120, 128, 0.12);
+            color: var(--text-main);
+            border: 1px solid var(--ios-card-border);
+        }
+        .ios-btn-secondary:hover { background: rgba(120, 120, 128, 0.18); }
+        .ios-btn-destructive {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        .ios-btn-destructive:hover { background: rgba(239, 68, 68, 0.18); }
 
         .admin-modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); z-index:200; opacity:0; pointer-events:none; transition:opacity 0.3s ease; display:flex; align-items:flex-end; justify-content:center; }
         .admin-modal-overlay.active { opacity:1; pointer-events:all; }
@@ -2004,6 +2549,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
     <div class="bg-orb bg-orb-4"></div>
 </div>
 
+<canvas id="shader-bg-canvas" class="shader-bg-canvas" aria-hidden="true"></canvas>
+<div id="shader-dotted-overlay" class="shader-dotted-overlay" aria-hidden="true"></div>
+
 <div class="app-wrapper">
     <div id="page-schedule" class="page active">
         <div class="container">
@@ -2824,145 +3372,438 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
 <div class="modal-overlay" id="settings-modal">
     <div class="modal-content">
-        <div class="modal-header"><h2>Налаштування</h2><button class="close-btn" id="close-settings">×</button></div>
-        <div class="modal-body">
-            <div class="setting-group" style="border-bottom:2px solid var(--border);padding-bottom:20px;margin-bottom:4px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                    <label style="font-size:15px;font-weight:700;color:var(--text-main);margin:0;">🎓 Збережені групи</label>
-                    <span style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Оберіть для переходу</span>
+        <!-- iOS Sheet Drag Handle & Navigation -->
+        <div class="ios-sheet-header">
+            <div class="ios-drag-handle"></div>
+            <div class="ios-nav-bar">
+                <div class="ios-nav-title">
+                    <span>⚙️</span>
+                    <span>Налаштування</span>
                 </div>
-                <div id="saved-groups-container" class="saved-groups-container"></div>
-                <div style="margin-top:12px;">
-                    <input type="text" id="settings-group-search" class="group-search-input" placeholder="+ Додати / змінити групу (почніть вводити)" autocomplete="off" autocapitalize="characters" spellcheck="false" />
-                    <div id="settings-group-results" class="group-search-results"></div>
-                </div>
+                <button type="button" class="ios-nav-close" id="close-settings" title="Закрити">✕</button>
             </div>
-            <div class="setting-group" id="eng-setting-group" style="display:none">
-                <label>Ваш викладач Англійської</label>
-                <div class="select-wrapper">
-                    <select id="eng-select">
-                        <option value="all">Усі викладачі</option>
-                    </select>
+            <!-- iOS Category Filter Pills -->
+            <div class="ios-category-bar" id="settings-category-pills">
+                <button type="button" class="ios-cat-pill active" data-target="all">✨ Усі</button>
+                <button type="button" class="ios-cat-pill" data-target="ios-sec-appearance">🎨 Оформлення</button>
+                <button type="button" class="ios-cat-pill" data-target="ios-sec-groups">🎓 Групи</button>
+                <button type="button" class="ios-cat-pill" data-target="ios-sec-custom">📚 Пари</button>
+                <button type="button" class="ios-cat-pill" data-target="ios-sec-profile">👤 Профіль</button>
+                <button type="button" class="ios-cat-pill" data-target="ios-sec-notifications">🔔 Сповіщення</button>
+                <button type="button" class="ios-cat-pill" data-target="ios-sec-system">⚡ Швидкий доступ</button>
+            </div>
+        </div>
+
+        <!-- iOS Inset Grouped Settings Body -->
+        <div class="ios-body modal-body">
+
+            <!-- 1. APPEARANCE & THEME -->
+            <div class="ios-group" id="ios-sec-appearance">
+                <div class="ios-group-title">
+                    <span>Тема оформлення</span>
+                    <span style="font-size:10px;text-transform:none;opacity:0.75;">6 варіантів</span>
+                </div>
+                <div class="ios-card">
+                    <div class="ios-theme-grid">
+                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="light" title="Світла тема">
+                            <div class="ios-theme-preview preview-light">☀️<div class="ios-theme-check">✓</div></div>
+                            <span class="ios-theme-name">Світла</span>
+                        </button>
+                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="dark" title="Темна тема">
+                            <div class="ios-theme-preview preview-dark">🌙<div class="ios-theme-check">✓</div></div>
+                            <span class="ios-theme-name">Темна</span>
+                        </button>
+                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="black" title="OLED Чорна">
+                            <div class="ios-theme-preview preview-black">⬛<div class="ios-theme-check">✓</div></div>
+                            <span class="ios-theme-name">Black OLED</span>
+                        </button>
+                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="cyber" title="Cyberpunk">
+                            <div class="ios-theme-preview preview-cyber">⚡<div class="ios-theme-check">✓</div></div>
+                            <span class="ios-theme-name">Cyberpunk</span>
+                        </button>
+                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="aurora" title="Аврора">
+                            <div class="ios-theme-preview preview-aurora">🌌<div class="ios-theme-check">✓</div></div>
+                            <span class="ios-theme-name">Aurora</span>
+                        </button>
+                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="dotted" title="Dotted Animation (Liquid Metal)">
+                            <div class="ios-theme-preview preview-dotted">✨<div class="ios-theme-check">✓</div></div>
+                            <span class="ios-theme-name">✨ Dotted</span>
+                        </button>
+                    </div>
+
+                    <div class="ios-divider"></div>
+
+                    <!-- Accent Color & Hue Slider -->
+                    <div style="padding:12px 14px;">
+                        <div class="ios-row-left" style="margin-bottom:8px;">
+                            <div class="ios-icon ios-icon-pink">🎨</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Колір додатку</span>
+                                <span class="ios-row-sub">Акцентні кнопки, значки та таймери</span>
+                            </div>
+                        </div>
+                        <div class="color-picker" id="color-picker"></div>
+                        <div class="hue-slider-wrap" style="margin-top:10px;">
+                            <div class="hue-slider-label">
+                                <span style="display:flex;align-items:center;gap:6px;"><span class="hue-active-dot" id="hue-dot"></span>Власний відтінок</span>
+                                <span id="hue-hex-label" style="font-family:monospace;font-size:11px;"></span>
+                            </div>
+                            <input type="range" class="hue-slider" id="hue-slider" min="0" max="360" value="220"/>
+                        </div>
+                    </div>
+
+                    <div class="ios-divider"></div>
+
+                    <!-- Text Size Segmented Control -->
+                    <div style="padding:12px 14px;">
+                        <div class="ios-row-left" style="margin-bottom:10px;">
+                            <div class="ios-icon ios-icon-blue">Aa</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Розмір тексту</span>
+                                <span class="ios-row-sub">Масштаб шрифту розкладу</span>
+                            </div>
+                        </div>
+                        <div class="ios-segmented size-switch" id="size-switch">
+                            <button type="button" class="size-btn" data-size="small" style="font-size:12px;">Малий</button>
+                            <button type="button" class="size-btn" data-size="normal" style="font-size:14px;">Звичайний</button>
+                            <button type="button" class="size-btn" data-size="large" style="font-size:16px;">Великий</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card Appearance Toggles -->
+                <div class="ios-group-title" style="margin-top:16px;">Вигляд карток та розкладу</div>
+                <div class="ios-card">
+                    <div class="ios-row">
+                        <div class="ios-row-left">
+                            <div class="ios-icon ios-icon-yellow">⚡</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Простий інтерфейс</span>
+                                <span class="ios-row-sub">Вимикає анімації та розмиття для максимальної швидкості</span>
+                            </div>
+                        </div>
+                        <label class="ios-switch">
+                            <input type="checkbox" id="toggle-simple">
+                            <span class="ios-switch-slider"></span>
+                        </label>
+                    </div>
+                    <div class="ios-divider"></div>
+
+                    <div class="ios-row">
+                        <div class="ios-row-left">
+                            <div class="ios-icon ios-icon-teal">🪟</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Скляні картки</span>
+                                <span class="ios-row-sub">Напівпрозорий frosted-glass ефект із розмиттям</span>
+                            </div>
+                        </div>
+                        <label class="ios-switch">
+                            <input type="checkbox" id="toggle-glass">
+                            <span class="ios-switch-slider"></span>
+                        </label>
+                    </div>
+                    <div class="ios-divider"></div>
+
+                    <div class="ios-row">
+                        <div class="ios-row-left">
+                            <div class="ios-icon ios-icon-indigo">📐</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Компактний режим</span>
+                                <span class="ios-row-sub">Менші відступи — більше пар видно на одному екрані</span>
+                            </div>
+                        </div>
+                        <label class="ios-switch">
+                            <input type="checkbox" id="toggle-compact">
+                            <span class="ios-switch-slider"></span>
+                        </label>
+                    </div>
+                    <div class="ios-divider"></div>
+
+                    <div class="ios-row">
+                        <div class="ios-row-left">
+                            <div class="ios-icon ios-icon-purple">👨‍🏫</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Показувати викладача</span>
+                                <span class="ios-row-sub">Прізвище викладача на картці пари</span>
+                            </div>
+                        </div>
+                        <label class="ios-switch">
+                            <input type="checkbox" id="toggle-teacher" checked>
+                            <span class="ios-switch-slider"></span>
+                        </label>
+                    </div>
+                    <div class="ios-divider"></div>
+
+                    <div class="ios-row">
+                        <div class="ios-row-left">
+                            <div class="ios-icon ios-icon-green">🚪</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Показувати аудиторію</span>
+                                <span class="ios-row-sub">Номер кімнати або посилання на пару</span>
+                            </div>
+                        </div>
+                        <label class="ios-switch">
+                            <input type="checkbox" id="toggle-room" checked>
+                            <span class="ios-switch-slider"></span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
-            <div class="setting-section-title">📚 Мої кастомні пари</div>
-            <div class="setting-group" style="border-bottom:2px solid var(--border);padding-bottom:16px;">
-                <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px 0;line-height:1.4;">
-                    Вибіркові предмети (ДВВС), факультативи та індивідуальні пари. Відображаються тільки у вашому розкладі.
-                </p>
-                <div id="local-custom-lessons-list" class="custom-lessons-list"></div>
-                <button type="button" id="btn-add-local-custom-lesson" style="margin-top:10px;width:100%;padding:12px;border:1.5px dashed var(--primary);background:var(--bg-blue);color:var(--primary);border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:0.2s;">
-                    <span>➕ Додати власну пару</span>
+            <!-- 2. GROUPS & SCHEDULE -->
+            <div class="ios-group" id="ios-sec-groups">
+                <div class="ios-group-title">Навчальні групи</div>
+                <div class="ios-card" style="padding:14px;">
+                    <div class="ios-row-left" style="margin-bottom:10px;">
+                        <div class="ios-icon ios-icon-blue">🎓</div>
+                        <div class="ios-row-body">
+                            <span class="ios-row-title">Збережені групи</span>
+                            <span class="ios-row-sub">Швидке переключення в один дотик</span>
+                        </div>
+                    </div>
+                    <div id="saved-groups-container" class="saved-groups-container" style="margin-bottom:12px;"></div>
+                    <div style="position:relative;">
+                        <input type="text" id="settings-group-search" class="ios-input-field" placeholder="🔍 Почніть вводити назву групи (напр. ФЕП-11)..." autocomplete="off" autocapitalize="characters" spellcheck="false" />
+                        <div id="settings-group-results" class="group-search-results"></div>
+                    </div>
+
+                    <!-- English Teacher Selection -->
+                    <div id="eng-setting-group" style="display:none;margin-top:14px;padding-top:12px;border-top:0.5px solid var(--ios-separator);">
+                        <div class="ios-row-left" style="margin-bottom:8px;">
+                            <div class="ios-icon ios-icon-indigo">🇬🇧</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Викладач Англійської</span>
+                                <span class="ios-row-sub">Фільтр розкладу підгрупи</span>
+                            </div>
+                        </div>
+                        <div class="select-wrapper">
+                            <select id="eng-select" class="ios-input-field">
+                                <option value="all">Усі викладачі</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. CUSTOM LESSONS -->
+            <div class="ios-group" id="ios-sec-custom">
+                <div class="ios-group-title">Мої кастомні пари</div>
+                <div class="ios-card" style="padding:14px;">
+                    <div class="ios-row-left" style="margin-bottom:8px;">
+                        <div class="ios-icon ios-icon-orange">📚</div>
+                        <div class="ios-row-body">
+                            <span class="ios-row-title">Вибіркові та особисті пари</span>
+                            <span class="ios-row-sub">ДВВС, факультативи — відображаються тільки у вашому розкладі</span>
+                        </div>
+                    </div>
+                    <div id="local-custom-lessons-list" class="custom-lessons-list" style="margin-top:8px;"></div>
+                    <button type="button" id="btn-add-local-custom-lesson" class="ios-btn-pill ios-btn-primary" style="width:100%;margin-top:12px;">
+                        <span>➕ Додати власну пару</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4. PROFILE & CLOUD SYNC -->
+            <div class="ios-group" id="ios-sec-profile">
+                <div class="ios-group-title">Мій профіль та синхронізація</div>
+                <div class="ios-card">
+                    <div style="padding:14px 14px 8px;">
+                        <div class="ios-row-left" style="margin-bottom:10px;">
+                            <div class="ios-icon ios-icon-purple">👤</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Відображуване ім'я</span>
+                                <span class="ios-row-sub">Для персонального привітання</span>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <input type="text" class="ios-input-field" id="custom-name-input" placeholder="Як тебе звати?" maxlength="30"/>
+                            <button id="custom-name-save-btn" class="ios-btn-pill ios-btn-primary" style="padding:0 16px;">Зберегти</button>
+                            <button id="custom-name-clear-btn" class="ios-btn-pill ios-btn-secondary" style="padding:0 14px;">✕</button>
+                        </div>
+                    </div>
+
+                    <div class="ios-divider"></div>
+
+                    <div class="ios-row">
+                        <div class="ios-row-left">
+                            <div class="ios-icon ios-icon-indigo">🪪</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Показувати профіль-бар</span>
+                                <span class="ios-row-sub">Аватарка та ім'я зверху головного екрана</span>
+                            </div>
+                        </div>
+                        <label class="ios-switch">
+                            <input type="checkbox" id="toggle-profile-bar" checked>
+                            <span class="ios-switch-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="ios-divider"></div>
+
+                    <div class="ios-row">
+                        <div class="ios-row-left">
+                            <div class="ios-icon ios-icon-teal">☁️</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Telegram Cloud Sync</span>
+                                <span class="ios-row-sub">Синхронізація груп, теми та пар</span>
+                            </div>
+                        </div>
+                        <span id="cloud-sync-status-badge" style="font-size:11px;font-weight:700;padding:4px 8px;border-radius:8px;background:rgba(59,130,246,0.12);color:var(--primary);white-space:nowrap;">Готово</span>
+                    </div>
+                    <div style="padding:0 14px 14px;">
+                        <button type="button" id="btn-cloud-sync-now" class="ios-btn-pill ios-btn-secondary" style="width:100%;">
+                            <span>🔄 Синхронізувати зараз</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. NOTIFICATIONS -->
+            <div class="ios-group" id="ios-sec-notifications">
+                <div class="ios-group-title">Сповіщення</div>
+                <div class="ios-card">
+                    <div class="ios-row">
+                        <div class="ios-row-left">
+                            <div class="ios-icon ios-icon-red">⏰</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Нагадування про пари</span>
+                                <span class="ios-row-sub">Сповіщення за 10 хвилин до початку</span>
+                            </div>
+                        </div>
+                        <label class="ios-switch">
+                            <input type="checkbox" id="toggle-notif-lessons">
+                            <span class="ios-switch-slider"></span>
+                        </label>
+                    </div>
+                    <div class="ios-divider"></div>
+
+                    <div class="ios-row">
+                        <div class="ios-row-left">
+                            <div class="ios-icon ios-icon-orange">📢</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Нові оголошення</span>
+                                <span class="ios-row-sub">Значок непрочитаного при публікації оголошень</span>
+                            </div>
+                        </div>
+                        <label class="ios-switch">
+                            <input type="checkbox" id="toggle-notif-ann" checked>
+                            <span class="ios-switch-slider"></span>
+                        </label>
+                    </div>
+                    <div class="ios-divider"></div>
+
+                    <div class="ios-row">
+                        <div class="ios-row-left">
+                            <div class="ios-icon ios-icon-yellow">⏳</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Дедлайни завдань</span>
+                                <span class="ios-row-sub">Нагадування за 24 години до дедлайну</span>
+                            </div>
+                        </div>
+                        <label class="ios-switch">
+                            <input type="checkbox" id="toggle-notif-dl" checked>
+                            <span class="ios-switch-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. STATISTICS -->
+            <div class="ios-group" id="ios-sec-stats">
+                <div class="ios-group-title">Статистика</div>
+                <div class="ios-card">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px;">
+                        <div style="background:rgba(120,120,128,0.08);border-radius:12px;padding:14px;text-align:center;">
+                            <div style="font-size:26px;font-weight:800;color:var(--primary);line-height:1;" id="my-visit-count">—</div>
+                            <div style="font-size:10.5px;color:var(--ios-subtext);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Відвідувань</div>
+                        </div>
+                        <div style="background:rgba(120,120,128,0.08);border-radius:12px;padding:14px;text-align:center;">
+                            <div style="font-size:26px;font-weight:800;color:#f59e0b;line-height:1;" id="my-streak-count">—</div>
+                            <div style="font-size:10.5px;color:var(--ios-subtext);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Стрік 🔥</div>
+                        </div>
+                    </div>
+                    <div class="ios-divider" style="margin-left:0;"></div>
+                    <div class="ios-row">
+                        <div class="ios-row-left">
+                            <div class="ios-icon ios-icon-green">📈</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Відстежувати відвідуваність</span>
+                                <span class="ios-row-sub">Лічильник щоденних входів для підрахунку серій</span>
+                            </div>
+                        </div>
+                        <label class="ios-switch">
+                            <input type="checkbox" id="toggle-track-visits" checked>
+                            <span class="ios-switch-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. SYSTEM & QUICK ACCESS -->
+            <div class="ios-group" id="ios-sec-system">
+                <div class="ios-group-title">Швидкий доступ та поведінка</div>
+                <div class="ios-card">
+                    <div class="ios-row">
+                        <div class="ios-row-left">
+                            <div class="ios-icon ios-icon-blue">📅</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Автовибір сьогодні</span>
+                                <span class="ios-row-sub">Автоматично відкривати сьогоднішній день при запуску</span>
+                            </div>
+                        </div>
+                        <label class="ios-switch">
+                            <input type="checkbox" id="toggle-auto-today" checked>
+                            <span class="ios-switch-slider"></span>
+                        </label>
+                    </div>
+                    <div class="ios-divider"></div>
+
+                    <div class="ios-row">
+                        <div class="ios-row-left">
+                            <div class="ios-icon ios-icon-purple">📑</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Зберігати останню вкладку</span>
+                                <span class="ios-row-sub">Запам'ятовувати відкритий день після перезавантаження</span>
+                            </div>
+                        </div>
+                        <label class="ios-switch">
+                            <input type="checkbox" id="toggle-remember-tab">
+                            <span class="ios-switch-slider"></span>
+                        </label>
+                    </div>
+                    <div class="ios-divider"></div>
+
+                    <div class="ios-row">
+                        <div class="ios-row-left">
+                            <div class="ios-icon ios-icon-gray">📳</div>
+                            <div class="ios-row-body">
+                                <span class="ios-row-title">Тактильний відгук</span>
+                                <span class="ios-row-sub">Легка вібрація при натисканні кнопок (на телефонах)</span>
+                            </div>
+                        </div>
+                        <label class="ios-switch">
+                            <input type="checkbox" id="toggle-haptic" checked>
+                            <span class="ios-switch-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 8. ACTIONS & FOOTER -->
+            <div style="margin-top:14px;display:flex;flex-direction:column;gap:10px;">
+                <div id="admin-settings-row" style="display:none;">
+                    <button id="btn-open-admin-direct" class="ios-btn-pill" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),var(--accent-purple));color:#fff;font-size:14.5px;font-weight:700;box-shadow:0 4px 14px rgba(59,130,246,0.35);">
+                        <span>🔐</span><span>Адмін-панель (@xmice)</span>
+                    </button>
+                </div>
+                <button id="reset-all-settings-btn" class="ios-btn-pill ios-btn-destructive" style="width:100%;padding:13px;">
+                    🗑 Скинути всі налаштування
                 </button>
-            </div>
-
-            <div class="setting-group">
-                <label>Колір додатку</label>
-                <div class="color-picker" id="color-picker"></div>
-                <div class="hue-slider-wrap">
-                    <div class="hue-slider-label">
-                        <span style="display:flex;align-items:center;gap:6px;"><span class="hue-active-dot" id="hue-dot"></span>Власний колір</span>
-                        <span id="hue-hex-label" style="font-family:monospace;font-size:11px;"></span>
-                    </div>
-                    <input type="range" class="hue-slider" id="hue-slider" min="0" max="360" value="220"/>
+                <div style="text-align:center;font-size:11px;font-weight:600;color:var(--ios-subtext);letter-spacing:0.5px;padding:8px 0 16px;">
+                    Версія 1.68 · By <a href="https://t.me/xmice" target="_blank" rel="noopener" class="credit-link">@xmice</a> and <a href="https://t.me/maksimko04" target="_blank" rel="noopener" class="credit-link">@maksimko04</a> · Schedule © 2026
                 </div>
             </div>
-            <div class="setting-group">
-                <label>Тема оформлення</label>
-                <div class="theme-switch">
-                    <button class="theme-btn" data-theme-val="light"><svg viewBox="0 0 24 24"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Світла</button>
-                    <button class="theme-btn" data-theme-val="dark"><svg viewBox="0 0 24 24"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Темна</button>
-                    <button class="theme-btn" data-theme-val="black"><svg viewBox="0 0 24 24"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" fill="currentColor"/></svg> Black</button>
-                    <button class="theme-btn" data-theme-val="cyber"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="currentColor"/></svg> Cyber</button>
-                    <button class="theme-btn" data-theme-val="aurora"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" fill="currentColor"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg> Aurora</button>
-                </div>
-            </div>
-            <div class="setting-group">
-                <label>Розмір тексту</label>
-                <div class="size-switch" id="size-switch">
-                    <button class="size-btn" data-size="small">Аа</button>
-                    <button class="size-btn" data-size="normal">Аа</button>
-                    <button class="size-btn" data-size="large">Аа</button>
-                </div>
-            </div>
-            <div class="setting-group">
-                <label>Вигляд карток</label>
-                <div class="toggle-row"><div class="toggle-label"><span>⚡ Простий інтерфейс</span><small>Вимикає анімації та розмиття</small></div><label class="toggle"><input type="checkbox" id="toggle-simple"><span class="toggle-slider"></span></label></div>
-                <div class="toggle-row"><div class="toggle-label"><span>Скляні картки</span><small>Напівпрозорий стиль з розмиттям</small></div><label class="toggle"><input type="checkbox" id="toggle-glass"><span class="toggle-slider"></span></label></div>
-                <div class="toggle-row"><div class="toggle-label"><span>Компактний режим</span><small>Менші відступи, більше пар на екрані</small></div><label class="toggle"><input type="checkbox" id="toggle-compact"><span class="toggle-slider"></span></label></div>
-            </div>
-            <div class="setting-group">
-                <label>Відображення інформації</label>
-                <div class="toggle-row"><div class="toggle-label"><span>Показувати викладача</span><small>Ім'я викладача на картці пари</small></div><label class="toggle"><input type="checkbox" id="toggle-teacher" checked><span class="toggle-slider"></span></label></div>
-                <div class="toggle-row"><div class="toggle-label"><span>Показувати аудиторію</span><small>Номер кімнати на картці пари</small></div><label class="toggle"><input type="checkbox" id="toggle-room" checked><span class="toggle-slider"></span></label></div>
-            </div>
 
-            <div class="setting-section-title">👤 Мій профіль</div>
-            <div class="setting-group">
-                <label>Відображуване ім'я</label>
-                <input type="text" class="name-display-input" id="custom-name-input" placeholder="Як тебе звати?" maxlength="30"/>
-                <div style="display:flex;gap:8px;margin-top:8px;">
-                    <button id="custom-name-save-btn" style="flex:1;padding:11px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-size:14px;font-weight:700;cursor:pointer;transition:0.2s;">Зберегти</button>
-                    <button id="custom-name-clear-btn" style="padding:11px 16px;border:1px solid var(--border);border-radius:12px;background:var(--bg-body);color:var(--text-muted);font-size:14px;font-weight:700;cursor:pointer;transition:0.2s;">✕</button>
-                </div>
-                <div class="toggle-row" style="margin-top:10px;"><div class="toggle-label"><span>Показувати профіль-бар</span><small>Аватарка та ім'я зверху розкладу</small></div><label class="toggle"><input type="checkbox" id="toggle-profile-bar" checked><span class="toggle-slider"></span></label></div>
-            </div>
-
-            <div class="setting-section-title">☁️ Хмарна синхронізація</div>
-            <div class="setting-group">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
-                    <div>
-                        <div style="font-size:13px;font-weight:700;color:var(--text-main);">Синхронізація через Telegram</div>
-                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Зберігає групи, кастомні пари та тему між всіма пристроями</div>
-                    </div>
-                    <span id="cloud-sync-status-badge" style="font-size:11px;font-weight:700;padding:4px 8px;border-radius:8px;background:rgba(59,130,246,0.12);color:var(--primary);white-space:nowrap;">Готово</span>
-                </div>
-                <button type="button" id="btn-cloud-sync-now" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--bg-body);color:var(--text-main);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:0.2s;">
-                    <span>🔄 Синхронізувати зараз</span>
-                </button>
-            </div>
-
-            <div class="setting-section-title">🔔 Сповіщення</div>
-            <div class="setting-group">
-                <div class="toggle-row"><div class="toggle-label"><span>Нагадування про пари</span><small>Сповіщення за 10 хв до пари</small></div><label class="toggle"><input type="checkbox" id="toggle-notif-lessons"><span class="toggle-slider"></span></label></div>
-                <div class="toggle-row"><div class="toggle-label"><span>Нові оголошення</span><small>Значок непрочитаного при оновленні</small></div><label class="toggle"><input type="checkbox" id="toggle-notif-ann" checked><span class="toggle-slider"></span></label></div>
-                <div class="toggle-row"><div class="toggle-label"><span>Дедлайни</span><small>Нагадування за 24 год до дедлайну</small></div><label class="toggle"><input type="checkbox" id="toggle-notif-dl" checked><span class="toggle-slider"></span></label></div>
-            </div>
-
-            <div class="setting-section-title">📊 Статистика</div>
-            <div class="setting-group">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-                    <div style="background:var(--bg-body);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;">
-                        <div style="font-size:22px;font-weight:800;color:var(--primary);" id="my-visit-count">—</div>
-                        <div style="font-size:10px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Відвідувань</div>
-                    </div>
-                    <div style="background:var(--bg-body);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;">
-                        <div style="font-size:22px;font-weight:800;color:#f59e0b;" id="my-streak-count">—</div>
-                        <div style="font-size:10px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Стрік 🔥</div>
-                    </div>
-                </div>
-                <div class="toggle-row"><div class="toggle-label"><span>Відстежувати відвідуваність</span><small>Лічильник щоденних заходів</small></div><label class="toggle"><input type="checkbox" id="toggle-track-visits" checked><span class="toggle-slider"></span></label></div>
-            </div>
-
-            <div class="setting-section-title">⚡ Швидкий доступ</div>
-            <div class="setting-group">
-                <div class="toggle-row"><div class="toggle-label"><span>Автовибір сьогодні</span><small>Відкривати сьогоднішній день при запуску</small></div><label class="toggle"><input type="checkbox" id="toggle-auto-today" checked><span class="toggle-slider"></span></label></div>
-                <div class="toggle-row"><div class="toggle-label"><span>Зберігати вкладку</span><small>Запам'ятовувати останню відкриту вкладку</small></div><label class="toggle"><input type="checkbox" id="toggle-remember-tab"><span class="toggle-slider"></span></label></div>
-                <div class="toggle-row"><div class="toggle-label"><span>Вібрація при переключенні</span><small>Тактильний відгук (на мобільних)</small></div><label class="toggle"><input type="checkbox" id="toggle-haptic" checked><span class="toggle-slider"></span></label></div>
-            </div>
-
-            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border); text-align:center;">
-    <div id="admin-settings-row" style="margin-bottom:12px;display:none;">
-        <button id="btn-open-admin-direct" style="width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--accent-purple));color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(59,130,246,0.35);transition:opacity 0.2s;">
-            <span>🔐</span><span>Адмін-панель (@xmice)</span>
-        </button>
-    </div>
-    <button id="reset-all-settings-btn" style="width:100%;padding:12px;border:1px solid rgba(239,68,68,0.3);border-radius:12px;background:rgba(239,68,68,0.07);color:#ef4444;font-size:13px;font-weight:700;cursor:pointer;transition:0.2s; margin-bottom:12px;">🗑 Скинути всі налаштування</button>
-    <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">
-        Версія 1.67 · By <a href="https://t.me/xmice" target="_blank" rel="noopener" class="credit-link">@xmice</a> and <a href="https://t.me/maksimko04" target="_blank" rel="noopener" class="credit-link">@maksimko04</a> · Schedule © 2026
-    </div>
-</div>
         </div>
     </div>
 </div>
@@ -3225,6 +4066,8 @@ const CloudSync = {
             if (cloud.theme && cloud.theme !== document.documentElement.getAttribute('data-theme')) {
                 document.documentElement.setAttribute('data-theme', cloud.theme);
                 storage.set('theme', cloud.theme);
+                if (typeof state !== 'undefined') state.theme = cloud.theme;
+                if (typeof updateThemeUI === 'function') updateThemeUI();
             }
             if (cloud.customDisplayName && cloud.customDisplayName !== storage.get('custom_display_name', '')) {
                 storage.set('custom_display_name', cloud.customDisplayName);
@@ -4016,8 +4859,356 @@ function initNewSettings() {
     if(teacherToggle){teacherToggle.checked=state.showTeacher;teacherToggle.addEventListener('change',()=>{state.showTeacher=teacherToggle.checked;gset(state.scheduleGroup,'show_teacher',state.showTeacher);applyBodyClasses();});}
     const roomToggle=document.getElementById('toggle-room');
     if(roomToggle){roomToggle.checked=state.showRoom;roomToggle.addEventListener('change',()=>{state.showRoom=roomToggle.checked;gset(state.scheduleGroup,'show_room',state.showRoom);applyBodyClasses();});}
+
+    // iOS Category Pills Filter/Scroll
+    const categoryPills = document.querySelectorAll('.ios-cat-pill');
+    categoryPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            categoryPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            const targetId = pill.dataset.target;
+            const body = document.querySelector('#settings-modal .ios-body');
+            if (targetId === 'all') {
+                if (body) body.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                const targetEl = document.getElementById(targetId);
+                if (targetEl) {
+                    targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+        });
+    });
 }
-function updateThemeUI() { els.themeBtns.forEach(btn=>btn.classList.toggle('active',btn.dataset.themeVal===state.theme)); }
+function updateThemeUI() {
+    if (els.themeBtns) {
+        els.themeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.themeVal === state.theme));
+    }
+    if (window.ShaderBg) {
+        window.ShaderBg.toggle(state.theme === 'dotted');
+    }
+}
+
+/* =========================================================================
+   SHADER BACKGROUND (LIQUID METAL / DOTTED ANIMATION)
+   Zero-dependency WebGL manager for "dotted" theme
+   Runs only when data-theme="dotted" is active to preserve GPU and battery
+   ========================================================================= */
+(function() {
+    const VERT_SRC = `
+attribute vec2 a_position;
+void main() {
+    gl_Position = vec4(a_position, 0.0, 1.0);
+}
+`;
+
+    const FRAG_SRC = `
+#extension GL_OES_standard_derivatives : enable
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform vec4 u_colors[8];
+uniform vec4 u_scene;
+uniform vec4 u_shape;
+uniform vec4 u_surface;
+uniform vec4 u_finish;
+uniform vec4 u_transform;
+uniform vec4 u_space;
+uniform vec4 u_cursor;
+
+#define PI 3.141592653589793
+
+mat2 rot2D(float angle) {
+    float s = sin(angle);
+    float c = cos(angle);
+    return mat2(c, -s, s, c);
+}
+
+vec2 coverScreen(vec2 fragCoord, vec2 resolution, float aspect) {
+    vec2 uv = 2.0 * (fragCoord / resolution) - 1.0;
+    uv.x *= resolution.x / resolution.y;
+    float canvasAspect = resolution.x / resolution.y;
+    if (canvasAspect > aspect) {
+        uv.y *= canvasAspect / aspect;
+    } else {
+        uv.x *= aspect / canvasAspect;
+    }
+    return uv;
+}
+
+vec4 getPaletteColor(float idx, vec4 colors[8]) {
+    int i = int(mod(idx, 8.0));
+    for (int c = 0; c < 8; c++) {
+        if (c == i) return colors[c];
+    }
+    return colors[0];
+}
+
+void main() {
+    vec2 fragCoord = gl_FragCoord.xy;
+    vec2 resolution = u_resolution;
+    float time = u_time * u_scene.x;
+
+    float colorCount = max(u_scene.z, 1.0);
+    float patternAngle = u_transform.y * PI / 180.0;
+    vec2 scale = u_transform.zw;
+    vec2 center = u_space.xy;
+    float aspect = u_space.z;
+    float edgeSoftness = u_space.w;
+
+    float noiseFreq = u_surface.x;
+    float noiseAmp = u_surface.y;
+    float noiseSpeed = u_surface.z;
+    float noiseDetail = u_surface.w;
+
+    float roughness = u_finish.y;
+    float metallic = u_finish.z;
+    float reflection = u_finish.w;
+
+    vec2 uv = coverScreen(fragCoord, resolution, aspect);
+    uv -= center;
+    uv = rot2D(patternAngle) * uv;
+    uv *= scale;
+
+    vec2 pointer = u_cursor.xy;
+    float cursorDist = length(uv - pointer);
+    float cursorForce = exp(-cursorDist * 2.5) * u_cursor.z;
+    uv += normalize(uv - pointer + 0.001) * cursorForce * 0.12;
+
+    float t = time * noiseSpeed;
+    vec2 p = uv * noiseFreq;
+
+    float noise = 0.0;
+    float amp = 1.0;
+    float totalAmp = 0.0;
+    for (int i = 0; i < 4; i++) {
+        if (float(i) >= noiseDetail) break;
+        noise += amp * sin(p.x + cos(p.y + t) + sin(t * 0.5));
+        p = rot2D(1.0) * p * 2.0;
+        t *= 1.3;
+        totalAmp += amp;
+        amp *= 0.5;
+    }
+    noise /= max(totalAmp, 0.001);
+    noise = noise * 0.5 + 0.5;
+
+    float dist = length(uv) + (noise - 0.5) * noiseAmp;
+    float d = sin(dist * u_shape.x - time * u_shape.y);
+    d = d * 0.5 + 0.5;
+    d = smoothstep(0.5 - edgeSoftness, 0.5 + edgeSoftness, d);
+
+    float colorPos = d * (colorCount - 1.0) + noise * 0.5;
+    float colorIdx = floor(colorPos);
+    float colorFrac = fract(colorPos);
+
+    vec4 col1 = getPaletteColor(colorIdx, u_colors);
+    vec4 col2 = getPaletteColor(colorIdx + 1.0, u_colors);
+    vec4 color = mix(col1, col2, colorFrac);
+
+#ifdef GL_OES_standard_derivatives
+    vec3 normal = normalize(vec3(
+        dFdx(dist) * roughness * 50.0,
+        dFdy(dist) * roughness * 50.0,
+        1.0
+    ));
+#else
+    vec3 normal = vec3(0.0, 0.0, 1.0);
+#endif
+
+    vec3 lightDir = normalize(vec3(0.5, 0.8, 0.6));
+    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 viewDir = vec3(0.0, 0.0, 1.0);
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), max(32.0 * (1.0 - roughness), 1.0));
+
+    color.rgb = mix(color.rgb, color.rgb * diff + spec * reflection, metallic);
+    color.rgb += spec * (1.0 - roughness) * reflection;
+
+    gl_FragColor = color;
+}
+`;
+
+    const PALETTE_COLORS = new Float32Array([
+        0.04, 0.05, 0.09, 1.0,
+        0.08, 0.12, 0.20, 1.0,
+        0.15, 0.22, 0.35, 1.0,
+        0.22, 0.38, 0.58, 1.0,
+        0.35, 0.58, 0.85, 1.0,
+        0.60, 0.80, 0.98, 1.0,
+        0.85, 0.93, 1.00, 1.0,
+        0.06, 0.08, 0.14, 1.0
+    ]);
+
+    let canvas = null;
+    let gl = null;
+    let program = null;
+    let animId = null;
+    let isRunning = false;
+    let startTime = performance.now();
+    let locations = {};
+
+    let targetPointer = { x: 0, y: 0, force: 0 };
+    let currentPointer = { x: 0, y: 0, force: 0 };
+
+    function createShader(glCtx, type, src) {
+        const s = glCtx.createShader(type);
+        glCtx.shaderSource(s, src);
+        glCtx.compileShader(s);
+        if (!glCtx.getShaderParameter(s, glCtx.COMPILE_STATUS)) {
+            console.warn('Shader compile err:', glCtx.getShaderInfoLog(s));
+            glCtx.deleteShader(s);
+            return null;
+        }
+        return s;
+    }
+
+    function initGL() {
+        if (gl) return true;
+        canvas = document.getElementById('shader-bg-canvas');
+        if (!canvas) return false;
+
+        gl = canvas.getContext('webgl', { alpha: false, depth: false, antialias: false, powerPreference: 'low-power' });
+        if (!gl) return false;
+
+        gl.getExtension('OES_standard_derivatives');
+
+        const vs = createShader(gl, gl.VERTEX_SHADER, VERT_SRC);
+        const fs = createShader(gl, gl.FRAGMENT_SHADER, FRAG_SRC);
+        if (!vs || !fs) return false;
+
+        program = gl.createProgram();
+        gl.attachShader(program, vs);
+        gl.attachShader(program, fs);
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.warn('Program link err:', gl.getProgramInfoLog(program));
+            return false;
+        }
+
+        gl.useProgram(program);
+
+        const posBuf = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -1, -1,
+             1, -1,
+            -1,  1,
+            -1,  1,
+             1, -1,
+             1,  1
+        ]), gl.STATIC_DRAW);
+
+        const aPos = gl.getAttribLocation(program, 'a_position');
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+        locations = {
+            u_resolution: gl.getUniformLocation(program, 'u_resolution'),
+            u_time: gl.getUniformLocation(program, 'u_time'),
+            u_colors: gl.getUniformLocation(program, 'u_colors'),
+            u_scene: gl.getUniformLocation(program, 'u_scene'),
+            u_shape: gl.getUniformLocation(program, 'u_shape'),
+            u_surface: gl.getUniformLocation(program, 'u_surface'),
+            u_finish: gl.getUniformLocation(program, 'u_finish'),
+            u_transform: gl.getUniformLocation(program, 'u_transform'),
+            u_space: gl.getUniformLocation(program, 'u_space'),
+            u_cursor: gl.getUniformLocation(program, 'u_cursor')
+        };
+
+        resize();
+        window.addEventListener('resize', resize, { passive: true });
+
+        const onPointerMove = (e) => {
+            if (!isRunning) return;
+            const x = (e.clientX / window.innerWidth) * 2 - 1;
+            const y = -((e.clientY / window.innerHeight) * 2 - 1);
+            targetPointer.x = x;
+            targetPointer.y = y;
+            targetPointer.force = 1.0;
+        };
+        window.addEventListener('pointermove', onPointerMove, { passive: true });
+        window.addEventListener('pointerleave', () => { targetPointer.force = 0; }, { passive: true });
+
+        return true;
+    }
+
+    function resize() {
+        if (!canvas || !gl) return;
+        const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+        const w = Math.floor(window.innerWidth * dpr);
+        const h = Math.floor(window.innerHeight * dpr);
+        if (canvas.width !== w || canvas.height !== h) {
+            canvas.width = w;
+            canvas.height = h;
+            gl.viewport(0, 0, w, h);
+        }
+    }
+
+    function renderFrame(now) {
+        if (!isRunning) return;
+
+        currentPointer.x += (targetPointer.x - currentPointer.x) * 0.08;
+        currentPointer.y += (targetPointer.y - currentPointer.y) * 0.08;
+        currentPointer.force += (targetPointer.force - currentPointer.force) * 0.05;
+
+        const elapsed = (now - startTime) * 0.001;
+
+        gl.useProgram(program);
+        gl.uniform2f(locations.u_resolution, canvas.width, canvas.height);
+        gl.uniform1f(locations.u_time, elapsed);
+        gl.uniform4fv(locations.u_colors, PALETTE_COLORS);
+        gl.uniform4f(locations.u_scene, 0.45, 0.0, 5.0, 0.0);
+        gl.uniform4f(locations.u_shape, 4.0, 0.35, 0.0, 0.0);
+        gl.uniform4f(locations.u_surface, 1.3, 0.7, 0.22, 3.0);
+        gl.uniform4f(locations.u_finish, 0.1, 0.35, 0.72, 0.5);
+        gl.uniform4f(locations.u_transform, 0.0, 0.0, 1.0, 1.0);
+        gl.uniform4f(locations.u_space, 0.0, 0.0, 1.0, 0.12);
+        gl.uniform4f(locations.u_cursor, currentPointer.x, currentPointer.y, currentPointer.force, 0.0);
+
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+        animId = requestAnimationFrame(renderFrame);
+    }
+
+    window.ShaderBg = {
+        init() {
+            const curTheme = document.documentElement.getAttribute('data-theme') || (typeof state !== 'undefined' ? state.theme : 'dark');
+            if (curTheme === 'dotted') {
+                this.start();
+            }
+        },
+        start() {
+            if (isRunning) return;
+            if (!initGL()) return;
+            resize();
+            isRunning = true;
+            startTime = performance.now();
+            if (canvas) canvas.style.display = 'block';
+            const overlay = document.getElementById('shader-dotted-overlay');
+            if (overlay) overlay.style.display = 'block';
+            animId = requestAnimationFrame(renderFrame);
+        },
+        stop() {
+            if (!isRunning) return;
+            isRunning = false;
+            if (animId) {
+                cancelAnimationFrame(animId);
+                animId = null;
+            }
+            if (canvas) canvas.style.display = 'none';
+            const overlay = document.getElementById('shader-dotted-overlay');
+            if (overlay) overlay.style.display = 'none';
+        },
+        toggle(active) {
+            if (active) this.start();
+            else this.stop();
+        }
+    };
+})();
 
 function getLocalMonday(d) { const di=new Date(d); const day=di.getDay()===0?7:di.getDay(); di.setDate(di.getDate()-day+1); di.setHours(0,0,0,0); return di; }
 
@@ -6547,7 +7738,7 @@ function initDekanatGrades() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => { initAdminPanel(); loadAdminData(); initDekanatGrades(); });
+document.addEventListener('DOMContentLoaded', () => { initAdminPanel(); loadAdminData(); initDekanatGrades(); if (window.ShaderBg) window.ShaderBg.init(); });
 document.addEventListener('DOMContentLoaded', init);
 document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGroupPicker(); });
 
@@ -7094,8 +8285,14 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
     const LEGACY_GROUP_COLORS = { fep11:'#10b981', fep12:'#f59e0b', fep13:'#3b82f6' };
     const GROUP_PALETTE = ['#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#84cc16','#e11d48','#0ea5e9'];
     
-    const colorForGroup = (g) => { if (LEGACY_GROUP_COLORS[g]) return LEGACY_GROUP_COLORS[g]; let h = 0; for (const ch of String(g || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return GROUP_PALETTE[h % GROUP_PALETTE.length]; };
-    const labelForGroup = (g) => g ? toGroupName(g) : '—';
+    const colorForGroup = (g) => {
+        if (!g) return '#64748b';
+        if (LEGACY_GROUP_COLORS[g]) return LEGACY_GROUP_COLORS[g];
+        let h = 0;
+        for (const ch of String(g || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+        return GROUP_PALETTE[h % GROUP_PALETTE.length];
+    };
+    const labelForGroup = (g) => g ? toGroupName(g) : 'Без групи';
 
     function renderUsers() {
         const grid = document.getElementById('admin-users-grid');
@@ -7114,7 +8311,8 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                 const q = searchQuery.toLowerCase();
                 const name = (u.first_name+' '+u.last_name).toLowerCase();
                 const un = (u.username||'').toLowerCase();
-                if (!name.includes(q) && !un.includes(q)) return false;
+                const grp = labelForGroup(u.group).toLowerCase();
+                if (!name.includes(q) && !un.includes(q) && !grp.includes(q)) return false;
             }
             return true;
         });
@@ -7159,8 +8357,12 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             const lastSeenStr = u.last_seen ? timeAgo(u.last_seen) : 'Не заходив';
             const usernameHtml = u.username ? `<span class="admin-user-username">@${u.username}</span>` : '';
 
-            
             const devices = u.devices || [];
+            const hasWeb = devices.length > 0 || (u.last_seen_web && u.last_seen_web > 0);
+            const notOnWebBadge = !hasWeb
+                ? `<span class="admin-user-badge" style="background:rgba(245,158,11,0.14);color:#f59e0b;font-weight:700;" title="Користується лише Telegram-ботом">🌐 Тільки бот</span>`
+                : '';
+
             const devicesHtml = devices.length > 0 ? `
                 <div class="admin-devices-section">
                     <div class="admin-devices-label">📲 Девайси (${devices.length})</div>
@@ -7178,7 +8380,17 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                         </div>
                     `).join('')}
                 </div>
-            ` : `<div class="admin-devices-section"><div style="font-size:12px;color:var(--text-muted);">📲 Девайси не збережені (старий запис)</div></div>`;
+            ` : `
+                <div class="admin-devices-section">
+                    <div style="font-size:12px;background:rgba(245,158,11,0.07);border:1px dashed rgba(245,158,11,0.25);border-radius:10px;padding:9px 12px;display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:16px;">🌐</span>
+                        <div>
+                            <div style="font-weight:700;color:#f59e0b;">На сайт ще не заходив</div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Користується лише Telegram-ботом · девайси з'являться після входу на сайт</div>
+                        </div>
+                    </div>
+                </div>
+            `;
 
             return `<div class="admin-user-card" data-uid="${u.id}">
                 <div class="admin-user-card-top">
@@ -7188,8 +8400,13 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                         <div class="admin-user-row2">
                             <span class="admin-group-badge" style="background:${groupBg};color:${groupColor};">${groupLabel}</span>
                             ${usernameHtml}
+                            ${notOnWebBadge}
                         </div>
-                        <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${lastSeenStr} ${getBadge(u.last_seen)}</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <span>${lastSeenStr}</span>
+                            ${getBadge(u.last_seen)}
+                            ${!hasWeb ? '<span style="color:#f59e0b;font-weight:600;font-size:11px;">(на сайт ще не заходив)</span>' : ''}
+                        </div>
                     </div>
                 </div>
                 <div style="margin-top:10px;display:flex;justify-content:flex-end;">
@@ -7212,6 +8429,12 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         if (btn) { btn.textContent = '⏳ Завантаження...'; btn.disabled = true; }
         const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
         await waitForFirebase();
+
+        try {
+            const workerBase = localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
+            await fetch(`${workerBase}/sync-bot-groups`, { signal: AbortSignal.timeout(4000) });
+        } catch (e) {}
+
         allUsers = await window.fbGetUsers();
         renderUsers();
         if (btn) { btn.textContent = '🔄 Оновити список'; btn.disabled = false; }

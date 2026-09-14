@@ -1,4 +1,5 @@
+.wrangler/
 .DS_Store
-.gitattributes
+node_modules/
 викачане/
 *.mp4

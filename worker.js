@@ -1267,16 +1267,7 @@ export default {
         } catch {}
       }
 
-      if (!list || list.length === 0) {
-        list = [
-          { name: "Олекса (@xmice)", group: "ФЕП-13с", stars: 50, badge: "👑 Автор / Топ-1" },
-          { name: "Максим (@maksimko04)", group: "ФЕП-13с", stars: 25, badge: "🥈 Співавтор" },
-          { name: "Студент ФЕП", group: "ФЕП-11с", stars: 15, badge: "🥉 Меценат" },
-          { name: "Староста", group: "ФЕП-12с", stars: 10, badge: "⭐️ Друг розкладу" }
-        ];
-      }
-
-      return jsonRes({ ok: true, donors: list });
+      return jsonRes({ ok: true, donors: list || [] });
     }
 
     if (url.pathname === "/create-stars-invoice" && request.method === "POST") {
@@ -1319,6 +1310,51 @@ export default {
         return jsonRes({ ok: true, invoiceLink: res.result });
       } catch (e) {
         return jsonRes({ error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/sync-bot-groups") {
+      const kv = env.PREFS_KV;
+      const jsonRes = (data, status = 200) => new Response(JSON.stringify(data), {
+        status,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        }
+      });
+      if (!kv || !env.FIREBASE_API_KEY) return jsonRes({ ok: false, error: "Missing KV or FIREBASE_API_KEY" }, 500);
+
+      try {
+        const cursor = url.searchParams.get("cursor") || undefined;
+        let synced = 0;
+        const LEGACY = { fep11: "ФЕП-11с", fep12: "ФЕП-12с", fep13: "ФЕП-13с" };
+        const page = await kv.list({ prefix: "u:", limit: 20, cursor });
+        for (const key of page.keys) {
+          const uid = key.name.slice(2);
+          if (!uid) continue;
+          const raw = await kv.get(key.name);
+          if (!raw) continue;
+          let p;
+          try { p = JSON.parse(raw); } catch { continue; }
+          let grp = p?.group;
+          if (!grp) continue;
+          if (LEGACY[grp]) grp = LEGACY[grp];
+
+          const firestoreUrl =
+            `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/users/${uid}` +
+            `?key=${env.FIREBASE_API_KEY}&updateMask.fieldPaths=group`;
+
+          await fetch(firestoreUrl, {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ fields: { group: { stringValue: grp } } })
+          });
+          synced++;
+        }
+
+        return jsonRes({ ok: true, synced, cursor: page.list_complete ? null : page.cursor, done: page.list_complete });
+      } catch (e) {
+        return jsonRes({ ok: false, error: e.message }, 500);
       }
     }
 
@@ -1770,29 +1806,46 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       return `${WORKER_URL}/avatar/${userId}`;
     };
 
-    const saveUserToFirebase = async (from) => {
+    const saveUserToFirebase = async (from, explicitGroup = null) => {
       if (!from?.id || !env.FIREBASE_API_KEY) return;
       try {
         const photo_url = getStableAvatarUrl(String(from.id));
+        let userGroup = explicitGroup;
+        if (!userGroup) {
+          const p = await getPrefs(from.id);
+          if (p?.group) userGroup = p.group;
+        }
+        if (userGroup && LEGACY_GROUP_NAMES[userGroup]) {
+          userGroup = LEGACY_GROUP_NAMES[userGroup];
+        }
+
+        const now = String(Date.now());
+        const fields = {
+          id:            { stringValue: String(from.id) },
+          first_name:    { stringValue: from.first_name ?? "" },
+          last_name:     { stringValue: from.last_name  ?? "" },
+          username:      { stringValue: from.username   ?? "" },
+          photo_url:     { stringValue: photo_url },
+          last_seen:     { integerValue: now },
+          last_seen_bot: { integerValue: now },
+        };
+
+        const updateMaskFields = ["id", "first_name", "last_name", "username", "photo_url", "last_seen", "last_seen_bot"];
+
+        if (userGroup) {
+          fields.group = { stringValue: userGroup };
+          updateMaskFields.push("group");
+        }
+
+        const maskParams = updateMaskFields.map(f => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join("&");
         const firestoreUrl =
           `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/users/${from.id}` +
-          `?key=${env.FIREBASE_API_KEY}`;
-
-        const body = {
-          fields: {
-            id:         { stringValue: String(from.id) },
-            first_name: { stringValue: from.first_name ?? "" },
-            last_name:  { stringValue: from.last_name  ?? "" },
-            username:   { stringValue: from.username   ?? "" },
-            photo_url:  { stringValue: photo_url },
-            last_seen:  { integerValue: String(Date.now()) },
-          },
-        };
+          `?key=${env.FIREBASE_API_KEY}&${maskParams}`;
 
         const res = await fetch(firestoreUrl, {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(body),
+          body: JSON.stringify({ fields }),
         });
 
         if (!res.ok) {
@@ -2048,6 +2101,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       if (info.totalLessons === 0) {
         await send(chatId, `📭 _Деканат ще не опублікував розклад групи ${esc(group)} на ці два тижні\\. Я все одно її запам'ятаю\\._`, null);
       }
+      if (fromUser) await saveUserToFirebase(fromUser, group);
       await continueAfterGroup(next, info);
     };
 
