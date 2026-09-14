@@ -22,6 +22,21 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        function initTelegramWebApp() {
+            try {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.ready();
+                    window.Telegram.WebApp.expand();
+                    if (window.Telegram.WebApp.disableVerticalSwipes) {
+                        window.Telegram.WebApp.disableVerticalSwipes();
+                    }
+                }
+            } catch(e) {}
+        }
+        initTelegramWebApp();
+        document.addEventListener('DOMContentLoaded', initTelegramWebApp);
+    </script>
     <title>Розклад ФЕП</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -614,14 +629,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .nav-item.active svg { transform: translateY(-2px) scale(1.08); stroke-width: 2.4; }
         .nav-item.active::after { content: ''; position: absolute; bottom: 2px; width: 14px; height: 3px; border-radius: 3px; background: var(--primary); box-shadow: 0 2px 8px var(--primary); }
 
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s var(--spring-easing); display: flex; align-items: flex-end; justify-content: center; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s var(--spring-easing); display: flex; align-items: flex-end; justify-content: center; overscroll-behavior-y: contain; }
         .modal-overlay.active { opacity: 1; pointer-events: all; }
-        .modal-content { background: var(--modal-bg); width: 100%; max-width: 600px; border-radius: 28px 28px 0 0; max-height: 88vh; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.38s var(--spring-easing); border-top: 1px solid rgba(255,255,255,0.16); box-shadow: 0 -12px 48px rgba(0,0,0,0.28); position: relative; will-change: transform; backface-visibility: hidden; }
+        .modal-content { background: var(--modal-bg); width: 100%; max-width: 600px; border-radius: 28px 28px 0 0; max-height: 88vh; max-height: 88dvh; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.38s var(--spring-easing); border-top: 1px solid rgba(255,255,255,0.16); box-shadow: 0 -12px 48px rgba(0,0,0,0.28); position: relative; will-change: transform; backface-visibility: hidden; overscroll-behavior-y: contain; }
         .modal-content::before { content: ''; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 38px; height: 4px; border-radius: 4px; background: var(--border); opacity: 0.8; }
         .modal-overlay.active .modal-content { transform: translateY(0); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 22px 24px 16px; position: sticky; top: 0; background: var(--modal-bg); border-radius: 28px 28px 0 0; border-bottom: 1px solid var(--border); z-index: 5; flex-shrink: 0; }
         .modal-header h2 { font-size:20px; font-weight:800; }
-        .modal-body { overflow-y:auto; -webkit-overflow-scrolling:touch; padding:20px 24px 32px; flex:1; }
+        .modal-body { overflow-y:auto; -webkit-overflow-scrolling:touch; padding:20px 24px 32px; flex:1; overscroll-behavior-y: contain; }
         .close-btn { background:var(--border); border:none; width:36px; height:36px; border-radius:50%; color:var(--text-main); font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:20px; transition:background 0.2s, color 0.2s; flex-shrink:0; }
         .close-btn:hover { background:var(--primary); color:#fff; }
         .moodle-btn { display:flex; flex-direction:column; align-items:flex-start; background:var(--bg-body); border:1px solid var(--border); padding:18px; border-radius:16px; text-decoration:none; color:var(--text-main); transition:border-color 0.2s, box-shadow 0.2s, transform 0.2s; margin-bottom:14px; position:relative; overflow:hidden; }
@@ -1011,45 +1026,35 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             --fm-bounce: cubic-bezier(0.34, 1.3, 0.64, 1);
         }
 
-        @keyframes fmSlideUp {
-            0% { opacity: 0; transform: translateY(8px) scale(0.988); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes fmHeroFloat {
-            0% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-3px) rotate(0.4deg); }
-            100% { transform: translateY(0) rotate(0deg); }
-        }
-        @keyframes fmLiveBeacon {
-            0% { transform: scale(1); opacity: 0.8; }
-            50% { opacity: 0.35; }
-            100% { transform: scale(1.9); opacity: 0; }
-        }
         @keyframes fmSpin {
             to { transform: rotate(360deg); }
-        }
-        @keyframes fmCardStagger {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
         }
 
         .grades-modal-content {
             border-radius: 28px 28px 0 0;
             background: var(--modal-bg);
             border-top: 1px solid rgba(255,255,255,0.18);
-            backdrop-filter: blur(24px) saturate(180%);
-            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
             box-shadow: 0 -20px 60px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.22);
             font-family: var(--apple-font);
             will-change: transform;
-            transform: translateZ(0);
+            backface-visibility: hidden;
+            height: 86vh;
+            height: 86dvh;
+            max-height: 88vh;
+            max-height: 88dvh;
+            overscroll-behavior-y: contain;
+        }
+        .grades-modal-body {
+            overscroll-behavior-y: contain;
+            -webkit-overflow-scrolling: touch;
         }
 
         /* --- AUTH VIEW (APPLE GLASS HERO) --- */
         .grades-auth-hero {
             text-align: center;
             padding: 12px 8px 20px;
-            animation: fmSlideUp 0.45s var(--fm-smooth) both;
         }
         .grades-hero-icon-wrap {
             position: relative;
@@ -1083,7 +1088,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             display: flex;
             align-items: center;
             justify-content: center;
-            animation: fmHeroFloat 4s ease-in-out infinite;
         }
         .grades-hero-svg {
             width: 38px;
@@ -1115,7 +1119,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             box-shadow: var(--shadow);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            animation: fmSlideUp 0.5s var(--fm-smooth) 0.05s both;
         }
         .grades-field-row {
             display: flex;
@@ -1222,7 +1225,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             font-size: 12px;
             color: var(--text-muted);
             line-height: 1.42;
-            animation: fmSlideUp 0.55s var(--fm-smooth) 0.1s both;
         }
         .grades-tip-icon {
             font-size: 15px;
@@ -1246,7 +1248,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             display: flex;
             align-items: center;
             gap: 8px;
-            animation: fmSlideUp 0.3s var(--fm-smooth) both;
         }
 
         /* Framer Motion Primary Button */
@@ -1269,7 +1270,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             transition: transform 0.22s var(--fm-spring), box-shadow 0.22s ease;
             margin-bottom: 16px;
             user-select: none;
-            animation: fmSlideUp 0.6s var(--fm-smooth) 0.15s both;
         }
         .btn-grades-action:active {
             transform: scale(0.96);
@@ -1303,7 +1303,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             border: 1px solid rgba(16,185,129,0.2);
             border-radius: 16px;
             padding: 11px 15px;
-            animation: fmSlideUp 0.65s var(--fm-smooth) 0.2s both;
         }
         .grades-live-beacon {
             position: relative;
@@ -1326,7 +1325,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             height: 8px;
             border-radius: 50%;
             background: #10b981;
-            animation: fmLiveBeacon 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+            opacity: 0.4;
         }
         .grades-privacy-text {
             font-size: 11px;
@@ -1355,9 +1354,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             box-shadow: var(--shadow);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            animation: fmSlideUp 0.5s var(--fm-smooth) both;
-            will-change: transform, opacity;
-            transform: translateZ(0);
         }
         .grades-summary-top {
             display: flex;
@@ -1523,9 +1519,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             box-shadow: var(--shadow);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
-            animation: fmSlideUp 0.52s var(--fm-smooth) 0.06s both;
-            will-change: transform, opacity;
-            transform: translateZ(0);
         }
         .grades-dossier-header {
             padding: 12px 15px;
@@ -1598,7 +1591,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
         .grades-dossier-body {
             padding: 13px 15px 15px;
-            animation: fmSlideUp 0.35s var(--fm-smooth) both;
         }
         .grades-specialty-banner {
             background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(6,182,212,0.08));
@@ -1813,10 +1805,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             border-radius: 18px;
             overflow: hidden;
             box-shadow: var(--shadow);
-            transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s var(--fm-spring);
-            animation: fmCardStagger 0.48s var(--fm-smooth) both;
-            will-change: transform, opacity;
-            transform: translateZ(0);
+            transition: border-color 0.25s ease, box-shadow 0.25s ease;
         }
         .subject-grade-card:hover {
             border-color: rgba(16,185,129,0.45);
@@ -1905,7 +1894,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             border-top: 1px solid var(--border);
             background: var(--bg-body);
             display: none;
-            animation: fmSlideUp 0.25s var(--fm-smooth) both;
         }
         .subject-grade-card.expanded .subject-grade-details {
             display: block;
@@ -2567,7 +2555,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 </div>
 
 <div class="modal-overlay" id="grades-modal" style="z-index:9100;">
-    <div class="modal-content grades-modal-content" style="max-width:540px;max-height:88vh;display:flex;flex-direction:column;">
+    <div class="modal-content grades-modal-content" style="max-width:540px;display:flex;flex-direction:column;">
         <div class="modal-header">
             <div style="display:flex;align-items:center;gap:10px;">
                 <span style="font-size:24px;">📊</span>
@@ -5645,7 +5633,6 @@ function renderSubjectCard(s, idx = 0) {
     const scoreClass = total >= 90 ? 'score-a' : total >= 71 ? 'score-bc' : total >= 51 ? 'score-de' : 'score-f';
     const progressColor = total >= 90 ? 'linear-gradient(90deg, #10b981, #059669)' : total >= 71 ? 'linear-gradient(90deg, #3b82f6, #2563eb)' : total >= 51 ? 'linear-gradient(90deg, #f59e0b, #d97706)' : 'linear-gradient(90deg, #ef4444, #dc2626)';
     const progressWidth = Math.min(Math.max(total, 0), 100);
-    const delaySec = Math.min(idx * 0.06, 0.42).toFixed(2);
 
     const gradesHtml = (s.grades && s.grades.length > 0)
         ? s.grades.map(g => {
@@ -5665,7 +5652,7 @@ function renderSubjectCard(s, idx = 0) {
         : '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px;">Балів за поточний контроль ще не виставлено</div>';
 
     return `
-        <div class="subject-grade-card" data-subject="${escapeHtml(s.subject)}" style="animation-delay:${delaySec}s;">
+        <div class="subject-grade-card" data-subject="${escapeHtml(s.subject)}">
             <div class="subject-grade-header">
                 <div class="subject-grade-info">
                     <div class="subject-grade-title">${escapeHtml(s.subject)}</div>
@@ -5947,12 +5934,26 @@ function initDekanatGrades() {
     }
     updateCardPreview();
 
+    // Pre-populate modal view on startup so it never needs to calculate height upon opening
+    try {
+        const _sName = localStorage.getItem('dekanat_user_name');
+        const _sPwd = localStorage.getItem('dekanat_user_pwd');
+        const _cached = JSON.parse(localStorage.getItem('dekanat_grades_cache') || 'null');
+        const _lastSync = Number(localStorage.getItem('dekanat_last_sync') || '0');
+        if (_sName && _sPwd && _cached && _cached.subjects) {
+            renderGradesData(_cached, false, _lastSync);
+        } else if (!_sName || !_sPwd) {
+            showView('auth');
+        }
+    } catch(e) {}
+
     function showView(view) {
         if (authView) authView.style.display = view === 'auth' ? 'block' : 'none';
         if (dashboardView) dashboardView.style.display = view === 'dashboard' ? 'block' : 'none';
         if (loadingView) loadingView.style.display = view === 'loading' ? 'block' : 'none';
     }
 
+    let lastRenderedHash = '';
     function renderGradesData(data, isOffline = false, lastSync = Date.now()) {
         if (!data) return;
 
@@ -6018,14 +6019,18 @@ function initDekanatGrades() {
             }
         }
 
-        // Show/hide search wrap based on subject count
-        if (searchWrap) {
-            searchWrap.style.display = (data.subjects && data.subjects.length > 1) ? 'flex' : 'none';
-        }
-        if (searchInput) searchInput.value = '';
-        if (searchClear) searchClear.style.display = 'none';
+        // Only re-create subject card elements if subjects data actually changed or not yet rendered
+        const subjectsHash = JSON.stringify(data.subjects || []);
+        if (subjectsListEl && (subjectsHash !== lastRenderedHash || subjectsListEl.children.length === 0)) {
+            lastRenderedHash = subjectsHash;
 
-        if (subjectsListEl) {
+            // Show/hide search wrap based on subject count
+            if (searchWrap) {
+                searchWrap.style.display = (data.subjects && data.subjects.length > 1) ? 'flex' : 'none';
+            }
+            if (searchInput) searchInput.value = '';
+            if (searchClear) searchClear.style.display = 'none';
+
             if (data.subjects && data.subjects.length > 0) {
                 subjectsListEl.innerHTML = data.subjects.map((s, idx) => renderSubjectCard(s, idx)).join('');
                 
@@ -6298,9 +6303,19 @@ function initDekanatGrades() {
 
     openCard.addEventListener('click', () => {
         haptic('impact');
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
+        try {
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.expand();
+                if (window.Telegram.WebApp.disableVerticalSwipes) {
+                    window.Telegram.WebApp.disableVerticalSwipes();
+                }
+            }
+        } catch(e) {}
         loadDashboard();
+        requestAnimationFrame(() => {
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
     });
 
     closeBtn.addEventListener('click', () => {
