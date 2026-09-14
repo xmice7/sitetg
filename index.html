@@ -233,9 +233,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
                 
                 const snap = await getDoc(userRef);
-                const existingDevices = snap.exists() ? (snap.data().devices || []) : [];
+                const existingData = snap.exists() ? snap.data() : {};
+                const existingDevices = existingData.devices || [];
+                const firstSeen = existingData.first_seen || existingData.created_at || now;
 
-                
                 const otherDevices = existingDevices.filter(d => d.id !== deviceId);
                 const updatedDevices = [
                     ...otherDevices,
@@ -245,9 +246,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                 await setDoc(userRef, {
                     last_seen: now,
                     last_seen_web: now,
+                    first_seen: firstSeen,
                     group: group || 'fep13',
                     devices: updatedDevices,
                 }, { merge: true });
+                localStorage.setItem('app_first_reg_date', String(firstSeen));
             } catch(e) { console.error('fbUpdateUserLastSeen error:', e); }
         };
 
@@ -962,23 +965,33 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         /* Profile Banner (Apple ID style) */
         .ios-profile-banner {
             background: var(--ios-card-bg);
-            border-radius: 13px;
+            border-radius: 14px;
             border: 1px solid var(--ios-card-border);
-            margin: 0 16px 18px;
-            padding: 13px 16px;
+            margin: 0 16px 14px;
+            padding: 14px 16px;
             display: flex;
             align-items: center;
             gap: 14px;
             cursor: pointer;
-            transition: background 0.15s;
+            transition: transform 0.2s cubic-bezier(0.32, 0.72, 0, 1),
+                        background 0.2s ease,
+                        border-radius 0.25s ease,
+                        border-color 0.25s ease;
             user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         .ios-profile-banner:active {
+            transform: scale(0.985);
             background: var(--ios-row-hover);
         }
+        .ios-profile-banner.drawer-open {
+            border-radius: 14px 14px 0 0;
+            margin-bottom: 0;
+            border-bottom-color: transparent;
+        }
         .ios-avatar-badge {
-            width: 48px;
-            height: 48px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             background: linear-gradient(135deg, #007aff, #5856d6);
             color: #ffffff;
@@ -988,7 +1001,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+            overflow: hidden;
         }
         .ios-profile-text {
             flex: 1;
@@ -1012,22 +1026,39 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             text-overflow: ellipsis;
         }
         .ios-chevron-right {
-            font-size: 20px;
+            font-size: 22px;
             color: var(--ios-subtext);
             font-weight: 400;
-            transition: transform 0.25s var(--spring-bounce);
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            user-select: none;
         }
         .ios-profile-drawer {
-            display: none;
-            margin: -12px 16px 18px;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            margin: 0 16px 18px;
             background: var(--ios-card-bg);
-            border-radius: 0 0 13px 13px;
+            border-radius: 0 0 14px 14px;
             border: 1px solid var(--ios-card-border);
-            border-top: none;
-            padding: 14px 16px;
-            animation: fadeIn 0.2s ease;
+            border-top: 0.5px solid var(--ios-separator);
+            padding: 0 16px;
+            transform: translateY(-6px) scale(0.99);
+            transition: max-height 0.42s cubic-bezier(0.32, 0.72, 0, 1),
+                        opacity 0.28s ease,
+                        transform 0.38s cubic-bezier(0.32, 0.72, 0, 1),
+                        padding 0.35s cubic-bezier(0.32, 0.72, 0, 1),
+                        margin 0.35s ease;
+            pointer-events: none;
+            will-change: max-height, opacity, transform;
         }
-        .ios-profile-drawer.active { display: block; }
+        .ios-profile-drawer.active {
+            max-height: 900px;
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            padding: 16px;
+            margin: 0 16px 18px;
+            pointer-events: auto;
+        }
 
         /* Apple Inset Groups */
         .ios-section {
@@ -3530,49 +3561,111 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         <div class="ios-scroll-body modal-body">
 
             <!-- Apple ID Profile Card -->
-            <div class="ios-profile-banner" id="ios-profile-banner" title="Натисніть для налаштування профілю">
+            <div class="ios-profile-banner" id="ios-profile-banner" title="Натисніть для перегляду акаунту та пристроїв">
                 <div class="ios-avatar-badge" id="ios-profile-avatar">👤</div>
                 <div class="ios-profile-text">
                     <div class="ios-profile-title" id="ios-profile-name-text">Користувач</div>
-                    <div class="ios-profile-sub" id="ios-profile-sub-text">Telegram акаунт та синхронізація</div>
+                    <div class="ios-profile-sub" id="ios-profile-sub-text">Telegram акаунт · Сесії та пристрої</div>
                 </div>
                 <div class="ios-chevron-right" id="ios-profile-chevron">›</div>
             </div>
 
-            <!-- Profile Expandable Drawer -->
+            <!-- Profile Expandable Drawer (Account, Registration Date & Devices) -->
             <div class="ios-profile-drawer" id="ios-profile-drawer">
-                <div style="margin-bottom: 12px;">
-                    <label style="display:block;font-size:12px;color:var(--ios-subtext);margin-bottom:6px;font-weight:500;">Відображуване ім'я</label>
-                    <div style="display:flex;gap:8px;">
-                        <input type="text" class="ios-text-input" id="custom-name-input" placeholder="Як тебе звати?" maxlength="30" style="flex:1;" />
-                        <button type="button" id="custom-name-save-btn" class="ios-action-button ios-btn-blue">Зберегти</button>
-                        <button type="button" id="custom-name-clear-btn" class="ios-action-button ios-btn-gray" title="Очистити">✕</button>
+                <!-- Registration Date Card -->
+                <div class="ios-drawer-subcard" style="margin-bottom:12px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div class="ios-icon-box ios-icon-blue" style="width:28px;height:28px;font-size:14px;">📅</div>
+                        <div style="min-width:0;">
+                            <div style="font-size:12px;color:var(--ios-subtext);font-weight:500;">Дата реєстрації в системі</div>
+                            <div id="ios-reg-date-text" style="font-size:14px;color:var(--text-main);font-weight:600;margin-top:2px;">—</div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Active Devices & Sessions Section -->
+                <div style="margin-bottom:14px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0 2px;">
+                        <span style="font-size:12px;color:var(--ios-subtext);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Пристрої та сесії</span>
+                        <span id="ios-devices-count" style="font-size:11.5px;color:var(--primary);font-weight:600;">1 пристрій</span>
+                    </div>
+                    <div id="ios-devices-list" style="display:flex;flex-direction:column;gap:7px;">
+                        <!-- Generated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Hidden inputs for custom-name backward compatibility -->
+                <div style="display:none;" aria-hidden="true">
+                    <input type="hidden" id="custom-name-input" value="" />
+                    <button type="button" id="custom-name-save-btn"></button>
+                    <button type="button" id="custom-name-clear-btn"></button>
+                </div>
+
+                <!-- Profile Bar Toggle & Cloud Sync -->
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:0.5px solid var(--ios-separator);">
                     <div>
-                        <div style="font-size:14.5px;color:var(--text-main);font-weight:500;">Показувати профіль-бар</div>
-                        <div style="font-size:12px;color:var(--ios-subtext);">Аватарка та ім'я вгорі розкладу</div>
+                        <div style="font-size:14px;color:var(--text-main);font-weight:500;">Показувати профіль-бар</div>
+                        <div style="font-size:11.5px;color:var(--ios-subtext);">Аватарка та група зверху розкладу</div>
                     </div>
                     <label class="ios-switch">
                         <input type="checkbox" id="toggle-profile-bar" checked>
                         <span class="ios-switch-slider"></span>
                     </label>
                 </div>
+
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:0.5px solid var(--ios-separator);">
                     <div>
-                        <div style="font-size:14.5px;color:var(--text-main);font-weight:500;">Telegram Cloud Sync</div>
-                        <div style="font-size:12px;color:var(--ios-subtext);">Хмарне збереження налаштувань</div>
+                        <div style="font-size:14px;color:var(--text-main);font-weight:500;">Telegram Cloud Sync</div>
+                        <div style="font-size:11.5px;color:var(--ios-subtext);">Хмарне збереження налаштувань</div>
                     </div>
                     <span id="cloud-sync-status-badge" style="font-size:11px;font-weight:700;padding:4px 8px;border-radius:8px;background:rgba(59,130,246,0.12);color:var(--primary);white-space:nowrap;">Готово</span>
                 </div>
+
                 <button type="button" id="btn-cloud-sync-now" class="ios-action-button ios-btn-gray" style="width:100%;margin-top:6px;">
                     <span>🔄 Синхронізувати зараз</span>
                 </button>
             </div>
 
-            <!-- SECTION 1: ОФОРМЛЕННЯ -->
-            <div class="ios-section" data-search-section="оформлення тема колір шрифт вигляд темна світла чорна аврора dotted сайбер">
+            <!-- SECTION 1: ГРУПА ТА ВИКЛАДАЧ (Placed directly under account!) -->
+            <div class="ios-section" data-search-section="група групи збережені пошук групи англійська викладач підгрупа змінити">
+                <div class="ios-section-header">Група та викладач</div>
+                <div class="ios-card-container">
+                    <!-- Saved Groups & Search -->
+                    <div class="ios-item-row" style="flex-direction:column;align-items:stretch;gap:10px;" data-search-item="групи збережені пошук групи змінити розклад">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-blue">🎓</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Збережені групи</span>
+                                <span class="ios-item-sub">Швидке перемикання між групами коледжу</span>
+                            </div>
+                        </div>
+                        <div id="saved-groups-container" class="saved-groups-container" style="margin-top:2px;"></div>
+                        <div style="position:relative;margin-top:4px;">
+                            <input type="text" id="settings-group-search" class="ios-text-input" placeholder="🔍 Почніть вводити групу (напр. ФЕП-11)..." autocomplete="off" autocapitalize="characters" spellcheck="false" />
+                            <div id="settings-group-results" class="group-search-results"></div>
+                        </div>
+
+                        <!-- English Teacher Selection inside groups -->
+                        <div id="eng-setting-group" style="display:none;margin-top:8px;padding-top:10px;border-top:0.5px solid var(--ios-separator);">
+                            <div class="ios-item-left" style="margin-bottom:8px;">
+                                <div class="ios-icon-box ios-icon-indigo" style="width:24px;height:24px;font-size:13px;">🇬🇧</div>
+                                <div class="ios-item-text">
+                                    <span class="ios-item-title" style="font-size:14.5px;">Викладач англійської</span>
+                                    <span class="ios-item-sub">Фільтр розкладу підгрупи</span>
+                                </div>
+                            </div>
+                            <div class="select-wrapper">
+                                <select id="eng-select" class="ios-text-input">
+                                    <option value="all">Усі викладачі</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2: ОФОРМЛЕННЯ -->
+            <div class="ios-section" data-search-section="оформлення тема колір шрифт вигляд темна світла black чорна аврора dotted сайбер">
                 <div class="ios-section-header">Оформлення</div>
                 <div class="ios-card-container">
                     <!-- 6 Theme Previews -->
@@ -3593,12 +3686,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                             <span class="ios-theme-label">Темна</span>
                             <span class="ios-radio-dot"></span>
                         </button>
-                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="black" title="Black OLED">
+                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="black" title="Black">
                             <div class="ios-screen-preview preview-theme-black">
                                 <div class="preview-bar"></div>
                                 <div class="preview-tile"></div>
                             </div>
-                            <span class="ios-theme-label">OLED</span>
+                            <span class="ios-theme-label">Black</span>
                             <span class="ios-radio-dot"></span>
                         </button>
                         <button type="button" class="theme-btn ios-theme-card" data-theme-val="cyber" title="Cyberpunk">
@@ -3719,9 +3812,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                 </div>
             </div>
 
-            <!-- SECTION 2: РОЗКЛАД ТА ПАРИ -->
-            <div class="ios-section" data-search-section="розклад групи пари викладач аудиторія англійська">
-                <div class="ios-section-header">Розклад та пари</div>
+            <!-- SECTION 3: ПАРИ ТА РОЗКЛАД -->
+            <div class="ios-section" data-search-section="пари викладач аудиторія кастомні власні дввс">
+                <div class="ios-section-header">Пари та розклад</div>
                 <div class="ios-card-container">
                     <!-- Show Teacher -->
                     <div class="ios-item-row" data-search-item="викладач показувати прізвище ім'я">
@@ -3757,40 +3850,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
                     <div class="ios-hairline"></div>
 
-                    <!-- Saved Groups & Search -->
-                    <div class="ios-item-row" style="flex-direction:column;align-items:stretch;gap:10px;" data-search-item="групи збережені пошук групи змінити">
-                        <div class="ios-item-left">
-                            <div class="ios-icon-box ios-icon-blue">🎓</div>
-                            <div class="ios-item-text">
-                                <span class="ios-item-title">Збережені групи</span>
-                                <span class="ios-item-sub">Швидке перемикання між групами коледжу</span>
-                            </div>
-                        </div>
-                        <div id="saved-groups-container" class="saved-groups-container" style="margin-top:2px;"></div>
-                        <div style="position:relative;margin-top:4px;">
-                            <input type="text" id="settings-group-search" class="ios-text-input" placeholder="🔍 Почніть вводити групу (напр. ФЕП-11)..." autocomplete="off" autocapitalize="characters" spellcheck="false" />
-                            <div id="settings-group-results" class="group-search-results"></div>
-                        </div>
-
-                        <!-- English Teacher Selection inside groups -->
-                        <div id="eng-setting-group" style="display:none;margin-top:8px;padding-top:10px;border-top:0.5px solid var(--ios-separator);">
-                            <div class="ios-item-left" style="margin-bottom:8px;">
-                                <div class="ios-icon-box ios-icon-indigo" style="width:24px;height:24px;font-size:13px;">🇬🇧</div>
-                                <div class="ios-item-text">
-                                    <span class="ios-item-title" style="font-size:14.5px;">Викладач англійської</span>
-                                    <span class="ios-item-sub">Фільтр розкладу підгрупи</span>
-                                </div>
-                            </div>
-                            <div class="select-wrapper">
-                                <select id="eng-select" class="ios-text-input">
-                                    <option value="all">Усі викладачі</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="ios-hairline"></div>
-
                     <!-- Custom Lessons -->
                     <div class="ios-item-row" style="flex-direction:column;align-items:stretch;gap:10px;" data-search-item="кастомні пари вибіркові дввс особисті розклад">
                         <div class="ios-item-left">
@@ -3808,7 +3867,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                 </div>
             </div>
 
-            <!-- SECTION 3: СПОВІЩЕННЯ -->
+            <!-- SECTION 4: СПОВІЩЕННЯ -->
             <div class="ios-section" data-search-section="сповіщення нагадування пари оголошення дедлайни">
                 <div class="ios-section-header">Сповіщення</div>
                 <div class="ios-card-container">
@@ -3863,7 +3922,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                 </div>
             </div>
 
-            <!-- SECTION 4: СИСТЕМА ТА ПОВЕДІНКА -->
+            <!-- SECTION 5: СИСТЕМА ТА ПОВЕДІНКА -->
             <div class="ios-section" data-search-section="система сьогодні вкладка тактильний вібрація відвідування статистика серія стрік">
                 <div class="ios-section-header">Система та поведінка</div>
                 <div class="ios-card-container">
@@ -3949,7 +4008,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                 </div>
             </div>
 
-            <!-- SECTION 5: ДІЇ ТА АДМІНІСТРУВАННЯ -->
+            <!-- SECTION 6: ДІЇ ТА АДМІНІСТРУВАННЯ -->
             <div class="ios-section" data-search-section="адмін скинути скидання очистити версія">
                 <div id="admin-settings-row" style="display:none;margin:0 16px 12px;">
                     <button id="btn-open-admin-direct" class="ios-action-button" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),var(--accent-purple));color:#fff;font-size:15px;font-weight:700;box-shadow:0 4px 14px rgba(59,130,246,0.35);">
@@ -3962,7 +4021,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                     </button>
                 </div>
                 <div style="text-align:center;font-size:12px;font-weight:500;color:var(--ios-subtext);margin-top:16px;line-height:1.5;">
-                    Версія 1.68 · By <a href="https://t.me/xmice" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:none;font-weight:600;">@xmice</a> та <a href="https://t.me/maksimko04" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:none;font-weight:600;">@maksimko04</a><br>Schedule © 2026 · Designed with Apple Human Interface Guidelines
+                    Версія 1.68 · By <a href="https://t.me/xmice" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:none;font-weight:600;">@xmice</a> та <a href="https://t.me/maksimko04" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:none;font-weight:600;">@maksimko04</a><br>Schedule © 2026
                 </div>
             </div>
 
@@ -5022,6 +5081,89 @@ function initNewSettings() {
     const roomToggle=document.getElementById('toggle-room');
     if(roomToggle){roomToggle.checked=state.showRoom;roomToggle.addEventListener('change',()=>{state.showRoom=roomToggle.checked;gset(state.scheduleGroup,'show_room',state.showRoom);applyBodyClasses();});}
 
+    // Devices and Registration formatter
+    function formatDeviceTime(ts) {
+        if (!ts) return 'Щойно';
+        const diff = Date.now() - ts;
+        const mins = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        const days = Math.floor(diff / 86400000);
+        if (mins < 3) return 'Активний зараз';
+        if (mins < 60) return `${mins} хв тому`;
+        if (hours < 24) return `${hours} год тому`;
+        if (days === 1) return 'Вчора';
+        if (days < 7) return `${days} дн тому`;
+        return new Date(ts).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' });
+    }
+
+    function getDeviceIcon(label) {
+        const l = (label || '').toLowerCase();
+        if (l.includes('mac') || l.includes('windows') || l.includes('linux') || l.includes('комп') || l.includes('pc')) return '💻';
+        if (l.includes('ipad') || l.includes('планшет')) return '📱';
+        if (l.includes('iphone') || l.includes('android') || l.includes('телефон')) return '📱';
+        return '🌐';
+    }
+
+    function renderDevicesUI(userDoc) {
+        const listEl = document.getElementById('ios-devices-list');
+        const countEl = document.getElementById('ios-devices-count');
+        const regEl = document.getElementById('ios-reg-date-text');
+        if (!listEl) return;
+
+        let regTs = null;
+        if (userDoc && userDoc.first_seen) regTs = userDoc.first_seen;
+        else if (userDoc && userDoc.created_at) regTs = userDoc.created_at;
+        else {
+            let stored = localStorage.getItem('app_first_reg_date');
+            if (!stored) {
+                stored = String(Date.now());
+                localStorage.setItem('app_first_reg_date', stored);
+            }
+            regTs = parseInt(stored) || Date.now();
+        }
+        if (regEl) {
+            const d = new Date(regTs);
+            regEl.textContent = d.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }) + ` о ${d.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}`;
+        }
+
+        const currentDevId = (typeof getDeviceId === 'function') ? getDeviceId() : (localStorage.getItem('_fep_device_id') || 'dev_current');
+        const currentDevLabel = (typeof detectDevice === 'function') ? detectDevice().label : 'Поточний браузер';
+
+        let devices = (userDoc && Array.isArray(userDoc.devices) && userDoc.devices.length > 0) ? [...userDoc.devices] : [];
+        
+        const hasCurrent = devices.some(d => d.id === currentDevId);
+        if (!hasCurrent) {
+            devices.unshift({ id: currentDevId, label: currentDevLabel, last_seen: Date.now() });
+        }
+
+        if (countEl) {
+            countEl.textContent = `${devices.length} ${devices.length === 1 ? 'пристрій' : devices.length < 5 ? 'пристрої' : 'пристроїв'}`;
+        }
+
+        listEl.innerHTML = devices.map(dev => {
+            const isThisDevice = (dev.id === currentDevId);
+            const icon = getDeviceIcon(dev.label);
+            const timeText = isThisDevice ? '🟢 Цей пристрій · Онлайн' : `Останній вхід: ${formatDeviceTime(dev.last_seen)}`;
+            return `
+                <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(120,120,128,0.08);padding:9px 12px;border-radius:10px;gap:8px;">
+                    <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+                        <div style="font-size:18px;line-height:1;flex-shrink:0;">${icon}</div>
+                        <div style="min-width:0;">
+                            <div style="font-size:13.5px;font-weight:600;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                ${dev.label || 'Невідомий пристрій'}
+                            </div>
+                            <div style="font-size:11.5px;color:${isThisDevice ? '#34c759' : 'var(--ios-subtext)'};font-weight:${isThisDevice ? '600' : '400'};margin-top:1px;">
+                                ${timeText}
+                            </div>
+                        </div>
+                    </div>
+                    ${isThisDevice ? '<span style="font-size:10px;font-weight:700;padding:3px 7px;border-radius:6px;background:rgba(52,199,89,0.14);color:#34c759;flex-shrink:0;">ONLINE</span>' : ''}
+                </div>
+            `;
+        }).join('');
+    }
+    window.renderDevicesUI = renderDevicesUI;
+
     // iOS Profile Banner Drawer Toggle & Dynamic Sync
     function syncProfileBannerUI() {
         const avatarEl = document.getElementById('ios-profile-avatar');
@@ -5029,22 +5171,20 @@ function initNewSettings() {
         const subEl = document.getElementById('ios-profile-sub-text');
         if (!avatarEl || !nameEl || !subEl) return;
 
-        const customName = (typeof storage !== 'undefined' ? storage.get('custom_display_name', '') : '') || '';
         let user = null;
         try {
             if (typeof getTgUser === 'function') user = getTgUser();
+            if (!user && window._currentFbUser) user = window._currentFbUser;
             if (!user) user = JSON.parse(localStorage.getItem('tg_user_cache') || 'null');
         } catch(e) {}
 
-        const displayName = customName || (user ? (user.first_name + (user.last_name ? ' ' + user.last_name : '')) : 'Студент');
+        const displayName = user ? (user.first_name + (user.last_name ? ' ' + user.last_name : '')) : (state.groupName ? 'Студент ' + state.groupName : 'Студент');
         nameEl.textContent = displayName;
 
         if (user && user.photo_url) {
             avatarEl.innerHTML = `<img src="${user.photo_url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
         } else if (user && user.first_name) {
             avatarEl.textContent = typeof getInitials === 'function' ? getInitials(user.first_name, user.last_name) : user.first_name.charAt(0).toUpperCase();
-        } else if (customName) {
-            avatarEl.textContent = customName.charAt(0).toUpperCase();
         } else {
             avatarEl.textContent = '👤';
         }
@@ -5054,9 +5194,11 @@ function initNewSettings() {
         let sub = '';
         if (tgNick && grp) sub = `${tgNick} · ${grp}`;
         else if (tgNick) sub = tgNick;
-        else if (grp) sub = `${grp} · Apple ID & Cloud Sync`;
-        else sub = 'Telegram акаунт та синхронізація';
+        else if (grp) sub = `${grp} · Сесії та пристрої`;
+        else sub = 'Telegram акаунт · Сесії та пристрої';
         subEl.textContent = sub;
+
+        renderDevicesUI(user);
     }
     window.syncProfileBannerUI = syncProfileBannerUI;
 
@@ -5066,9 +5208,11 @@ function initNewSettings() {
     if (profileBanner && profileDrawer) {
         profileBanner.addEventListener('click', () => {
             const isOpen = profileDrawer.classList.toggle('active');
+            profileBanner.classList.toggle('drawer-open', isOpen);
             if (profileChevron) {
                 profileChevron.style.transform = isOpen ? 'rotate(90deg)' : 'none';
             }
+            if (isOpen) syncProfileBannerUI();
             if (typeof haptic === 'function') haptic('selection');
         });
     }
@@ -8259,12 +8403,26 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             const data = await res.json();
             if (!data.fields) return null;
             const f = data.fields;
+            let devices = [];
+            if (f.devices?.arrayValue?.values) {
+                devices = f.devices.arrayValue.values.map(v => {
+                    const m = v.mapValue?.fields || {};
+                    return {
+                        id: m.id?.stringValue || '',
+                        label: m.label?.stringValue || '',
+                        last_seen: parseInt(m.last_seen?.integerValue || m.last_seen?.doubleValue || '0'),
+                    };
+                }).filter(d => d.id);
+            }
+            const firstSeen = parseInt(f.first_seen?.integerValue || f.first_seen?.doubleValue || f.created_at?.integerValue || '0');
             return {
                 id: f.id?.stringValue || '',
                 first_name: f.first_name?.stringValue || '',
                 last_name: f.last_name?.stringValue || '',
                 username: f.username?.stringValue || '',
                 photo_url: f.photo_url?.stringValue || '',
+                first_seen: firstSeen,
+                devices: devices,
             };
         } catch { return null; }
     }
@@ -8283,22 +8441,17 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         if (!showBar) { bar.style.display = 'none'; return; }
 
         
-        const customName = storage.get('custom_display_name', '');
-
-        
         const tgUser = getTgUser();
         let user = null;
 
         if (tgUser) {
             user = tgUser;
         } else {
-            
             try { user = JSON.parse(localStorage.getItem('tg_user_cache') || 'null'); } catch{}
         }
 
-        
         bar.style.display = 'flex';
-        const displayName = customName || (user ? (user.first_name + (user.last_name ? ' '+user.last_name : '')) : 'Студент');
+        const displayName = user ? (user.first_name + (user.last_name ? ' '+user.last_name : '')) : (ACTIVE_GROUP_NAME ? 'Студент ' + ACTIVE_GROUP_NAME : 'Студент');
         nameEl.textContent = displayName;
 
         
@@ -8345,14 +8498,18 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             
             if (window.fbUpdateUserLastSeen) window.fbUpdateUserLastSeen(tgUser.id, ACTIVE_GROUP);
             const fbUser = await loadUserFromFirebase(tgUser.id);
-            if (fbUser && fbUser.photo_url) {
-                localStorage.setItem('tg_user_cache', JSON.stringify({...tgUser, photo_url: fbUser.photo_url}));
-                const img = document.createElement('img');
-                img.src = fbUser.photo_url;
-                img.alt = '';
-                img.onerror = () => { avatarWrap.textContent = getInitials(user.first_name, user.last_name); };
-                avatarWrap.textContent = '';
-                avatarWrap.appendChild(img);
+            if (fbUser) {
+                window._currentFbUser = fbUser;
+                localStorage.setItem('tg_user_cache', JSON.stringify({...tgUser, ...fbUser}));
+                if (fbUser.photo_url) {
+                    const img = document.createElement('img');
+                    img.src = fbUser.photo_url;
+                    img.alt = '';
+                    img.onerror = () => { avatarWrap.textContent = getInitials(user.first_name, user.last_name); };
+                    avatarWrap.textContent = '';
+                    avatarWrap.appendChild(img);
+                }
+                if (window.renderDevicesUI) window.renderDevicesUI(fbUser);
             }
         } else if (user && user.photo_url) {
             
