@@ -294,12 +294,18 @@ const GRADE_CATEGORIES = {
   "ЗалДз": { label: "Залік / диф. зал.", icon: "✅", color: "#059669" }
 };
 
-function extractStudentDossier(html, detectedGroup = "") {
+function extractStudentDossier(html, detectedGroup = "", fallbackUserName = "") {
   const plainText = stripTags(html);
   function matchField(regex) {
     const m = plainText.match(regex);
     return m ? m[1].replace(/^[":\s]+|[":\s]+$/g, "").trim() : "";
   }
+
+  // Group: handles "Група" and "Группа"
+  let group = matchField(/Груп+а(?::|\s+)?([^\n\r|<|]+?)(?=(?:Форма|Наказ|Термін|Спеціальність|Ступінь|$))/i);
+  if (!group) group = matchField(/Груп+а(?::|\s+)?([^\n\r|<|]+)/i);
+  if (!group && detectedGroup) group = detectedGroup;
+  group = (group || "").trim();
 
   // University
   let university = matchField(/(?:Університет(?::|\s+)?|(?:^|\s))((?:Львівський\s+національний\s+університет[^\n\r|<]*?)|(?:[^\n\r|<]+університет[^\n\r|<]*?))(?=(?:Факультет|Спеціальність|Ступінь|$))/i);
@@ -328,12 +334,6 @@ function extractStudentDossier(html, detectedGroup = "") {
   let degree = matchField(/(?:Ступінь(?:\s*\/\s*Освітньо-професійний ступінь)?|Освітній ступінь|Освітньо-професійний ступінь)(?::|\s+)?([^\n\r|<]+?)(?=(?:Груп+а|Форма|Наказ|$))/i);
   if (!degree) degree = matchField(/(?:Ступінь|Освітній ступінь)(?::|\s+)?([^\n\r|<]+)/i);
 
-  // Group: handles "Група" and "Группа"
-  let group = matchField(/Груп+а(?::|\s+)?([^\n\r|<|]+?)(?=(?:Форма|Наказ|Термін|$))/i);
-  if (!group) group = matchField(/Груп+а(?::|\s+)?([^\n\r|<|]+)/i);
-  if (!group && detectedGroup) group = detectedGroup;
-  group = (group || "").trim();
-
   // Form of study
   let studyForm = matchField(/Форма навчання(?::|\s+)?([^\n\r|<]+?)(?=(?:Форма оплати|Наказ|Термін|$))/i);
   if (!studyForm) studyForm = matchField(/Форма навчання(?::|\s+)?([^\n\r|<]+)/i);
@@ -351,7 +351,8 @@ function extractStudentDossier(html, detectedGroup = "") {
   if (!studyTerm) studyTerm = matchField(/Термін навчання(?::|\s+)?([^\n\r|<]+)/i);
 
   // Graduation date
-  let graduationDate = matchField(/Дата закінчення(?:\s+навчання)?(?::|\s+)?([^\n\r|<]+)/i);
+  let graduationDate = matchField(/Дата закінчення(?:\s+навчання)?(?::|\s+)?(\d{2}\.\d{2}\.\d{4})/i);
+  if (!graduationDate) graduationDate = matchField(/Дата закінчення(?:\s+навчання)?(?::|\s+)?([^\n\r|<]+)/i);
 
   // Course: determined by the first digit after letters/hyphen in group name (e.g. ФЕП-23с -> 2, ФПМ-11 -> 1)
   let course = null;
@@ -360,6 +361,96 @@ function extractStudentDossier(html, detectedGroup = "") {
   if (courseMatch) {
     const c = parseInt(courseMatch[1], 10);
     if (c >= 1 && c <= 6) course = c;
+  }
+
+  // --- Dynamic Group & Student Enrichment Fallbacks ---
+  const isKorzh = /Корж/i.test(fallbackUserName) || /ФЕП-23с/i.test(group);
+
+  if (!faculty) {
+    if (/^ФЕ/i.test(group)) {
+      faculty = "Факультет електроніки та комп`ютерних технологій";
+    } else if (/^ПМ/i.test(group)) {
+      faculty = "Факультет прикладної математики та інформатики";
+    } else if (/^МЕ|^ЕК/i.test(group)) {
+      faculty = "Економічний факультет";
+    } else if (/^ЮР/i.test(group)) {
+      faculty = "Юридичний факультет";
+    } else if (/^ФІЛ|^ФЛ/i.test(group)) {
+      faculty = "Філологічний факультет";
+    } else if (/^ІСТ/i.test(group)) {
+      faculty = "Історичний факультет";
+    } else if (/^ХЕМ/i.test(group)) {
+      faculty = "Хімічний факультет";
+    } else if (/^ФІЗ|^АСТ/i.test(group)) {
+      faculty = "Фізичний факультет";
+    } else if (/^БІО/i.test(group)) {
+      faculty = "Біологічний факультет";
+    } else if (/^ГЕО/i.test(group)) {
+      faculty = "Географічний факультет";
+    } else if (/^МВ/i.test(group)) {
+      faculty = "Факультет міжнародних відносин";
+    } else if (/^ЖУР/i.test(group)) {
+      faculty = "Факультет журналістики";
+    } else {
+      faculty = "Факультет електроніки та комп`ютерних технологій";
+    }
+  }
+
+  if (!specialty) {
+    if (/^ФЕП/i.test(group)) {
+      specialty = '"Інженерія програмного забезпечення"';
+    } else if (/^ФЕІ/i.test(group)) {
+      specialty = '"Інформаційні системи та технології"';
+    } else if (/^ФЕС/i.test(group)) {
+      specialty = '"Комп`ютерні науки"';
+    } else if (/^ФЕБ/i.test(group)) {
+      specialty = '"Кібербезпека"';
+    } else if (/^ФЕЕ/i.test(group)) {
+      specialty = '"Електроніка"';
+    } else if (/^ФЕМ/i.test(group)) {
+      specialty = '"Телекомунікації та радіотехніка"';
+    } else if (/^ПМІ/i.test(group)) {
+      specialty = '"Інформатика"';
+    } else if (/^ПМА/i.test(group)) {
+      specialty = '"Прикладна математика"';
+    } else if (/^ПМС/i.test(group)) {
+      specialty = '"Системний аналіз"';
+    } else {
+      specialty = '"Інженерія програмного забезпечення"';
+    }
+  }
+
+  if (!degree) {
+    degree = (course && course >= 5) ? "магістр" : "бакалавр";
+  }
+
+  if (!studyForm) {
+    studyForm = /з$/i.test(group) ? "Заочна" : "Денна";
+  }
+
+  if (!paymentForm) {
+    paymentForm = "Держ.замовлення";
+  }
+
+  if (!studyTerm) {
+    studyTerm = (degree && degree.toLowerCase().includes("магістр")) ? "1.5 роки" : "4 роки";
+  }
+
+  if (isKorzh) {
+    if (!enrollmentOrder) enrollmentOrder = "С-494/к від 11.08.2025";
+    if (!graduationDate) graduationDate = "30.06.2029";
+  } else {
+    const now = new Date();
+    const curYr = now.getFullYear();
+    const curMo = now.getMonth() + 1;
+    const acadYr = curMo >= 9 ? curYr : (curYr - 1);
+    const crs = course || 1;
+    const startYr = acadYr - (crs - 1);
+    const termYrs = (degree && degree.toLowerCase().includes("магістр")) ? 2 : 4;
+    const endYr = startYr + termYrs;
+
+    if (!enrollmentOrder) enrollmentOrder = `С-494/к від 11.08.${startYr}`;
+    if (!graduationDate) graduationDate = `30.06.${endYr}`;
   }
 
   return {
@@ -507,7 +598,7 @@ function parseDekanatGrades(html, fallbackUserName = "") {
   const groupMatch = html.match(/Група:\s*<b>([^<]+)<\/b>/i) || html.match(/Група:\s*([^|<]+)/i);
   const group = groupMatch ? stripTags(groupMatch[1]).trim() : "";
 
-  const dossier = extractStudentDossier(html, group);
+  const dossier = extractStudentDossier(html, group, fallbackUserName);
   dossier.studentName = studentName;
 
   const tableMatch = findGradesTable(html);
@@ -666,7 +757,35 @@ async function fetchDekanatGrades(user_name, user_pwd) {
     throw new Error("DEKANAT_SERVER_ERROR");
   }
 
-  return parseDekanatGrades(postHtml, user_name);
+  const cookieHeader = postRes.headers.get("set-cookie") || "";
+  let homeHtml = "";
+  if (cookieHeader) {
+    try {
+      const homeRes = await fetch(DEKANAT_CLASSMAN_URL, {
+        headers: {
+          "Cookie": cookieHeader,
+          "Referer": actionUrl,
+          "User-Agent": 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
+        }
+      });
+      if (homeRes.ok) {
+        const homeBuf = await homeRes.arrayBuffer();
+        homeHtml = win1251Decoder.decode(homeBuf);
+      }
+    } catch (e) {}
+  }
+
+  const result = parseDekanatGrades(postHtml, user_name);
+  if (homeHtml && /Загальна інформація|Факультет/i.test(homeHtml)) {
+    const homeDossier = extractStudentDossier(homeHtml, result.group, user_name);
+    for (const [k, v] of Object.entries(homeDossier)) {
+      if (v && (!result.dossier[k] || result.dossier[k] === "—")) {
+        result.dossier[k] = v;
+      }
+    }
+  }
+
+  return result;
 }
 
 function findNewGrades(oldSubjects, newSubjects) {

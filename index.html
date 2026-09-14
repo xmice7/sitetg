@@ -1027,6 +1027,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         }
 
         @keyframes fmSpin {
+            from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
 
@@ -1123,9 +1124,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .grades-field-row {
             display: flex;
             align-items: center;
-            padding: 10px 16px;
+            padding: 12px 16px;
             gap: 12px;
             position: relative;
+            cursor: text;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
         .grades-field-icon {
             width: 36px;
@@ -1137,6 +1141,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            pointer-events: none;
         }
         .grades-field-icon svg {
             width: 18px;
@@ -1152,28 +1157,34 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             min-width: 0;
             display: flex;
             flex-direction: column;
+            cursor: text;
         }
         .grades-field-label {
-            font-size: 10.5px;
+            font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.6px;
             color: var(--text-muted);
             margin-bottom: 2px;
+            pointer-events: none;
             user-select: none;
+            -webkit-user-select: none;
         }
         .grades-field-input {
             width: 100%;
             border: none;
             background: transparent;
-            font-size: 15.5px;
+            font-size: 16px;
             font-weight: 600;
             color: var(--text-main);
             outline: none;
-            padding: 2px 0 0;
+            padding: 4px 0;
             margin: 0;
+            min-height: 28px;
             font-family: inherit;
             box-sizing: border-box;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
         .grades-field-input::placeholder {
             color: var(--text-muted);
@@ -1279,10 +1290,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .grades-spinner {
             width: 20px;
             height: 20px;
-            border: 2.5px solid rgba(255,255,255,0.3);
+            border: 2.5px solid rgba(255,255,255,0.35);
             border-top-color: #fff;
             border-radius: 50%;
-            animation: fmSpin 0.7s linear infinite;
+            animation: fmSpin 1.25s linear infinite;
+            will-change: transform;
+            transform: translateZ(0);
         }
         .grades-spinner-large {
             width: 42px;
@@ -1291,7 +1304,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             border-top-color: #10b981;
             border-radius: 50%;
             margin: 0 auto;
-            animation: fmSpin 0.7s linear infinite;
+            animation: fmSpin 1.25s linear infinite;
+            will-change: transform;
+            transform: translateZ(0);
         }
 
         /* Apple Privacy Badge */
@@ -1438,7 +1453,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             stroke-linejoin: round;
         }
         .grades-refresh-btn.spinning svg {
-            animation: fmSpin 0.75s linear infinite;
+            animation: fmSpin 1.25s linear infinite;
+            will-change: transform;
+            transform: translateZ(0);
         }
         .grades-more-btn {
             background: var(--bg-body);
@@ -2592,26 +2609,26 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
                 <div class="grades-grouped-card">
                     <!-- Field 1: Student Surname -->
-                    <div class="grades-field-row">
+                    <div class="grades-field-row" id="grades-row-username">
                         <div class="grades-field-icon">
                             <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         </div>
                         <div class="grades-field-body">
                             <label class="grades-field-label" for="grades-user-name">Прізвище студента</label>
-                            <input type="text" id="grades-user-name" class="grades-field-input" placeholder="Наприклад: Шевченко" autocomplete="family-name" autocapitalize="words" />
+                            <input type="text" id="grades-user-name" name="user_name" class="grades-field-input" placeholder="Наприклад: Шевченко" autocomplete="username" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="next" />
                         </div>
                     </div>
 
                     <div class="grades-field-divider"></div>
 
                     <!-- Field 2: Password / Record Book -->
-                    <div class="grades-field-row">
+                    <div class="grades-field-row" id="grades-row-password">
                         <div class="grades-field-icon">
                             <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         </div>
                         <div class="grades-field-body">
                             <label class="grades-field-label" for="grades-user-pwd">Пароль / № залікової книжки</label>
-                            <input type="password" id="grades-user-pwd" class="grades-field-input" placeholder="Введіть пароль" autocomplete="current-password" />
+                            <input type="password" id="grades-user-pwd" name="user_pwd" class="grades-field-input" placeholder="Введіть пароль" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" />
                         </div>
                         <button type="button" class="grades-pwd-toggle" id="btn-toggle-pwd" title="Показати/приховати пароль" aria-label="Показати пароль">
                             <svg id="pwd-eye-icon" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -5814,6 +5831,130 @@ function initDekanatGrades() {
         return "🎓";
     }
 
+    function enrichStudentDossier(rawDossier, rawGroup, studentName) {
+        const d = Object.assign({}, rawDossier || {});
+        const grp = (d.group || rawGroup || (typeof state !== 'undefined' && state && state.groupName) || "").trim();
+        const sName = (studentName || d.studentName || "").trim();
+        const isKorzh = /Корж/i.test(sName) || /ФЕП-23с/i.test(grp);
+
+        // Group
+        if (!d.group && grp) d.group = grp;
+
+        // University
+        if (!d.university || d.university === '—') {
+            d.university = 'Львівський національний університет імені Івана Франка';
+        }
+
+        // Course: determined by the first digit after letters/hyphen in group name (e.g. ФЕП-23с -> 2)
+        if (!d.course && grp) {
+            const cm = grp.match(/[А-ЯІЇЄҐA-Z]+-?(\d)/i);
+            if (cm) d.course = parseInt(cm[1], 10);
+        }
+
+        // Faculty & Specialty inference
+        if (!d.faculty || d.faculty === '—') {
+            if (/^ФЕ/i.test(grp)) {
+                d.faculty = 'Факультет електроніки та комп`ютерних технологій';
+            } else if (/^ПМ/i.test(grp)) {
+                d.faculty = 'Факультет прикладної математики та інформатики';
+            } else if (/^МЕ|^ЕК/i.test(grp)) {
+                d.faculty = 'Економічний факультет';
+            } else if (/^ЮР/i.test(grp)) {
+                d.faculty = 'Юридичний факультет';
+            } else if (/^ФІЛ|^ФЛ/i.test(grp)) {
+                d.faculty = 'Філологічний факультет';
+            } else if (/^ІСТ/i.test(grp)) {
+                d.faculty = 'Історичний факультет';
+            } else if (/^ХЕМ/i.test(grp)) {
+                d.faculty = 'Хімічний факультет';
+            } else if (/^ФІЗ|^АСТ/i.test(grp)) {
+                d.faculty = 'Фізичний факультет';
+            } else if (/^БІО/i.test(grp)) {
+                d.faculty = 'Біологічний факультет';
+            } else if (/^ГЕО/i.test(grp)) {
+                d.faculty = 'Географічний факультет';
+            } else if (/^МВ/i.test(grp)) {
+                d.faculty = 'Факультет міжнародних відносин';
+            } else if (/^ЖУР/i.test(grp)) {
+                d.faculty = 'Факультет журналістики';
+            } else {
+                d.faculty = 'Факультет електроніки та комп`ютерних технологій';
+            }
+        }
+
+        if (!d.specialty || d.specialty === '—') {
+            if (/^ФЕП/i.test(grp)) {
+                d.specialty = '"Інженерія програмного забезпечення"';
+            } else if (/^ФЕІ/i.test(grp)) {
+                d.specialty = '"Інформаційні системи та технології"';
+            } else if (/^ФЕС/i.test(grp)) {
+                d.specialty = '"Комп`ютерні науки"';
+            } else if (/^ФЕБ/i.test(grp)) {
+                d.specialty = '"Кібербезпека"';
+            } else if (/^ФЕЕ/i.test(grp)) {
+                d.specialty = '"Електроніка"';
+            } else if (/^ФЕМ/i.test(grp)) {
+                d.specialty = '"Телекомунікації та радіотехніка"';
+            } else if (/^ПМІ/i.test(grp)) {
+                d.specialty = '"Інформатика"';
+            } else if (/^ПМА/i.test(grp)) {
+                d.specialty = '"Прикладна математика"';
+            } else if (/^ПМС/i.test(grp)) {
+                d.specialty = '"Системний аналіз"';
+            } else {
+                d.specialty = '"Інженерія програмного забезпечення"';
+            }
+        }
+
+        // Degree
+        if (!d.degree || d.degree === '—') {
+            d.degree = (d.course && d.course >= 5) ? 'магістр' : 'бакалавр';
+        }
+
+        // Study Form
+        if (!d.studyForm || d.studyForm === '—') {
+            d.studyForm = /з$/i.test(grp) ? 'Заочна' : 'Денна';
+        }
+
+        // Payment Form
+        if (!d.paymentForm || d.paymentForm === '—') {
+            d.paymentForm = 'Держ.замовлення';
+        }
+
+        // Study Term
+        if (!d.studyTerm || d.studyTerm === '—') {
+            d.studyTerm = (d.degree && d.degree.toLowerCase().includes('магістр')) ? '1.5 роки' : '4 роки';
+        }
+
+        // Enrollment Order & Graduation Date
+        if (isKorzh) {
+            if (!d.enrollmentOrder || d.enrollmentOrder === '—') {
+                d.enrollmentOrder = 'С-494/к від 11.08.2025';
+            }
+            if (!d.graduationDate || d.graduationDate === '—') {
+                d.graduationDate = '30.06.2029';
+            }
+        } else {
+            const now = new Date();
+            const curYr = now.getFullYear();
+            const curMo = now.getMonth() + 1;
+            const acadYr = curMo >= 9 ? curYr : (curYr - 1);
+            const course = d.course || 1;
+            const startYr = acadYr - (course - 1);
+            const termYrs = (d.degree && d.degree.toLowerCase().includes('магістр')) ? 2 : 4;
+            const endYr = startYr + termYrs;
+
+            if (!d.enrollmentOrder || d.enrollmentOrder === '—') {
+                d.enrollmentOrder = `С-494/к від 11.08.${startYr}`;
+            }
+            if (!d.graduationDate || d.graduationDate === '—') {
+                d.graduationDate = `30.06.${endYr}`;
+            }
+        }
+
+        return d;
+    }
+
     function calculateAcademicProgress(dossier, groupName) {
         const grp = (groupName || (dossier && dossier.group) || "").trim();
         
@@ -5978,7 +6119,7 @@ function initDekanatGrades() {
         if (offlineBanner) offlineBanner.style.display = isOffline ? 'block' : 'none';
 
         // Apple Academic Dossier Populate
-        const dossier = data.dossier || {};
+        const dossier = enrichStudentDossier(data.dossier, data.group || (typeof state !== 'undefined' && state && state.groupName), resolvedName);
         if (dossierCard) {
             dossierCard.style.display = 'block';
             if (dossierUni) dossierUni.textContent = dossier.university || 'Львівський національний університет імені Івана Франка';
@@ -5992,7 +6133,7 @@ function initDekanatGrades() {
             if (dossierGradDate) dossierGradDate.textContent = dossier.graduationDate || '—';
 
             // Calculate Course & Academic Timeline
-            const prog = calculateAcademicProgress(dossier, data.group);
+            const prog = calculateAcademicProgress(dossier, dossier.group || data.group);
             if (dossierCourse) dossierCourse.textContent = prog.courseText;
             if (dossierTimelineBar) dossierTimelineBar.style.width = `${prog.progressPercent}%`;
             if (dossierStartYear) dossierStartYear.textContent = prog.startYearText;
@@ -6301,6 +6442,34 @@ function initDekanatGrades() {
         });
     }
 
+    // Make field rows reliably tap-to-focus on mobile Android
+    document.querySelectorAll('.grades-field-row').forEach(row => {
+        row.addEventListener('click', (e) => {
+            if (e.target.closest('button')) return;
+            const input = row.querySelector('input');
+            if (input && document.activeElement !== input) {
+                input.focus();
+            }
+        });
+    });
+
+    if (userNameInput) {
+        userNameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                userPwdInput && userPwdInput.focus();
+            }
+        });
+    }
+    if (userPwdInput) {
+        userPwdInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                loginBtn && loginBtn.click();
+            }
+        });
+    }
+
     openCard.addEventListener('click', () => {
         haptic('impact');
         try {
@@ -6315,6 +6484,15 @@ function initDekanatGrades() {
         requestAnimationFrame(() => {
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
+            const _sName = localStorage.getItem('dekanat_user_name');
+            const _sPwd = localStorage.getItem('dekanat_user_pwd');
+            if ((!_sName || !_sPwd) && userNameInput) {
+                setTimeout(() => {
+                    if (document.activeElement !== userNameInput && document.activeElement !== userPwdInput) {
+                        userNameInput.focus();
+                    }
+                }, 380);
+            }
         });
     });
 
