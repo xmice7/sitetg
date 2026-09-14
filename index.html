@@ -386,7 +386,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             border-color: rgba(56, 189, 248, 0.45) !important;
             box-shadow: 0 12px 32px rgba(56, 189, 248, 0.15) !important;
         }
-        [data-theme="dotted"] .days-nav,
         [data-theme="dotted"] .bottom-nav {
             background: rgba(15, 20, 32, 0.75) !important;
             backdrop-filter: blur(25px) saturate(180%) !important;
@@ -470,14 +469,61 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .credit-link:hover { border-bottom-color:var(--primary); }
         .credit-link:active { opacity:0.7; }
         .current-group-chip { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:12px; background:var(--bg-blue); color:var(--primary); font-weight:800; font-size:15px; margin:10px 0; }
-        .days-nav { display: flex; gap: 8px; overflow-x: auto; padding: 10px 4px 12px 4px; margin-bottom: 8px; scrollbar-width: none; position: sticky; top: 0; background: transparent; z-index: 50; }
+        .days-nav {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 8px 6px 14px 6px;
+            margin-bottom: 6px;
+            scrollbar-width: none;
+            position: sticky;
+            top: 0;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            z-index: 50;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-x: contain;
+            scroll-behavior: smooth;
+        }
         .days-nav::-webkit-scrollbar { display: none; }
-        .day-btn { background: rgba(255,255,255,0.06); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,0.12); color: var(--text-muted); padding: 9px 18px; border-radius: 22px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: transform 0.22s var(--spring-bounce), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.12); user-select: none; -webkit-user-select: none; }
-        [data-theme="light"] .day-btn { background: rgba(255,255,255,0.65); border-color: rgba(0,0,0,0.08); box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
-        .day-btn:active { transform: scale(0.92); }
-        .day-btn:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.22); color: var(--text-main); }
-        [data-theme="light"] .day-btn:hover { background: rgba(255,255,255,0.92); border-color: rgba(0,0,0,0.14); }
-        .day-btn.active { background: var(--day-btn-active-bg, var(--primary)); border-color: var(--day-btn-active-border, var(--primary)); color: #fff; box-shadow: var(--day-btn-active-shadow, 0 4px 16px rgba(59,130,246,0.4)); backdrop-filter: none; transform: scale(1.02); }
+        .day-btn {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.14);
+            color: var(--text-muted);
+            padding: 9px 18px;
+            border-radius: 9999px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+            transition: transform 0.2s var(--spring-bounce), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        [data-theme="light"] .day-btn {
+            background: rgba(255,255,255,0.78);
+            border-color: rgba(0,0,0,0.1);
+            color: #475569;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .day-btn:active { transform: scale(0.93); }
+        .day-btn:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.25); color: var(--text-main); }
+        [data-theme="light"] .day-btn:hover { background: rgba(255,255,255,0.96); border-color: rgba(0,0,0,0.18); color: #0f172a; }
+        .day-btn.active {
+            background: var(--day-btn-active-bg, var(--primary));
+            border-color: var(--day-btn-active-border, var(--primary));
+            color: #fff;
+            box-shadow: var(--day-btn-active-shadow, 0 4px 18px rgba(59,130,246,0.45));
+            backdrop-filter: none;
+            transform: scale(1.02);
+        }
         .day-btn.active:active { transform: scale(0.96); }
         .week-parity-card { display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 12px 18px; margin-bottom: 14px; box-shadow: var(--shadow); animation: cardSlideIn 0.35s ease both; }
         .week-parity-badge { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; padding: 5px 14px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -751,20 +797,18 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         body.simple-mode .bg-canvas{display:none} body.simple-mode .lesson-card{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;animation:none!important;transition:none!important;box-shadow:none!important} body.simple-mode .lesson-card::before{display:none} body.simple-mode .lesson-card:hover{transform:none!important} body.simple-mode .day-btn{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;transition:none!important} body.simple-mode .days-nav{position:static;background:var(--bg-body)!important} body.simple-mode *{animation-duration:0.001s!important;transition-duration:0.001s!important} body.simple-mode .current-badge{animation:none!important;opacity:1!important} body.simple-mode .live-timer-text svg{animation:none!important} body.simple-mode .modal-content{transition:none!important;transform:translateY(0)!important} body.simple-mode .modal-overlay{backdrop-filter:none!important}
 
         /* =========================================================
-           APPLE iOS SETTINGS THEME & INSET GROUPED DESIGN
+           AUTHENTIC APPLE iOS 18 SETTINGS DESIGN
            ========================================================= */
         :root {
             --ios-bg: #f2f2f7;
             --ios-card-bg: #ffffff;
-            --ios-card-border: rgba(0, 0, 0, 0.08);
+            --ios-card-border: rgba(0, 0, 0, 0.06);
             --ios-separator: rgba(60, 60, 67, 0.12);
             --ios-row-hover: rgba(0, 0, 0, 0.04);
             --ios-subtext: #8e8e93;
             --ios-switch-off: #e9e9ea;
             --ios-switch-on: #34c759;
-            --ios-nav-bg: rgba(242, 242, 247, 0.88);
-            --ios-pill-bg: rgba(120, 120, 128, 0.12);
-            --ios-pill-text: #636366;
+            --ios-search-bg: rgba(120, 120, 128, 0.12);
         }
         [data-theme="dark"],
         [data-theme="black"],
@@ -773,34 +817,32 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         [data-theme="dotted"] {
             --ios-bg: #000000;
             --ios-card-bg: #1c1c1e;
-            --ios-card-border: rgba(255, 255, 255, 0.09);
-            --ios-separator: rgba(84, 84, 88, 0.42);
-            --ios-row-hover: rgba(255, 255, 255, 0.05);
-            --ios-subtext: #98989d;
+            --ios-card-border: rgba(255, 255, 255, 0.08);
+            --ios-separator: rgba(84, 84, 88, 0.38);
+            --ios-row-hover: rgba(255, 255, 255, 0.06);
+            --ios-subtext: #8e8e93;
             --ios-switch-off: #39393d;
-            --ios-nav-bg: rgba(28, 28, 30, 0.85);
-            --ios-pill-bg: rgba(120, 120, 128, 0.24);
-            --ios-pill-text: #aeaeb2;
+            --ios-search-bg: rgba(120, 120, 128, 0.22);
         }
         [data-theme="dotted"] {
-            --ios-bg: #0b0f19;
-            --ios-card-bg: rgba(20, 27, 44, 0.72);
-            --ios-card-border: rgba(255, 255, 255, 0.12);
+            --ios-bg: #07090e;
+            --ios-card-bg: rgba(18, 24, 38, 0.88);
+            --ios-card-border: rgba(255, 255, 255, 0.1);
             --ios-separator: rgba(255, 255, 255, 0.08);
             --ios-row-hover: rgba(255, 255, 255, 0.08);
-            --ios-nav-bg: rgba(15, 22, 36, 0.85);
+            --ios-search-bg: rgba(255, 255, 255, 0.08);
         }
 
         #settings-modal .modal-content {
             background: var(--ios-bg) !important;
             border-radius: 28px 28px 0 0;
-            max-width: 620px;
+            max-width: 600px;
             max-height: 90vh;
             max-height: 90dvh;
             display: flex;
             flex-direction: column;
             border: 1px solid var(--ios-card-border);
-            box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.35);
+            box-shadow: 0 -24px 64px rgba(0, 0, 0, 0.5);
             overflow: hidden;
             padding: 0;
         }
@@ -811,7 +853,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             }
             #settings-modal .modal-content {
                 border-radius: 24px;
-                max-height: 85vh;
+                max-height: 86vh;
                 transform: translateY(24px) scale(0.97);
                 transition: transform 0.36s var(--spring-easing), opacity 0.3s ease;
             }
@@ -821,202 +863,265 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         }
         #settings-modal .modal-content::before { display: none; }
 
-        .ios-sheet-header {
-            background: var(--ios-nav-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-bottom: 0.5px solid var(--ios-separator);
+        /* Top Bar */
+        .ios-top-bar {
             position: sticky;
             top: 0;
-            z-index: 10;
+            z-index: 30;
+            background: var(--ios-bg);
+            border-bottom: 0.5px solid var(--ios-separator);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 8px 18px 10px;
             flex-shrink: 0;
-            padding-top: 8px;
         }
-        .ios-drag-handle {
+        .ios-grabber {
             width: 36px;
             height: 5px;
             border-radius: 10px;
             background: rgba(120, 120, 128, 0.35);
-            margin: 0 auto 8px;
+            margin: 0 auto 10px;
         }
-        .ios-nav-bar {
+        .ios-title-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 18px 10px;
+            margin-bottom: 10px;
         }
-        .ios-nav-title {
-            font-size: 20px;
+        .ios-large-title {
+            font-size: 24px;
             font-weight: 700;
-            letter-spacing: -0.4px;
+            letter-spacing: -0.5px;
             color: var(--text-main);
+        }
+        .ios-done-button {
+            background: none;
+            border: none;
+            font-size: 16.5px;
+            font-weight: 600;
+            color: var(--primary);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: opacity 0.15s;
+        }
+        .ios-done-button:active { opacity: 0.5; }
+
+        /* Spotlight Search */
+        .ios-search-field {
             display: flex;
             align-items: center;
+            background: var(--ios-search-bg);
+            border-radius: 10px;
+            height: 36px;
+            padding: 0 10px;
             gap: 8px;
+            transition: background 0.2s;
         }
-        .ios-nav-close {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
+        .ios-search-field:focus-within {
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+        }
+        .ios-search-icon {
+            width: 15px;
+            height: 15px;
+            color: var(--ios-subtext);
+            flex-shrink: 0;
+        }
+        .ios-search-input {
             border: none;
-            background: rgba(120, 120, 128, 0.18);
+            background: transparent;
             color: var(--text-main);
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 15px;
+            outline: none;
+            width: 100%;
+            font-family: inherit;
+        }
+        .ios-search-input::placeholder { color: var(--ios-subtext); }
+        .ios-search-clear {
+            border: none;
+            background: rgba(120, 120, 128, 0.3);
+            color: var(--text-main);
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            display: none;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
+        }
+
+        /* Settings Body Scroll */
+        .ios-scroll-body {
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 14px 0 40px;
+            flex: 1;
+        }
+
+        /* Profile Banner (Apple ID style) */
+        .ios-profile-banner {
+            background: var(--ios-card-bg);
+            border-radius: 13px;
+            border: 1px solid var(--ios-card-border);
+            margin: 0 16px 18px;
+            padding: 13px 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            cursor: pointer;
+            transition: background 0.15s;
+            user-select: none;
+        }
+        .ios-profile-banner:active {
+            background: var(--ios-row-hover);
+        }
+        .ios-avatar-badge {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #007aff, #5856d6);
+            color: #ffffff;
+            font-size: 20px;
+            font-weight: 700;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: transform 0.15s ease, background 0.2s;
-        }
-        .ios-nav-close:hover { background: rgba(120, 120, 128, 0.3); }
-        .ios-nav-close:active { transform: scale(0.9); }
-
-        .ios-category-bar {
-            display: flex;
-            gap: 8px;
-            padding: 0 16px 12px;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-        }
-        .ios-category-bar::-webkit-scrollbar { display: none; }
-        .ios-cat-pill {
             flex-shrink: 0;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 12.5px;
-            font-weight: 600;
-            letter-spacing: -0.2px;
-            background: var(--ios-pill-bg);
-            color: var(--ios-pill-text);
-            border: none;
-            cursor: pointer;
-            transition: all 0.25s var(--spring-bounce);
-            user-select: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
-        .ios-cat-pill:active { transform: scale(0.94); }
-        .ios-cat-pill.active {
-            background: var(--primary);
-            color: #ffffff;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
-            transform: scale(1.02);
-        }
-
-        .ios-body {
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            padding: 18px 16px 40px;
+        .ios-profile-text {
             flex: 1;
-            scroll-behavior: smooth;
+            min-width: 0;
         }
-
-        .ios-group {
-            margin-bottom: 22px;
-            transition: opacity 0.3s ease;
-        }
-        .ios-group-title {
-            font-size: 11.5px;
+        .ios-profile-title {
+            font-size: 17px;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            color: var(--ios-subtext);
-            padding: 0 12px 6px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .ios-group-caption {
-            font-size: 12px;
-            color: var(--ios-subtext);
-            padding: 6px 12px 0;
-            line-height: 1.35;
-        }
-        .ios-card {
-            background: var(--ios-card-bg);
-            border-radius: 16px;
-            border: 1px solid var(--ios-card-border);
+            letter-spacing: -0.3px;
+            color: var(--text-main);
+            white-space: nowrap;
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            text-overflow: ellipsis;
         }
+        .ios-profile-sub {
+            font-size: 12.5px;
+            color: var(--ios-subtext);
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .ios-chevron-right {
+            font-size: 20px;
+            color: var(--ios-subtext);
+            font-weight: 400;
+            transition: transform 0.25s var(--spring-bounce);
+        }
+        .ios-profile-drawer {
+            display: none;
+            margin: -12px 16px 18px;
+            background: var(--ios-card-bg);
+            border-radius: 0 0 13px 13px;
+            border: 1px solid var(--ios-card-border);
+            border-top: none;
+            padding: 14px 16px;
+            animation: fadeIn 0.2s ease;
+        }
+        .ios-profile-drawer.active { display: block; }
 
-        .ios-row {
+        /* Apple Inset Groups */
+        .ios-section {
+            margin-bottom: 22px;
+        }
+        .ios-section-header {
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+            color: var(--ios-subtext);
+            padding: 0 32px 6px;
+        }
+        .ios-card-container {
+            background: var(--ios-card-bg);
+            border-radius: 13px;
+            border: 1px solid var(--ios-card-border);
+            margin: 0 16px;
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+        .ios-item-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 11px 14px;
+            padding: 12px 16px;
             min-height: 48px;
             gap: 12px;
             position: relative;
             transition: background 0.15s ease;
         }
-        .ios-row:active {
+        .ios-item-row:active {
             background: var(--ios-row-hover);
         }
-        .ios-row-left {
+        .ios-item-left {
             display: flex;
             align-items: center;
             gap: 12px;
             flex: 1;
             min-width: 0;
         }
-        .ios-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
+        .ios-icon-box {
+            width: 30px;
+            height: 30px;
+            border-radius: 7px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 16px;
             flex-shrink: 0;
             color: #ffffff;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+            box-shadow: 0 1.5px 4px rgba(0, 0, 0, 0.12);
         }
-        .ios-icon-blue   { background: linear-gradient(135deg, #007aff, #0056b3); }
-        .ios-icon-green  { background: linear-gradient(135deg, #34c759, #248a3d); }
-        .ios-icon-orange { background: linear-gradient(135deg, #ff9500, #c97100); }
-        .ios-icon-red    { background: linear-gradient(135deg, #ff3b30, #c92a2a); }
-        .ios-icon-purple { background: linear-gradient(135deg, #af52de, #7e22ce); }
-        .ios-icon-indigo { background: linear-gradient(135deg, #5856d6, #3730a3); }
-        .ios-icon-pink   { background: linear-gradient(135deg, #ff2d55, #be123c); }
-        .ios-icon-teal   { background: linear-gradient(135deg, #5ac8fa, #0284c7); }
-        .ios-icon-yellow { background: linear-gradient(135deg, #ffcc00, #d97706); }
-        .ios-icon-gray   { background: linear-gradient(135deg, #8e8e93, #4b5563); }
+        .ios-icon-blue   { background: linear-gradient(180deg, #007aff, #0051d5); }
+        .ios-icon-green  { background: linear-gradient(180deg, #34c759, #28a745); }
+        .ios-icon-orange { background: linear-gradient(180deg, #ff9500, #d97706); }
+        .ios-icon-red    { background: linear-gradient(180deg, #ff3b30, #c92a2a); }
+        .ios-icon-purple { background: linear-gradient(180deg, #af52de, #7e22ce); }
+        .ios-icon-indigo { background: linear-gradient(180deg, #5856d6, #3730a3); }
+        .ios-icon-pink   { background: linear-gradient(180deg, #ff2d55, #c71f43); }
+        .ios-icon-teal   { background: linear-gradient(180deg, #5ac8fa, #0284c7); }
+        .ios-icon-yellow { background: linear-gradient(180deg, #ffcc00, #d97706); }
+        .ios-icon-gray   { background: linear-gradient(180deg, #8e8e93, #636366); }
 
-        .ios-row-body {
+        .ios-item-text {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 1px;
             min-width: 0;
         }
-        .ios-row-title {
-            font-size: 14.5px;
-            font-weight: 500;
+        .ios-item-title {
+            font-size: 16px;
+            font-weight: 400;
             letter-spacing: -0.2px;
             color: var(--text-main);
         }
-        .ios-row-sub {
+        .ios-item-sub {
             font-size: 12px;
             color: var(--ios-subtext);
-            line-height: 1.3;
+            line-height: 1.35;
         }
-        .ios-row-right {
+        .ios-item-right {
             display: flex;
             align-items: center;
             gap: 8px;
             flex-shrink: 0;
         }
-        .ios-divider {
+        .ios-hairline {
             height: 0.5px;
             background: var(--ios-separator);
-            margin-left: 56px;
+            margin-left: 58px;
         }
 
+        /* Apple UISwitch */
         .ios-switch {
             position: relative;
             width: 51px;
@@ -1036,8 +1141,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             inset: 0;
             background: var(--ios-switch-off);
             border-radius: 31px;
-            transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+            transition: background 0.28s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .ios-switch-slider::before {
             content: '';
@@ -1049,7 +1153,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             background: #ffffff;
             border-radius: 50%;
             box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18), 0 1px 1px rgba(0, 0, 0, 0.14);
-            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         .ios-switch input:checked + .ios-switch-slider {
             background: var(--ios-switch-on);
@@ -1058,138 +1162,162 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             transform: translateX(20px);
         }
 
-        .ios-theme-grid {
+        /* Apple Themes Grid */
+        .ios-themes-container {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            padding: 12px;
+            gap: 12px;
+            padding: 16px;
         }
         @media (max-width: 440px) {
-            .ios-theme-grid {
-                grid-template-columns: repeat(2, 1fr);
+            .ios-themes-container {
+                gap: 8px;
+                padding: 12px;
             }
         }
         .ios-theme-card {
-            background: rgba(120, 120, 128, 0.08);
-            border: 2px solid transparent;
-            border-radius: 14px;
-            padding: 10px 8px;
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 8px;
+            background: transparent;
+            border: none;
             cursor: pointer;
-            transition: all 0.25s var(--spring-bounce);
-            position: relative;
             user-select: none;
             outline: none;
         }
-        .ios-theme-card:hover {
-            transform: translateY(-2px);
-            background: rgba(120, 120, 128, 0.14);
-        }
-        .ios-theme-card:active {
-            transform: scale(0.95);
-        }
-        .ios-theme-card.active {
-            border-color: var(--primary);
-            background: rgba(120, 120, 128, 0.12);
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
-        }
-        .ios-theme-preview {
+        .ios-screen-preview {
             width: 100%;
-            height: 48px;
-            border-radius: 10px;
+            height: 86px;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            padding: 7px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+            transition: transform 0.2s var(--spring-bounce), border-color 0.2s ease;
         }
-        .preview-light  { background: linear-gradient(135deg, #ffffff, #e2e8f0); color: #0f172a; border: 1px solid rgba(0,0,0,0.1); }
-        .preview-dark   { background: linear-gradient(135deg, #1e293b, #0f172a); color: #f8fafc; border: 1px solid rgba(255,255,255,0.1); }
-        .preview-black  { background: #000000; color: #ffffff; border: 1px solid #333333; }
-        .preview-cyber  { background: linear-gradient(135deg, #080915, #1e1035); color: #00f0ff; border: 1px solid rgba(0,240,255,0.4); }
-        .preview-aurora { background: linear-gradient(135deg, #06141d, #064e3b); color: #10e7aa; border: 1px solid rgba(16,231,170,0.4); }
-        .preview-dotted { background: radial-gradient(circle at 50% 50%, #38bdf8 0%, #0b0f19 80%); color: #38bdf8; border: 1px solid #38bdf8; }
-        .ios-theme-name {
-            font-size: 12.5px;
-            font-weight: 600;
+        .ios-theme-card:active .ios-screen-preview {
+            transform: scale(0.95);
+        }
+        .ios-theme-card.active .ios-screen-preview {
+            border-color: var(--primary);
+            transform: scale(1.02);
+        }
+        .preview-bar {
+            height: 9px;
+            border-radius: 4px;
+            opacity: 0.6;
+        }
+        .preview-tile {
+            height: 24px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .preview-theme-light { background: #f8fafc; }
+        .preview-theme-light .preview-bar { background: #cbd5e1; }
+        .preview-theme-light .preview-tile { background: #ffffff; border-color: #e2e8f0; }
+
+        .preview-theme-dark { background: #0f172a; }
+        .preview-theme-dark .preview-bar { background: #334155; }
+        .preview-theme-dark .preview-tile { background: #1e293b; }
+
+        .preview-theme-black { background: #000000; }
+        .preview-theme-black .preview-bar { background: #222222; }
+        .preview-theme-black .preview-tile { background: #121212; }
+
+        .preview-theme-cyber { background: #080915; }
+        .preview-theme-cyber .preview-bar { background: #ff007f; opacity: 0.5; }
+        .preview-theme-cyber .preview-tile { background: rgba(0, 240, 255, 0.15); border-color: #00f0ff; }
+
+        .preview-theme-aurora { background: #06141d; }
+        .preview-theme-aurora .preview-bar { background: #10e7aa; opacity: 0.5; }
+        .preview-theme-aurora .preview-tile { background: rgba(16, 231, 170, 0.15); border-color: #10e7aa; }
+
+        .preview-theme-dotted { background: #080a10; }
+        .preview-theme-dotted .preview-bar { background: #38bdf8; opacity: 0.6; }
+        .preview-theme-dotted .preview-tile { background: rgba(56, 189, 248, 0.2); border-color: #38bdf8; }
+
+        .ios-theme-label {
+            font-size: 13px;
+            font-weight: 500;
             color: var(--text-main);
             text-align: center;
-            white-space: nowrap;
         }
-        .ios-theme-check {
-            position: absolute;
-            top: 6px;
-            right: 6px;
-            width: 18px;
-            height: 18px;
+        .ios-radio-dot {
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
-            background: var(--primary);
-            color: #ffffff;
-            font-size: 11px;
-            font-weight: 800;
-            display: none;
+            border: 1.5px solid var(--ios-subtext);
+            display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+            transition: all 0.2s var(--spring-bounce);
         }
-        .ios-theme-card.active .ios-theme-check {
-            display: flex;
-            animation: springPop 0.3s var(--spring-bounce);
+        .ios-theme-card.active .ios-radio-dot {
+            border-color: var(--primary);
+            background: var(--primary);
         }
+        .ios-radio-dot::after {
+            content: '✓';
+            font-size: 12px;
+            font-weight: 700;
+            color: #ffffff;
+            display: none;
+        }
+        .ios-theme-card.active .ios-radio-dot::after { display: block; }
 
-        .ios-segmented {
+        /* Apple Segmented Control */
+        .ios-segmented-control {
             display: flex;
             background: rgba(120, 120, 128, 0.15);
-            border-radius: 10px;
-            padding: 3px;
-            gap: 3px;
+            border-radius: 9px;
+            padding: 2px;
             width: 100%;
         }
-        .ios-segmented .size-btn {
+        .ios-segmented-control .size-btn {
             flex: 1;
             border: none;
             background: transparent;
             color: var(--text-muted);
-            font-weight: 600;
+            font-weight: 500;
             padding: 8px 12px;
-            border-radius: 8px;
+            border-radius: 7px;
             cursor: pointer;
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             user-select: none;
         }
-        .ios-segmented .size-btn.active {
+        .ios-segmented-control .size-btn.active {
             background: var(--bg-card);
             color: var(--text-main);
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12), 0 0.5px 1px rgba(0, 0, 0, 0.08);
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12), 0 0.5px 1px rgba(0, 0, 0, 0.06);
         }
 
-        .ios-input-field {
+        /* Apple Inputs and Buttons */
+        .ios-text-input {
             width: 100%;
             background: rgba(120, 120, 128, 0.08);
             border: 1px solid var(--ios-card-border);
-            border-radius: 12px;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 15px;
             color: var(--text-main);
-            font-size: 14.5px;
-            font-family: inherit;
-            padding: 11px 14px;
             outline: none;
-            transition: border-color 0.2s, background 0.2s;
+            font-family: inherit;
+            transition: border-color 0.2s;
         }
-        .ios-input-field:focus {
-            border-color: var(--primary);
-            background: rgba(120, 120, 128, 0.12);
-        }
-        .ios-btn-pill {
-            padding: 11px 18px;
-            border-radius: 12px;
+        .ios-text-input:focus { border-color: var(--primary); }
+
+        .ios-action-button {
+            padding: 10px 18px;
+            border-radius: 10px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
@@ -1201,25 +1329,34 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             border: none;
             user-select: none;
         }
-        .ios-btn-pill:active { transform: scale(0.97); }
-        .ios-btn-primary {
+        .ios-action-button:active { transform: scale(0.97); }
+        .ios-btn-blue {
             background: var(--primary);
             color: #ffffff;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
-        .ios-btn-primary:hover { opacity: 0.92; }
-        .ios-btn-secondary {
+        .ios-btn-gray {
             background: rgba(120, 120, 128, 0.12);
             color: var(--text-main);
-            border: 1px solid var(--ios-card-border);
         }
-        .ios-btn-secondary:hover { background: rgba(120, 120, 128, 0.18); }
-        .ios-btn-destructive {
-            background: rgba(239, 68, 68, 0.1);
-            color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.2);
+
+        .ios-destructive-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 14px;
+            color: #ff3b30;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            transition: background 0.15s;
         }
-        .ios-btn-destructive:hover { background: rgba(239, 68, 68, 0.18); }
+        .ios-destructive-btn:active {
+            background: rgba(255, 59, 48, 0.12);
+        }
 
         .admin-modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); z-index:200; opacity:0; pointer-events:none; transition:opacity 0.3s ease; display:flex; align-items:flex-end; justify-content:center; }
         .admin-modal-overlay.active { opacity:1; pointer-events:all; }
@@ -3372,129 +3509,172 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
 <div class="modal-overlay" id="settings-modal">
     <div class="modal-content">
-        <!-- iOS Sheet Drag Handle & Navigation -->
-        <div class="ios-sheet-header">
-            <div class="ios-drag-handle"></div>
-            <div class="ios-nav-bar">
-                <div class="ios-nav-title">
-                    <span>⚙️</span>
-                    <span>Налаштування</span>
-                </div>
-                <button type="button" class="ios-nav-close" id="close-settings" title="Закрити">✕</button>
+        <!-- iOS 18 Top Bar: Grabber, Large Title, Done Button, Spotlight Search -->
+        <div class="ios-top-bar">
+            <div class="ios-grabber"></div>
+            <div class="ios-title-row">
+                <div class="ios-large-title">Налаштування</div>
+                <button type="button" class="ios-done-button" id="close-settings">Готово</button>
             </div>
-            <!-- iOS Category Filter Pills -->
-            <div class="ios-category-bar" id="settings-category-pills">
-                <button type="button" class="ios-cat-pill active" data-target="all">✨ Усі</button>
-                <button type="button" class="ios-cat-pill" data-target="ios-sec-appearance">🎨 Оформлення</button>
-                <button type="button" class="ios-cat-pill" data-target="ios-sec-groups">🎓 Групи</button>
-                <button type="button" class="ios-cat-pill" data-target="ios-sec-custom">📚 Пари</button>
-                <button type="button" class="ios-cat-pill" data-target="ios-sec-profile">👤 Профіль</button>
-                <button type="button" class="ios-cat-pill" data-target="ios-sec-notifications">🔔 Сповіщення</button>
-                <button type="button" class="ios-cat-pill" data-target="ios-sec-system">⚡ Швидкий доступ</button>
+            <div class="ios-search-field">
+                <svg class="ios-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" class="ios-search-input" id="ios-settings-search" placeholder="Пошук параметрів..." autocomplete="off" spellcheck="false" />
+                <button type="button" class="ios-search-clear" id="ios-settings-search-clear">✕</button>
             </div>
         </div>
 
-        <!-- iOS Inset Grouped Settings Body -->
-        <div class="ios-body modal-body">
+        <!-- iOS 18 Inset Grouped Scrollable Body -->
+        <div class="ios-scroll-body modal-body">
 
-            <!-- 1. APPEARANCE & THEME -->
-            <div class="ios-group" id="ios-sec-appearance">
-                <div class="ios-group-title">
-                    <span>Тема оформлення</span>
-                    <span style="font-size:10px;text-transform:none;opacity:0.75;">6 варіантів</span>
+            <!-- Apple ID Profile Card -->
+            <div class="ios-profile-banner" id="ios-profile-banner" title="Натисніть для налаштування профілю">
+                <div class="ios-avatar-badge" id="ios-profile-avatar">👤</div>
+                <div class="ios-profile-text">
+                    <div class="ios-profile-title" id="ios-profile-name-text">Користувач</div>
+                    <div class="ios-profile-sub" id="ios-profile-sub-text">Telegram акаунт та синхронізація</div>
                 </div>
-                <div class="ios-card">
-                    <div class="ios-theme-grid">
+                <div class="ios-chevron-right" id="ios-profile-chevron">›</div>
+            </div>
+
+            <!-- Profile Expandable Drawer -->
+            <div class="ios-profile-drawer" id="ios-profile-drawer">
+                <div style="margin-bottom: 12px;">
+                    <label style="display:block;font-size:12px;color:var(--ios-subtext);margin-bottom:6px;font-weight:500;">Відображуване ім'я</label>
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" class="ios-text-input" id="custom-name-input" placeholder="Як тебе звати?" maxlength="30" style="flex:1;" />
+                        <button type="button" id="custom-name-save-btn" class="ios-action-button ios-btn-blue">Зберегти</button>
+                        <button type="button" id="custom-name-clear-btn" class="ios-action-button ios-btn-gray" title="Очистити">✕</button>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:0.5px solid var(--ios-separator);">
+                    <div>
+                        <div style="font-size:14.5px;color:var(--text-main);font-weight:500;">Показувати профіль-бар</div>
+                        <div style="font-size:12px;color:var(--ios-subtext);">Аватарка та ім'я вгорі розкладу</div>
+                    </div>
+                    <label class="ios-switch">
+                        <input type="checkbox" id="toggle-profile-bar" checked>
+                        <span class="ios-switch-slider"></span>
+                    </label>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:0.5px solid var(--ios-separator);">
+                    <div>
+                        <div style="font-size:14.5px;color:var(--text-main);font-weight:500;">Telegram Cloud Sync</div>
+                        <div style="font-size:12px;color:var(--ios-subtext);">Хмарне збереження налаштувань</div>
+                    </div>
+                    <span id="cloud-sync-status-badge" style="font-size:11px;font-weight:700;padding:4px 8px;border-radius:8px;background:rgba(59,130,246,0.12);color:var(--primary);white-space:nowrap;">Готово</span>
+                </div>
+                <button type="button" id="btn-cloud-sync-now" class="ios-action-button ios-btn-gray" style="width:100%;margin-top:6px;">
+                    <span>🔄 Синхронізувати зараз</span>
+                </button>
+            </div>
+
+            <!-- SECTION 1: ОФОРМЛЕННЯ -->
+            <div class="ios-section" data-search-section="оформлення тема колір шрифт вигляд темна світла чорна аврора dotted сайбер">
+                <div class="ios-section-header">Оформлення</div>
+                <div class="ios-card-container">
+                    <!-- 6 Theme Previews -->
+                    <div class="ios-themes-container">
                         <button type="button" class="theme-btn ios-theme-card" data-theme-val="light" title="Світла тема">
-                            <div class="ios-theme-preview preview-light">☀️<div class="ios-theme-check">✓</div></div>
-                            <span class="ios-theme-name">Світла</span>
+                            <div class="ios-screen-preview preview-theme-light">
+                                <div class="preview-bar"></div>
+                                <div class="preview-tile"></div>
+                            </div>
+                            <span class="ios-theme-label">Світла</span>
+                            <span class="ios-radio-dot"></span>
                         </button>
                         <button type="button" class="theme-btn ios-theme-card" data-theme-val="dark" title="Темна тема">
-                            <div class="ios-theme-preview preview-dark">🌙<div class="ios-theme-check">✓</div></div>
-                            <span class="ios-theme-name">Темна</span>
+                            <div class="ios-screen-preview preview-theme-dark">
+                                <div class="preview-bar"></div>
+                                <div class="preview-tile"></div>
+                            </div>
+                            <span class="ios-theme-label">Темна</span>
+                            <span class="ios-radio-dot"></span>
                         </button>
-                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="black" title="OLED Чорна">
-                            <div class="ios-theme-preview preview-black">⬛<div class="ios-theme-check">✓</div></div>
-                            <span class="ios-theme-name">Black OLED</span>
+                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="black" title="Black OLED">
+                            <div class="ios-screen-preview preview-theme-black">
+                                <div class="preview-bar"></div>
+                                <div class="preview-tile"></div>
+                            </div>
+                            <span class="ios-theme-label">OLED</span>
+                            <span class="ios-radio-dot"></span>
                         </button>
                         <button type="button" class="theme-btn ios-theme-card" data-theme-val="cyber" title="Cyberpunk">
-                            <div class="ios-theme-preview preview-cyber">⚡<div class="ios-theme-check">✓</div></div>
-                            <span class="ios-theme-name">Cyberpunk</span>
+                            <div class="ios-screen-preview preview-theme-cyber">
+                                <div class="preview-bar"></div>
+                                <div class="preview-tile"></div>
+                            </div>
+                            <span class="ios-theme-label">Cyber</span>
+                            <span class="ios-radio-dot"></span>
                         </button>
-                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="aurora" title="Аврора">
-                            <div class="ios-theme-preview preview-aurora">🌌<div class="ios-theme-check">✓</div></div>
-                            <span class="ios-theme-name">Aurora</span>
+                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="aurora" title="Aurora">
+                            <div class="ios-screen-preview preview-theme-aurora">
+                                <div class="preview-bar"></div>
+                                <div class="preview-tile"></div>
+                            </div>
+                            <span class="ios-theme-label">Aurora</span>
+                            <span class="ios-radio-dot"></span>
                         </button>
                         <button type="button" class="theme-btn ios-theme-card" data-theme-val="dotted" title="Dotted Animation (Liquid Metal)">
-                            <div class="ios-theme-preview preview-dotted">✨<div class="ios-theme-check">✓</div></div>
-                            <span class="ios-theme-name">✨ Dotted</span>
+                            <div class="ios-screen-preview preview-theme-dotted">
+                                <div class="preview-bar"></div>
+                                <div class="preview-tile"></div>
+                            </div>
+                            <span class="ios-theme-label">✨ Dotted</span>
+                            <span class="ios-radio-dot"></span>
                         </button>
                     </div>
 
-                    <div class="ios-divider"></div>
+                    <div class="ios-hairline" style="margin-left:0;"></div>
 
                     <!-- Accent Color & Hue Slider -->
-                    <div style="padding:12px 14px;">
-                        <div class="ios-row-left" style="margin-bottom:8px;">
-                            <div class="ios-icon ios-icon-pink">🎨</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Колір додатку</span>
-                                <span class="ios-row-sub">Акцентні кнопки, значки та таймери</span>
+                    <div class="ios-item-row" style="flex-direction:column;align-items:stretch;gap:10px;" data-search-item="колір акцент палітра відтінок">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-pink">🎨</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Колір акцентів</span>
+                                <span class="ios-item-sub">Кнопки, піктограми та таймери розкладу</span>
                             </div>
                         </div>
-                        <div class="color-picker" id="color-picker"></div>
-                        <div class="hue-slider-wrap" style="margin-top:10px;">
+                        <div class="color-picker" id="color-picker" style="margin-top:2px;"></div>
+                        <div class="hue-slider-wrap" style="margin-top:4px;">
                             <div class="hue-slider-label">
                                 <span style="display:flex;align-items:center;gap:6px;"><span class="hue-active-dot" id="hue-dot"></span>Власний відтінок</span>
                                 <span id="hue-hex-label" style="font-family:monospace;font-size:11px;"></span>
                             </div>
-                            <input type="range" class="hue-slider" id="hue-slider" min="0" max="360" value="220"/>
+                            <input type="range" class="hue-slider" id="hue-slider" min="0" max="360" value="220" />
                         </div>
                     </div>
 
-                    <div class="ios-divider"></div>
+                    <div class="ios-hairline"></div>
 
-                    <!-- Text Size Segmented Control -->
-                    <div style="padding:12px 14px;">
-                        <div class="ios-row-left" style="margin-bottom:10px;">
-                            <div class="ios-icon ios-icon-blue">Aa</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Розмір тексту</span>
-                                <span class="ios-row-sub">Масштаб шрифту розкладу</span>
+                    <!-- Text Size -->
+                    <div class="ios-item-row" style="flex-direction:column;align-items:stretch;gap:12px;" data-search-item="розмір тексту шрифт масштабування">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-blue">Aa</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Розмір тексту</span>
+                                <span class="ios-item-sub">Масштаб шрифту карток розкладу</span>
                             </div>
                         </div>
-                        <div class="ios-segmented size-switch" id="size-switch">
+                        <div class="ios-segmented-control size-switch" id="size-switch">
                             <button type="button" class="size-btn" data-size="small" style="font-size:12px;">Малий</button>
                             <button type="button" class="size-btn" data-size="normal" style="font-size:14px;">Звичайний</button>
                             <button type="button" class="size-btn" data-size="large" style="font-size:16px;">Великий</button>
                         </div>
                     </div>
-                </div>
 
-                <!-- Card Appearance Toggles -->
-                <div class="ios-group-title" style="margin-top:16px;">Вигляд карток та розкладу</div>
-                <div class="ios-card">
-                    <div class="ios-row">
-                        <div class="ios-row-left">
-                            <div class="ios-icon ios-icon-yellow">⚡</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Простий інтерфейс</span>
-                                <span class="ios-row-sub">Вимикає анімації та розмиття для максимальної швидкості</span>
-                            </div>
-                        </div>
-                        <label class="ios-switch">
-                            <input type="checkbox" id="toggle-simple">
-                            <span class="ios-switch-slider"></span>
-                        </label>
-                    </div>
-                    <div class="ios-divider"></div>
+                    <div class="ios-hairline"></div>
 
-                    <div class="ios-row">
-                        <div class="ios-row-left">
-                            <div class="ios-icon ios-icon-teal">🪟</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Скляні картки</span>
-                                <span class="ios-row-sub">Напівпрозорий frosted-glass ефект із розмиттям</span>
+                    <!-- Glass Cards -->
+                    <div class="ios-item-row" data-search-item="скляні картки розмиття блур frosted glass">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-teal">🪟</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Скляні картки</span>
+                                <span class="ios-item-sub">Напівпрозорий frosted-glass ефект із розмиттям</span>
                             </div>
                         </div>
                         <label class="ios-switch">
@@ -3502,14 +3682,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                             <span class="ios-switch-slider"></span>
                         </label>
                     </div>
-                    <div class="ios-divider"></div>
 
-                    <div class="ios-row">
-                        <div class="ios-row-left">
-                            <div class="ios-icon ios-icon-indigo">📐</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Компактний режим</span>
-                                <span class="ios-row-sub">Менші відступи — більше пар видно на одному екрані</span>
+                    <div class="ios-hairline"></div>
+
+                    <!-- Compact Mode -->
+                    <div class="ios-item-row" data-search-item="компактний режим відступи компактність">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-indigo">📐</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Компактний режим</span>
+                                <span class="ios-item-sub">Зменшені відступи — більше пар на одному екрані</span>
                             </div>
                         </div>
                         <label class="ios-switch">
@@ -3517,14 +3699,37 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                             <span class="ios-switch-slider"></span>
                         </label>
                     </div>
-                    <div class="ios-divider"></div>
 
-                    <div class="ios-row">
-                        <div class="ios-row-left">
-                            <div class="ios-icon ios-icon-purple">👨‍🏫</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Показувати викладача</span>
-                                <span class="ios-row-sub">Прізвище викладача на картці пари</span>
+                    <div class="ios-hairline"></div>
+
+                    <!-- Simple Mode -->
+                    <div class="ios-item-row" data-search-item="простий режим швидкість продуктивність анімації">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-yellow">⚡</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Простий режим</span>
+                                <span class="ios-item-sub">Вимкнення важких ефектів для максимальної швидкості</span>
+                            </div>
+                        </div>
+                        <label class="ios-switch">
+                            <input type="checkbox" id="toggle-simple">
+                            <span class="ios-switch-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2: РОЗКЛАД ТА ПАРИ -->
+            <div class="ios-section" data-search-section="розклад групи пари викладач аудиторія англійська">
+                <div class="ios-section-header">Розклад та пари</div>
+                <div class="ios-card-container">
+                    <!-- Show Teacher -->
+                    <div class="ios-item-row" data-search-item="викладач показувати прізвище ім'я">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-purple">👨‍🏫</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Показувати викладача</span>
+                                <span class="ios-item-sub">Прізвище викладача на картці пари</span>
                             </div>
                         </div>
                         <label class="ios-switch">
@@ -3532,14 +3737,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                             <span class="ios-switch-slider"></span>
                         </label>
                     </div>
-                    <div class="ios-divider"></div>
 
-                    <div class="ios-row">
-                        <div class="ios-row-left">
-                            <div class="ios-icon ios-icon-green">🚪</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Показувати аудиторію</span>
-                                <span class="ios-row-sub">Номер кімнати або посилання на пару</span>
+                    <div class="ios-hairline"></div>
+
+                    <!-- Show Room -->
+                    <div class="ios-item-row" data-search-item="аудиторія кабінет посилання на пару">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-green">🚪</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Показувати аудиторію</span>
+                                <span class="ios-item-sub">Номер кімнати або посилання на пару</span>
                             </div>
                         </div>
                         <label class="ios-switch">
@@ -3547,127 +3754,71 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                             <span class="ios-switch-slider"></span>
                         </label>
                     </div>
-                </div>
-            </div>
 
-            <!-- 2. GROUPS & SCHEDULE -->
-            <div class="ios-group" id="ios-sec-groups">
-                <div class="ios-group-title">Навчальні групи</div>
-                <div class="ios-card" style="padding:14px;">
-                    <div class="ios-row-left" style="margin-bottom:10px;">
-                        <div class="ios-icon ios-icon-blue">🎓</div>
-                        <div class="ios-row-body">
-                            <span class="ios-row-title">Збережені групи</span>
-                            <span class="ios-row-sub">Швидке переключення в один дотик</span>
-                        </div>
-                    </div>
-                    <div id="saved-groups-container" class="saved-groups-container" style="margin-bottom:12px;"></div>
-                    <div style="position:relative;">
-                        <input type="text" id="settings-group-search" class="ios-input-field" placeholder="🔍 Почніть вводити назву групи (напр. ФЕП-11)..." autocomplete="off" autocapitalize="characters" spellcheck="false" />
-                        <div id="settings-group-results" class="group-search-results"></div>
-                    </div>
+                    <div class="ios-hairline"></div>
 
-                    <!-- English Teacher Selection -->
-                    <div id="eng-setting-group" style="display:none;margin-top:14px;padding-top:12px;border-top:0.5px solid var(--ios-separator);">
-                        <div class="ios-row-left" style="margin-bottom:8px;">
-                            <div class="ios-icon ios-icon-indigo">🇬🇧</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Викладач Англійської</span>
-                                <span class="ios-row-sub">Фільтр розкладу підгрупи</span>
+                    <!-- Saved Groups & Search -->
+                    <div class="ios-item-row" style="flex-direction:column;align-items:stretch;gap:10px;" data-search-item="групи збережені пошук групи змінити">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-blue">🎓</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Збережені групи</span>
+                                <span class="ios-item-sub">Швидке перемикання між групами коледжу</span>
                             </div>
                         </div>
-                        <div class="select-wrapper">
-                            <select id="eng-select" class="ios-input-field">
-                                <option value="all">Усі викладачі</option>
-                            </select>
+                        <div id="saved-groups-container" class="saved-groups-container" style="margin-top:2px;"></div>
+                        <div style="position:relative;margin-top:4px;">
+                            <input type="text" id="settings-group-search" class="ios-text-input" placeholder="🔍 Почніть вводити групу (напр. ФЕП-11)..." autocomplete="off" autocapitalize="characters" spellcheck="false" />
+                            <div id="settings-group-results" class="group-search-results"></div>
                         </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- 3. CUSTOM LESSONS -->
-            <div class="ios-group" id="ios-sec-custom">
-                <div class="ios-group-title">Мої кастомні пари</div>
-                <div class="ios-card" style="padding:14px;">
-                    <div class="ios-row-left" style="margin-bottom:8px;">
-                        <div class="ios-icon ios-icon-orange">📚</div>
-                        <div class="ios-row-body">
-                            <span class="ios-row-title">Вибіркові та особисті пари</span>
-                            <span class="ios-row-sub">ДВВС, факультативи — відображаються тільки у вашому розкладі</span>
-                        </div>
-                    </div>
-                    <div id="local-custom-lessons-list" class="custom-lessons-list" style="margin-top:8px;"></div>
-                    <button type="button" id="btn-add-local-custom-lesson" class="ios-btn-pill ios-btn-primary" style="width:100%;margin-top:12px;">
-                        <span>➕ Додати власну пару</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- 4. PROFILE & CLOUD SYNC -->
-            <div class="ios-group" id="ios-sec-profile">
-                <div class="ios-group-title">Мій профіль та синхронізація</div>
-                <div class="ios-card">
-                    <div style="padding:14px 14px 8px;">
-                        <div class="ios-row-left" style="margin-bottom:10px;">
-                            <div class="ios-icon ios-icon-purple">👤</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Відображуване ім'я</span>
-                                <span class="ios-row-sub">Для персонального привітання</span>
+                        <!-- English Teacher Selection inside groups -->
+                        <div id="eng-setting-group" style="display:none;margin-top:8px;padding-top:10px;border-top:0.5px solid var(--ios-separator);">
+                            <div class="ios-item-left" style="margin-bottom:8px;">
+                                <div class="ios-icon-box ios-icon-indigo" style="width:24px;height:24px;font-size:13px;">🇬🇧</div>
+                                <div class="ios-item-text">
+                                    <span class="ios-item-title" style="font-size:14.5px;">Викладач англійської</span>
+                                    <span class="ios-item-sub">Фільтр розкладу підгрупи</span>
+                                </div>
+                            </div>
+                            <div class="select-wrapper">
+                                <select id="eng-select" class="ios-text-input">
+                                    <option value="all">Усі викладачі</option>
+                                </select>
                             </div>
                         </div>
-                        <div style="display:flex;gap:8px;">
-                            <input type="text" class="ios-input-field" id="custom-name-input" placeholder="Як тебе звати?" maxlength="30"/>
-                            <button id="custom-name-save-btn" class="ios-btn-pill ios-btn-primary" style="padding:0 16px;">Зберегти</button>
-                            <button id="custom-name-clear-btn" class="ios-btn-pill ios-btn-secondary" style="padding:0 14px;">✕</button>
-                        </div>
                     </div>
 
-                    <div class="ios-divider"></div>
+                    <div class="ios-hairline"></div>
 
-                    <div class="ios-row">
-                        <div class="ios-row-left">
-                            <div class="ios-icon ios-icon-indigo">🪪</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Показувати профіль-бар</span>
-                                <span class="ios-row-sub">Аватарка та ім'я зверху головного екрана</span>
+                    <!-- Custom Lessons -->
+                    <div class="ios-item-row" style="flex-direction:column;align-items:stretch;gap:10px;" data-search-item="кастомні пари вибіркові дввс особисті розклад">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-orange">📚</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Мої кастомні пари</span>
+                                <span class="ios-item-sub">Вибіркові дисципліни, ДВВС та індивідуальний розклад</span>
                             </div>
                         </div>
-                        <label class="ios-switch">
-                            <input type="checkbox" id="toggle-profile-bar" checked>
-                            <span class="ios-switch-slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="ios-divider"></div>
-
-                    <div class="ios-row">
-                        <div class="ios-row-left">
-                            <div class="ios-icon ios-icon-teal">☁️</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Telegram Cloud Sync</span>
-                                <span class="ios-row-sub">Синхронізація груп, теми та пар</span>
-                            </div>
-                        </div>
-                        <span id="cloud-sync-status-badge" style="font-size:11px;font-weight:700;padding:4px 8px;border-radius:8px;background:rgba(59,130,246,0.12);color:var(--primary);white-space:nowrap;">Готово</span>
-                    </div>
-                    <div style="padding:0 14px 14px;">
-                        <button type="button" id="btn-cloud-sync-now" class="ios-btn-pill ios-btn-secondary" style="width:100%;">
-                            <span>🔄 Синхронізувати зараз</span>
+                        <div id="local-custom-lessons-list" class="custom-lessons-list" style="margin-top:2px;"></div>
+                        <button type="button" id="btn-add-local-custom-lesson" class="ios-action-button ios-btn-blue" style="width:100%;margin-top:6px;">
+                            <span>➕ Додати власну пару</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- 5. NOTIFICATIONS -->
-            <div class="ios-group" id="ios-sec-notifications">
-                <div class="ios-group-title">Сповіщення</div>
-                <div class="ios-card">
-                    <div class="ios-row">
-                        <div class="ios-row-left">
-                            <div class="ios-icon ios-icon-red">⏰</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Нагадування про пари</span>
-                                <span class="ios-row-sub">Сповіщення за 10 хвилин до початку</span>
+            <!-- SECTION 3: СПОВІЩЕННЯ -->
+            <div class="ios-section" data-search-section="сповіщення нагадування пари оголошення дедлайни">
+                <div class="ios-section-header">Сповіщення</div>
+                <div class="ios-card-container">
+                    <!-- Lessons Reminders -->
+                    <div class="ios-item-row" data-search-item="нагадування пари за 10 хвилин">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-red">⏰</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Нагадування про пари</span>
+                                <span class="ios-item-sub">Сповіщення за 10 хвилин до початку заняття</span>
                             </div>
                         </div>
                         <label class="ios-switch">
@@ -3675,14 +3826,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                             <span class="ios-switch-slider"></span>
                         </label>
                     </div>
-                    <div class="ios-divider"></div>
 
-                    <div class="ios-row">
-                        <div class="ios-row-left">
-                            <div class="ios-icon ios-icon-orange">📢</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Нові оголошення</span>
-                                <span class="ios-row-sub">Значок непрочитаного при публікації оголошень</span>
+                    <div class="ios-hairline"></div>
+
+                    <!-- College Announcements -->
+                    <div class="ios-item-row" data-search-item="новини оголошення коледж">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-orange">📢</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Нові оголошення</span>
+                                <span class="ios-item-sub">Значок новин при публікації оголошень коледжу</span>
                             </div>
                         </div>
                         <label class="ios-switch">
@@ -3690,14 +3843,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                             <span class="ios-switch-slider"></span>
                         </label>
                     </div>
-                    <div class="ios-divider"></div>
 
-                    <div class="ios-row">
-                        <div class="ios-row-left">
-                            <div class="ios-icon ios-icon-yellow">⏳</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Дедлайни завдань</span>
-                                <span class="ios-row-sub">Нагадування за 24 години до дедлайну</span>
+                    <div class="ios-hairline"></div>
+
+                    <!-- Deadlines -->
+                    <div class="ios-item-row" data-search-item="дедлайни завдання за 24 години">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-yellow">⏳</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Дедлайни завдань</span>
+                                <span class="ios-item-sub">Нагадування за 24 години до дедлайну</span>
                             </div>
                         </div>
                         <label class="ios-switch">
@@ -3708,47 +3863,17 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                 </div>
             </div>
 
-            <!-- 6. STATISTICS -->
-            <div class="ios-group" id="ios-sec-stats">
-                <div class="ios-group-title">Статистика</div>
-                <div class="ios-card">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px;">
-                        <div style="background:rgba(120,120,128,0.08);border-radius:12px;padding:14px;text-align:center;">
-                            <div style="font-size:26px;font-weight:800;color:var(--primary);line-height:1;" id="my-visit-count">—</div>
-                            <div style="font-size:10.5px;color:var(--ios-subtext);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Відвідувань</div>
-                        </div>
-                        <div style="background:rgba(120,120,128,0.08);border-radius:12px;padding:14px;text-align:center;">
-                            <div style="font-size:26px;font-weight:800;color:#f59e0b;line-height:1;" id="my-streak-count">—</div>
-                            <div style="font-size:10.5px;color:var(--ios-subtext);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Стрік 🔥</div>
-                        </div>
-                    </div>
-                    <div class="ios-divider" style="margin-left:0;"></div>
-                    <div class="ios-row">
-                        <div class="ios-row-left">
-                            <div class="ios-icon ios-icon-green">📈</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Відстежувати відвідуваність</span>
-                                <span class="ios-row-sub">Лічильник щоденних входів для підрахунку серій</span>
-                            </div>
-                        </div>
-                        <label class="ios-switch">
-                            <input type="checkbox" id="toggle-track-visits" checked>
-                            <span class="ios-switch-slider"></span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 7. SYSTEM & QUICK ACCESS -->
-            <div class="ios-group" id="ios-sec-system">
-                <div class="ios-group-title">Швидкий доступ та поведінка</div>
-                <div class="ios-card">
-                    <div class="ios-row">
-                        <div class="ios-row-left">
-                            <div class="ios-icon ios-icon-blue">📅</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Автовибір сьогодні</span>
-                                <span class="ios-row-sub">Автоматично відкривати сьогоднішній день при запуску</span>
+            <!-- SECTION 4: СИСТЕМА ТА ПОВЕДІНКА -->
+            <div class="ios-section" data-search-section="система сьогодні вкладка тактильний вібрація відвідування статистика серія стрік">
+                <div class="ios-section-header">Система та поведінка</div>
+                <div class="ios-card-container">
+                    <!-- Auto Today -->
+                    <div class="ios-item-row" data-search-item="автовибір сьогодні поточний день запуск">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-blue">📅</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Автовибір сьогодні</span>
+                                <span class="ios-item-sub">Автоматично відкривати поточний день тижня при запуску</span>
                             </div>
                         </div>
                         <label class="ios-switch">
@@ -3756,14 +3881,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                             <span class="ios-switch-slider"></span>
                         </label>
                     </div>
-                    <div class="ios-divider"></div>
 
-                    <div class="ios-row">
-                        <div class="ios-row-left">
-                            <div class="ios-icon ios-icon-purple">📑</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Зберігати останню вкладку</span>
-                                <span class="ios-row-sub">Запам'ятовувати відкритий день після перезавантаження</span>
+                    <div class="ios-hairline"></div>
+
+                    <!-- Remember Tab -->
+                    <div class="ios-item-row" data-search-item="зберігати останню вкладку день пам'ять">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-purple">📑</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Зберігати останню вкладку</span>
+                                <span class="ios-item-sub">Запам'ятовувати вибраний день після перезавантаження</span>
                             </div>
                         </div>
                         <label class="ios-switch">
@@ -3771,14 +3898,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                             <span class="ios-switch-slider"></span>
                         </label>
                     </div>
-                    <div class="ios-divider"></div>
 
-                    <div class="ios-row">
-                        <div class="ios-row-left">
-                            <div class="ios-icon ios-icon-gray">📳</div>
-                            <div class="ios-row-body">
-                                <span class="ios-row-title">Тактильний відгук</span>
-                                <span class="ios-row-sub">Легка вібрація при натисканні кнопок (на телефонах)</span>
+                    <div class="ios-hairline"></div>
+
+                    <!-- Haptic -->
+                    <div class="ios-item-row" data-search-item="тактильний відгук вібрація haptic кнопка">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-gray">📳</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Тактильний відгук</span>
+                                <span class="ios-item-sub">Легка вібрація при натисканні (на смартфонах)</span>
                             </div>
                         </div>
                         <label class="ios-switch">
@@ -3786,21 +3915,54 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                             <span class="ios-switch-slider"></span>
                         </label>
                     </div>
+
+                    <div class="ios-hairline"></div>
+
+                    <!-- Track Visits -->
+                    <div class="ios-item-row" data-search-item="відстежувати відвідуваність статистика серія">
+                        <div class="ios-item-left">
+                            <div class="ios-icon-box ios-icon-green">📈</div>
+                            <div class="ios-item-text">
+                                <span class="ios-item-title">Відстежувати відвідуваність</span>
+                                <span class="ios-item-sub">Підрахунок щоденних входів для особистої серії</span>
+                            </div>
+                        </div>
+                        <label class="ios-switch">
+                            <input type="checkbox" id="toggle-track-visits" checked>
+                            <span class="ios-switch-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="ios-hairline"></div>
+
+                    <!-- Stats summary counters -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 16px;">
+                        <div style="background:rgba(120,120,128,0.08);border-radius:10px;padding:12px;text-align:center;">
+                            <div style="font-size:24px;font-weight:700;color:var(--primary);line-height:1;" id="my-visit-count">—</div>
+                            <div style="font-size:11px;color:var(--ios-subtext);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-top:4px;">Відвідувань</div>
+                        </div>
+                        <div style="background:rgba(120,120,128,0.08);border-radius:10px;padding:12px;text-align:center;">
+                            <div style="font-size:24px;font-weight:700;color:#f59e0b;line-height:1;" id="my-streak-count">—</div>
+                            <div style="font-size:11px;color:var(--ios-subtext);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-top:4px;">Стрік 🔥</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- 8. ACTIONS & FOOTER -->
-            <div style="margin-top:14px;display:flex;flex-direction:column;gap:10px;">
-                <div id="admin-settings-row" style="display:none;">
-                    <button id="btn-open-admin-direct" class="ios-btn-pill" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),var(--accent-purple));color:#fff;font-size:14.5px;font-weight:700;box-shadow:0 4px 14px rgba(59,130,246,0.35);">
-                        <span>🔐</span><span>Адмін-панель (@xmice)</span>
+            <!-- SECTION 5: ДІЇ ТА АДМІНІСТРУВАННЯ -->
+            <div class="ios-section" data-search-section="адмін скинути скидання очистити версія">
+                <div id="admin-settings-row" style="display:none;margin:0 16px 12px;">
+                    <button id="btn-open-admin-direct" class="ios-action-button" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),var(--accent-purple));color:#fff;font-size:15px;font-weight:700;box-shadow:0 4px 14px rgba(59,130,246,0.35);">
+                        <span>🔐 Адмін-панель (@xmice)</span>
                     </button>
                 </div>
-                <button id="reset-all-settings-btn" class="ios-btn-pill ios-btn-destructive" style="width:100%;padding:13px;">
-                    🗑 Скинути всі налаштування
-                </button>
-                <div style="text-align:center;font-size:11px;font-weight:600;color:var(--ios-subtext);letter-spacing:0.5px;padding:8px 0 16px;">
-                    Версія 1.68 · By <a href="https://t.me/xmice" target="_blank" rel="noopener" class="credit-link">@xmice</a> and <a href="https://t.me/maksimko04" target="_blank" rel="noopener" class="credit-link">@maksimko04</a> · Schedule © 2026
+                <div class="ios-card-container">
+                    <button id="reset-all-settings-btn" class="ios-destructive-btn">
+                        Скинути всі налаштування
+                    </button>
+                </div>
+                <div style="text-align:center;font-size:12px;font-weight:500;color:var(--ios-subtext);margin-top:16px;line-height:1.5;">
+                    Версія 1.68 · By <a href="https://t.me/xmice" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:none;font-weight:600;">@xmice</a> та <a href="https://t.me/maksimko04" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:none;font-weight:600;">@maksimko04</a><br>Schedule © 2026 · Designed with Apple Human Interface Guidelines
                 </div>
             </div>
 
@@ -4708,7 +4870,7 @@ function init() {
         });
     });
 
-    els.settingsBtn.addEventListener('click', () => { renderLocalCustomLessons(); renderSavedGroupsUI(); els.settingsModal.classList.add('active'); });
+    els.settingsBtn.addEventListener('click', () => { renderLocalCustomLessons(); renderSavedGroupsUI(); if(window.syncProfileBannerUI) window.syncProfileBannerUI(); els.settingsModal.classList.add('active'); });
     els.closeSettingsBtn.addEventListener('click', () => els.settingsModal.classList.remove('active'));
     els.settingsModal.addEventListener('click', e => { if(e.target===els.settingsModal) els.settingsModal.classList.remove('active'); });
     if(els.moodleBtn) {
@@ -4860,24 +5022,111 @@ function initNewSettings() {
     const roomToggle=document.getElementById('toggle-room');
     if(roomToggle){roomToggle.checked=state.showRoom;roomToggle.addEventListener('change',()=>{state.showRoom=roomToggle.checked;gset(state.scheduleGroup,'show_room',state.showRoom);applyBodyClasses();});}
 
-    // iOS Category Pills Filter/Scroll
-    const categoryPills = document.querySelectorAll('.ios-cat-pill');
-    categoryPills.forEach(pill => {
-        pill.addEventListener('click', () => {
-            categoryPills.forEach(p => p.classList.remove('active'));
-            pill.classList.add('active');
-            const targetId = pill.dataset.target;
-            const body = document.querySelector('#settings-modal .ios-body');
-            if (targetId === 'all') {
-                if (body) body.scrollTo({ top: 0, behavior: 'smooth' });
-            } else {
-                const targetEl = document.getElementById(targetId);
-                if (targetEl) {
-                    targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
+    // iOS Profile Banner Drawer Toggle & Dynamic Sync
+    function syncProfileBannerUI() {
+        const avatarEl = document.getElementById('ios-profile-avatar');
+        const nameEl = document.getElementById('ios-profile-name-text');
+        const subEl = document.getElementById('ios-profile-sub-text');
+        if (!avatarEl || !nameEl || !subEl) return;
+
+        const customName = (typeof storage !== 'undefined' ? storage.get('custom_display_name', '') : '') || '';
+        let user = null;
+        try {
+            if (typeof getTgUser === 'function') user = getTgUser();
+            if (!user) user = JSON.parse(localStorage.getItem('tg_user_cache') || 'null');
+        } catch(e) {}
+
+        const displayName = customName || (user ? (user.first_name + (user.last_name ? ' ' + user.last_name : '')) : 'Студент');
+        nameEl.textContent = displayName;
+
+        if (user && user.photo_url) {
+            avatarEl.innerHTML = `<img src="${user.photo_url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+        } else if (user && user.first_name) {
+            avatarEl.textContent = typeof getInitials === 'function' ? getInitials(user.first_name, user.last_name) : user.first_name.charAt(0).toUpperCase();
+        } else if (customName) {
+            avatarEl.textContent = customName.charAt(0).toUpperCase();
+        } else {
+            avatarEl.textContent = '👤';
+        }
+
+        const grp = (typeof state !== 'undefined' && state.groupName) ? state.groupName : (typeof ACTIVE_GROUP_NAME !== 'undefined' ? ACTIVE_GROUP_NAME : '');
+        const tgNick = user && user.username ? `@${user.username}` : '';
+        let sub = '';
+        if (tgNick && grp) sub = `${tgNick} · ${grp}`;
+        else if (tgNick) sub = tgNick;
+        else if (grp) sub = `${grp} · Apple ID & Cloud Sync`;
+        else sub = 'Telegram акаунт та синхронізація';
+        subEl.textContent = sub;
+    }
+    window.syncProfileBannerUI = syncProfileBannerUI;
+
+    const profileBanner = document.getElementById('ios-profile-banner');
+    const profileDrawer = document.getElementById('ios-profile-drawer');
+    const profileChevron = document.getElementById('ios-profile-chevron');
+    if (profileBanner && profileDrawer) {
+        profileBanner.addEventListener('click', () => {
+            const isOpen = profileDrawer.classList.toggle('active');
+            if (profileChevron) {
+                profileChevron.style.transform = isOpen ? 'rotate(90deg)' : 'none';
             }
+            if (typeof haptic === 'function') haptic('selection');
         });
-    });
+    }
+
+    // iOS 18 Spotlight Search Filter
+    const searchInput = document.getElementById('ios-settings-search');
+    const searchClear = document.getElementById('ios-settings-search-clear');
+    if (searchInput) {
+        const filterSettings = (q) => {
+            const query = (q || '').trim().toLowerCase();
+            if (searchClear) searchClear.style.display = query ? 'flex' : 'none';
+
+            const sections = document.querySelectorAll('#settings-modal .ios-section');
+            sections.forEach(sec => {
+                const secMeta = (sec.dataset.searchSection || '').toLowerCase();
+                const items = sec.querySelectorAll('.ios-item-row');
+                let hasVisibleItem = false;
+
+                if (!query) {
+                    sec.style.display = '';
+                    items.forEach(item => item.style.display = '');
+                    const themeContainer = sec.querySelector('.ios-themes-container');
+                    if (themeContainer) themeContainer.style.display = '';
+                    return;
+                }
+
+                const headerText = (sec.querySelector('.ios-section-header')?.textContent || '').toLowerCase();
+                const secMatch = headerText.includes(query) || secMeta.includes(query);
+
+                items.forEach(item => {
+                    const itemMeta = (item.dataset.searchItem || '').toLowerCase();
+                    const itemTitle = (item.querySelector('.ios-item-title')?.textContent || '').toLowerCase();
+                    const itemSub = (item.querySelector('.ios-item-sub')?.textContent || '').toLowerCase();
+                    const rowMatch = secMatch || itemTitle.includes(query) || itemSub.includes(query) || itemMeta.includes(query);
+                    item.style.display = rowMatch ? '' : 'none';
+                    if (rowMatch) hasVisibleItem = true;
+                });
+
+                const themeContainer = sec.querySelector('.ios-themes-container');
+                if (themeContainer) {
+                    const themeMatch = secMatch || 'тема оформлення колір light dark oled cyber aurora dotted'.includes(query);
+                    themeContainer.style.display = themeMatch ? '' : 'none';
+                    if (themeMatch) hasVisibleItem = true;
+                }
+
+                sec.style.display = (hasVisibleItem || secMatch) ? '' : 'none';
+            });
+        };
+
+        searchInput.addEventListener('input', (e) => filterSettings(e.target.value));
+        if (searchClear) {
+            searchClear.addEventListener('click', () => {
+                searchInput.value = '';
+                filterSettings('');
+                searchInput.focus();
+            });
+        }
+    }
 }
 function updateThemeUI() {
     if (els.themeBtns) {
@@ -8115,6 +8364,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             avatarWrap.appendChild(img);
         }
 
+        if (window.syncProfileBannerUI) window.syncProfileBannerUI();
     }
 
     window.renderProfileBar = renderProfileBar;
