@@ -12,7 +12,7 @@
   "categories": ["education", "productivity"],
   "icons": [
     {
-      "src": "https://image2url.com/r2/default/images/1772730855081-a7e47bc5-e094-4349-96fa-caccfcd436c9.jpeg",
+      "src": "./logo.png",
       "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any maskable"

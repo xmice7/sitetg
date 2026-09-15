@@ -1810,18 +1810,34 @@ export default {
     const kvKey  = (uid) => `u:${uid}`;
 
     const getPrefs = async (uid) => {
-      if (!KV) return null;
-      try {
-        const raw = await KV.get(kvKey(uid));
-        const p = raw ? JSON.parse(raw) : null;
-        if (p && LEGACY_GROUP_NAMES[p.group]) p.group = LEGACY_GROUP_NAMES[p.group]; 
-        return p;
-      } catch { return null; }
+      let p = null;
+      if (KV) {
+        try {
+          const raw = await KV.get(kvKey(uid));
+          if (raw) p = JSON.parse(raw);
+        } catch {}
+      }
+      if (!p && env.FIREBASE_API_KEY && uid) {
+        try {
+          const url = `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/users/${uid}?key=${env.FIREBASE_API_KEY}`;
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            const f = data.fields || {};
+            const grp = f.group?.stringValue || "";
+            if (grp) {
+              p = { group: grp, subgroup: "all", eng: "all", step: "done" };
+              await safeKvPut(kvKey(uid), JSON.stringify(p));
+            }
+          }
+        } catch {}
+      }
+      if (p && LEGACY_GROUP_NAMES[p.group]) p.group = LEGACY_GROUP_NAMES[p.group]; 
+      return p;
     };
 
     const setPrefs = async (uid, data) => {
-      if (!KV) return;
-      try { await KV.put(kvKey(uid), JSON.stringify(data)); } catch {}
+      await safeKvPut(kvKey(uid), JSON.stringify(data));
     };
 
     

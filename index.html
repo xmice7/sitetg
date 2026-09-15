@@ -20,6 +20,8 @@
     <meta name="theme-color" content="#1e293b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/png" href="./logo.png">
+    <link rel="apple-touch-icon" href="./logo.png">
     <link rel="manifest" href="manifest.json">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
@@ -2817,7 +2819,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         <div class="container">
             <header>
                 <div class="header-logo-row">
-                    <img src="https://image2url.com/r2/default/images/1772730855081-a7e47bc5-e094-4349-96fa-caccfcd436c9.jpeg" alt="Логотип" class="site-logo" loading="lazy" onerror="this.style.display='none'"/>
+                    <img src="./logo.png" alt="Логотип" class="site-logo" loading="lazy" onerror="this.style.display='none'"/>
                     <h1 id="app-title">Розклад</h1>
                 </div>
                 <p id="current-date-display">Завантаження...</p>
@@ -2896,7 +2898,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         <div class="container">
             <header>
                 <div class="header-logo-row">
-                    <img src="https://image2url.com/r2/default/images/1772730855081-a7e47bc5-e094-4349-96fa-caccfcd436c9.jpeg" alt="Логотип" class="site-logo" loading="lazy" onerror="this.style.display='none'"/>
+                    <img src="./logo.png" alt="Логотип" class="site-logo" loading="lazy" onerror="this.style.display='none'"/>
                     <h1 id="useful-secret-trigger" style="cursor:default;user-select:none;">Корисне</h1>
                 </div>
                 <p>Важливі посилання та сервіси</p>
@@ -5132,12 +5134,12 @@ function initStarsDonationUI() {
                     window.open(data.invoiceLink, '_blank');
                 }
             } else {
-                window.open(`https://t.me/shedulefep_bot?start=donate_${selectedStarsAmount}`, '_blank');
+                window.open(`https://t.me/schedapp_bot?start=donate_${selectedStarsAmount}`, '_blank');
             }
         } catch(e) {
             donateBtn.disabled = false;
             donateBtn.innerHTML = `<span>⭐️ Підтримати (${selectedStarsAmount} Stars)</span>`;
-            window.open(`https://t.me/shedulefep_bot?start=donate_${selectedStarsAmount}`, '_blank');
+            window.open(`https://t.me/schedapp_bot?start=donate_${selectedStarsAmount}`, '_blank');
         }
     };
 }
@@ -8093,7 +8095,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
     <div class="pwa-modal">
         <div class="pwa-modal-header">
             <div class="pwa-modal-title-row">
-                <img src="https://image2url.com/r2/default/images/1772730855081-a7e47bc5-e094-4349-96fa-caccfcd436c9.jpeg"
+                <img src="./logo.png"
                      alt="ФЕП-13" class="pwa-modal-app-icon" onerror="this.style.display='none'"/>
                 <div>
                     <div class="pwa-modal-title">Встановити додаток</div>
@@ -9217,7 +9219,7 @@ if ('serviceWorker' in navigator) {
                 <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
                     <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;">
                         <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;">1</div>
-                        <div style="font-size:13px;color:var(--text-main);">Відкрий бота <a href="https://t.me/shedulefep_bot" target="_blank" style="color:#2AABEE;font-weight:700;">@shedulefep_bot ↗</a></div>
+                        <div style="font-size:13px;color:var(--text-main);">Відкрий бота <a href="https://t.me/schedapp_bot" target="_blank" style="color:#2AABEE;font-weight:700;">@schedapp_bot ↗</a></div>
                     </div>
                     <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;">
                         <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;">2</div>
