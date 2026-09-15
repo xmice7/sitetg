@@ -1519,6 +1519,46 @@ export default {
       }
     }
 
+    if (url.pathname === "/api/send_dm" && request.method === "POST") {
+      const kv = env.PREFS_KV;
+      const token = env.BOT_TOKEN;
+      const jsonRes = (data, status = 200) => new Response(JSON.stringify(data), {
+        status,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+      });
+      if (!token) return jsonRes({ error: "BOT_TOKEN not configured" }, 500);
+
+      let body;
+      try { body = await request.json(); } catch { return jsonRes({ error: "Bad JSON" }, 400); }
+      const { adminUser, adminPass, target, text } = body || {};
+
+      let isAuthed = false;
+      if (adminUser) {
+        const u = String(adminUser).toLowerCase().replace("@", "");
+        if (u === "xmice" || String(adminUser) === String(env.ADMIN_USER_ID || "918235475")) isAuthed = true;
+      }
+      if (!isAuthed && adminPass && (String(adminPass) === (env.BROADCAST_PASSWORD ?? "0711"))) isAuthed = true;
+      if (!isAuthed) return jsonRes({ error: "Unauthorized" }, 401);
+
+      if (!target || !text) return jsonRes({ error: "Missing target or text" }, 400);
+
+      let targetUid = String(target).trim();
+      if (targetUid.startsWith("@") || isNaN(targetUid)) {
+        if (kv) {
+          const cached = await kv.get("uname:" + targetUid.replace(/^@/, "").toLowerCase());
+          if (cached) targetUid = cached;
+        }
+      }
+
+      const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id: targetUid, text }),
+      });
+      const data = await r.json();
+      return jsonRes(data, data.ok ? 200 : 400);
+    }
+
     
     
     
@@ -1896,9 +1936,350 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
           const errText = await res.text();
           console.error(`Firebase saveUser HTTP ${res.status}:`, errText);
         }
+
+        if (KV) {
+          try {
+            const uidStr = String(from.id);
+            const uName = [from.first_name, from.last_name].filter(Boolean).join(" ") || "Студент";
+            const uUser = from.username || "";
+            const uGroup = userGroup || "";
+
+            if (uUser) {
+              await KV.put("uname:" + uUser.toLowerCase(), uidStr, { expirationTtl: 2592000 });
+            }
+            await KV.put("uinfo:" + uidStr, JSON.stringify({ id: uidStr, name: uName, username: uUser, group: uGroup }), { expirationTtl: 2592000 });
+
+            const rawRecent = await KV.get("recent_bot_users");
+            let list = rawRecent ? JSON.parse(rawRecent) : [];
+            list = list.filter(u => String(u.id) !== uidStr);
+            list.unshift({ id: uidStr, name: uName, username: uUser, group: uGroup, ts: Date.now() });
+            if (list.length > 30) list = list.slice(0, 30);
+            await KV.put("recent_bot_users", JSON.stringify(list));
+          } catch (e) {
+            console.warn("KV saveUser cache error:", e);
+          }
+        }
       } catch (e) {
         console.error("Firebase saveUser error:", e);
       }
+    };
+
+    const resolveTargetUserId = async (query) => {
+      if (!query) return null;
+      const s = String(query).trim();
+      const digitsOnly = s.replace(/^[#id\s]+/i, "").replace(/[^\d]/g, "");
+      if (digitsOnly.length >= 5 && /^\d+$/.test(digitsOnly)) {
+        return digitsOnly;
+      }
+      const cleanUname = s.replace(/^@/, "").toLowerCase();
+      if (!cleanUname) return null;
+
+      if (KV) {
+        try {
+          const cached = await KV.get("uname:" + cleanUname);
+          if (cached) return cached;
+          const rawRecent = await KV.get("recent_bot_users");
+          if (rawRecent) {
+            const list = JSON.parse(rawRecent);
+            const found = list.find(u => (u.username || "").toLowerCase() === cleanUname);
+            if (found) {
+              await KV.put("uname:" + cleanUname, String(found.id), { expirationTtl: 2592000 });
+              return String(found.id);
+            }
+          }
+        } catch {}
+      }
+
+      if (env.FIREBASE_API_KEY) {
+        try {
+          const fsQuery = {
+            structuredQuery: {
+              from: [{ collectionId: "users" }],
+              where: {
+                fieldFilter: {
+                  field: { fieldPath: "username" },
+                  op: "EQUAL",
+                  value: { stringValue: cleanUname }
+                }
+              },
+              limit: 1
+            }
+          };
+          const res = await fetch(`https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents:runQuery?key=${env.FIREBASE_API_KEY}`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(fsQuery)
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const doc = data?.[0]?.document;
+            if (doc?.fields?.id?.stringValue) {
+              const uid = doc.fields.id.stringValue;
+              if (KV) await KV.put("uname:" + cleanUname, uid, { expirationTtl: 2592000 });
+              return uid;
+            }
+          }
+        } catch (e) {
+          console.error("Firestore username lookup error:", e);
+        }
+      }
+      return null;
+    };
+
+    const getUserCardInfo = async (uid) => {
+      let info = { id: String(uid), name: "Користувач", username: "", group: "не обрано" };
+      if (KV) {
+        try {
+          const raw = await KV.get("uinfo:" + uid);
+          if (raw) Object.assign(info, JSON.parse(raw));
+        } catch {}
+      }
+      if (!info.group || info.group === "не обрано") {
+        const p = await getPrefs(uid);
+        if (p?.group) info.group = p.group;
+      }
+      return info;
+    };
+
+    const handleAdminAction = async (msgText, currentMsg, activeChatId) => {
+      const cleanText = (msgText || "").trim();
+
+      // 1. Exit active direct chat session
+      if (cleanText === "/stop" || cleanText === "/close" || cleanText === "/exit") {
+        if (KV) await KV.delete("active_chat:" + activeChatId);
+        await api("sendMessage", {
+          chat_id: activeChatId,
+          text: "⏹ <b>Режим прямого діалогу завершено.</b> Повідомлення більше не пересилаються користувачу.",
+          parse_mode: "HTML",
+          reply_to_message_id: currentMsg?.message_id,
+        });
+        return true;
+      }
+
+      // 2. /users or /recent
+      if (cleanText === "/users" || cleanText === "/recent") {
+        let list = [];
+        if (KV) {
+          try {
+            const raw = await KV.get("recent_bot_users");
+            if (raw) list = JSON.parse(raw);
+          } catch {}
+        }
+        if (!list.length && KV) {
+          try {
+            const page = await KV.list({ prefix: "u:", limit: 15 });
+            for (const k of page.keys) {
+              const uId = k.name.slice(2);
+              const card = await getUserCardInfo(uId);
+              list.push(card);
+            }
+          } catch {}
+        }
+
+        if (!list.length) {
+          await api("sendMessage", {
+            chat_id: activeChatId,
+            text: "👥 <b>Список користувачів порожній.</b> Зачекайте на перші взаємодії студентів з ботом.",
+            parse_mode: "HTML",
+            reply_to_message_id: currentMsg?.message_id,
+          });
+          return true;
+        }
+
+        let out = `👥 <b>Останні активні користувачі (${list.length}):</b>\n\n`;
+        list.slice(0, 15).forEach((u, i) => {
+          const nameStr = escapeHtml(u.name || "Студент");
+          const unameStr = u.username ? `@${escapeHtml(u.username)}` : "немає";
+          const grpStr = escapeHtml(u.group || "ФЕП");
+          out += `${i + 1}. <b>${nameStr}</b> (${unameStr}) — ${grpStr}\n`;
+          out += `   └ 💬 <code>/chat ${u.id}</code> · <code>#id${u.id}</code>\n\n`;
+        });
+        out += `💡 <i>Натисніть на команду <code>/chat &lt;id&gt;</code>, щоб розпочати постійний діалог, або <code>/send &lt;id&gt; &lt;текст&gt;</code>.</i>`;
+
+        await api("sendMessage", {
+          chat_id: activeChatId,
+          text: out,
+          parse_mode: "HTML",
+          reply_to_message_id: currentMsg?.message_id,
+        });
+        return true;
+      }
+
+      // 3. /find or /user or /search
+      if (cleanText.startsWith("/find") || cleanText.startsWith("/user ") || cleanText.startsWith("/search ")) {
+        const query = cleanText.replace(/^\/(find|user|search)\s+/i, "").trim().toLowerCase();
+        if (!query) {
+          await api("sendMessage", {
+            chat_id: activeChatId,
+            text: "ℹ️ <b>Формат пошуку:</b>\n<code>/find &lt;юзернейм, ім'я або група&gt;</code>",
+            parse_mode: "HTML",
+            reply_to_message_id: currentMsg?.message_id,
+          });
+          return true;
+        }
+
+        let matches = [];
+        if (KV) {
+          try {
+            const raw = await KV.get("recent_bot_users");
+            if (raw) {
+              const all = JSON.parse(raw);
+              matches = all.filter(u =>
+                (u.username || "").toLowerCase().includes(query) ||
+                (u.name || "").toLowerCase().includes(query) ||
+                (u.group || "").toLowerCase().includes(query) ||
+                String(u.id).includes(query)
+              );
+            }
+          } catch {}
+        }
+
+        if (!matches.length) {
+          const directUid = await resolveTargetUserId(query);
+          if (directUid) {
+            const card = await getUserCardInfo(directUid);
+            matches.push(card);
+          }
+        }
+
+        if (!matches.length) {
+          await api("sendMessage", {
+            chat_id: activeChatId,
+            text: `😕 За запитом «${escapeHtml(query)}» користувачів не знайдено.\nСпробуйте ввести точний Telegram ID або @username.`,
+            parse_mode: "HTML",
+            reply_to_message_id: currentMsg?.message_id,
+          });
+          return true;
+        }
+
+        let out = `🔎 <b>Знайдено користувачів (${matches.length}):</b>\n\n`;
+        matches.slice(0, 10).forEach((u, i) => {
+          const nameStr = escapeHtml(u.name || "Студент");
+          const unameStr = u.username ? `@${escapeHtml(u.username)}` : "немає";
+          out += `${i + 1}. <b>${nameStr}</b> (${unameStr}) — ${escapeHtml(u.group || "ФЕП")}\n`;
+          out += `   └ 💬 <code>/chat ${u.id}</code> · <code>#id${u.id}</code>\n\n`;
+        });
+        out += `💡 <i>Натисніть на команду <code>/chat &lt;id&gt;</code> для відкриття прямого діалогу.</i>`;
+
+        await api("sendMessage", {
+          chat_id: activeChatId,
+          text: out,
+          parse_mode: "HTML",
+          reply_to_message_id: currentMsg?.message_id,
+        });
+        return true;
+      }
+
+      // 4. /chat or /talk
+      if (cleanText.startsWith("/chat") || cleanText.startsWith("/talk") || (cleanText.startsWith("/dm") && !cleanText.includes(" "))) {
+        const parts = cleanText.split(/\s+/);
+        const targetParam = parts[1];
+        if (!targetParam) {
+          await api("sendMessage", {
+            chat_id: activeChatId,
+            text: "ℹ️ <b>Формат команди:</b>\n<code>/chat &lt;id або @username&gt;</code>\n\nПриклад:\n<code>/chat 918235475</code>\n<code>/chat @taras</code>\n\nДля перегляду списку останніх користувачів: /users",
+            parse_mode: "HTML",
+            reply_to_message_id: currentMsg?.message_id,
+          });
+          return true;
+        }
+
+        const targetUid = await resolveTargetUserId(targetParam);
+        if (!targetUid) {
+          await api("sendMessage", {
+            chat_id: activeChatId,
+            text: `❌ Користувача «<b>${escapeHtml(targetParam)}</b>» не знайдено.\nПеревірте Telegram ID або @username, або скористайтесь /users.`,
+            parse_mode: "HTML",
+            reply_to_message_id: currentMsg?.message_id,
+          });
+          return true;
+        }
+
+        if (KV) await KV.put("active_chat:" + activeChatId, targetUid, { expirationTtl: 86400 });
+        const uinfo = await getUserCardInfo(targetUid);
+
+        const cardText =
+          `🟢 <b>Режим прямого діалогу активовано!</b>\n\n` +
+          `👤 <b>Користувач:</b> <a href="tg://user?id=${targetUid}">${escapeHtml(uinfo.name)}</a> ${uinfo.username ? `(@${escapeHtml(uinfo.username)})` : ""}\n` +
+          `🎓 <b>Група:</b> ${escapeHtml(uinfo.group)}\n` +
+          `🆔 <b>ID:</b> <code>#id${targetUid}</code>\n\n` +
+          `💬 <b>Тепер надсилайте сюди будь-що:</b> текст, фото, голосові, кружечки, файли, стікери — вони будуть миттєво доставлені студенту від імені бота!\n\n` +
+          `👉 <i>Для завершення надішліть:</i> <code>/stop</code>`;
+
+        await api("sendMessage", {
+          chat_id: activeChatId,
+          text: cardText,
+          parse_mode: "HTML",
+          reply_to_message_id: currentMsg?.message_id,
+        });
+        return true;
+      }
+
+      // 5. /send, /reply, /write, /dm, /msg
+      if (/^\/(send|reply|write|dm|msg)\b/i.test(cleanText)) {
+        const parts = cleanText.split(/\s+/);
+        const targetParam = parts[1];
+        const replyBody = parts.slice(2).join(" ");
+
+        if (targetParam) {
+          const targetUid = await resolveTargetUserId(targetParam);
+          if (!targetUid) {
+            await api("sendMessage", {
+              chat_id: activeChatId,
+              text: `❌ Користувача «<b>${escapeHtml(targetParam)}</b>» не знайдено. Перевірте ID або скористайтесь /users.`,
+              parse_mode: "HTML",
+              reply_to_message_id: currentMsg?.message_id,
+            });
+            return true;
+          }
+
+          let sendRes;
+          if (currentMsg?.reply_to_message) {
+            sendRes = await api("copyMessage", {
+              chat_id: targetUid,
+              from_chat_id: activeChatId,
+              message_id: currentMsg.reply_to_message.message_id,
+            });
+          } else if (replyBody) {
+            sendRes = await api("sendMessage", {
+              chat_id: targetUid,
+              text: replyBody,
+            });
+          } else if (!currentMsg?.text) {
+            sendRes = await api("copyMessage", {
+              chat_id: targetUid,
+              from_chat_id: activeChatId,
+              message_id: currentMsg.message_id,
+            });
+          } else {
+            await api("sendMessage", {
+              chat_id: activeChatId,
+              text: "ℹ️ <b>Формат команди:</b>\n<code>/send &lt;id_або_юзернейм&gt; &lt;текст повідомлення&gt;</code>\n\nАбо відкрийте повноцінний чат: <code>/chat &lt;id&gt;</code>",
+              parse_mode: "HTML",
+              reply_to_message_id: currentMsg?.message_id,
+            });
+            return true;
+          }
+
+          if (sendRes?.ok) {
+            await api("setMessageReaction", {
+              chat_id: activeChatId,
+              message_id: currentMsg.message_id,
+              reaction: [{ type: "emoji", emoji: "👍" }],
+            }).catch(() => null);
+          } else {
+            await api("sendMessage", {
+              chat_id: activeChatId,
+              text: `⚠️ Не вдалося надіслати до <code>#id${targetUid}</code>: ${escapeHtml(sendRes?.description || "помилка")}`,
+              parse_mode: "HTML",
+              reply_to_message_id: currentMsg?.message_id,
+            });
+          }
+          return true;
+        }
+      }
+
+      return false;
     };
 
     
@@ -2052,7 +2433,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
         await KV.put("active_support_group_id", String(msg.migrate_to_chat_id));
       }
 
-      const groupText = msg?.text ? msg.text.trim() : "";
+      const groupText = msg?.text ? msg.text.trim() : (msg?.caption ? msg.caption.trim() : "");
       if (groupText === "/id" || groupText === "/status") {
         await api("sendMessage", {
           chat_id: chatId,
@@ -2063,39 +2444,33 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
         return new Response("OK");
       }
 
-      if (groupText.startsWith("/reply")) {
-        const parts = groupText.split(/\s+/);
-        const manualTarget = parts[1]?.replace(/^#?id/i, "").replace(/[^\d]/g, "");
-        const replyBody = parts.slice(2).join(" ");
-        if (manualTarget && replyBody) {
-          const sendRes = await api("sendMessage", {
-            chat_id: manualTarget,
-            text: replyBody,
-          });
-          if (sendRes?.ok) {
-            await api("setMessageReaction", {
-              chat_id: chatId,
-              message_id: msg.message_id,
-              reaction: [{ type: "emoji", emoji: "👍" }],
-            }).catch(() => null);
-          } else {
-            await api("sendMessage", {
-              chat_id: chatId,
-              text: `⚠️ Не вдалося надіслати до <code>#id${manualTarget}</code>: ${escapeHtml(sendRes?.description || "помилка")}`,
-              parse_mode: "HTML",
-              reply_to_message_id: msg.message_id,
-            });
-          }
-          return new Response("OK");
+      const handled = await handleAdminAction(groupText, msg, chatId);
+      if (handled) return new Response("OK");
+
+      // Check active direct chat session in the support group
+      const activeTargetId = KV ? await KV.get("active_chat:" + chatId) : null;
+      if (activeTargetId) {
+        const sendRes = await api("copyMessage", {
+          chat_id: activeTargetId,
+          from_chat_id: chatId,
+          message_id: msg.message_id,
+        });
+
+        if (sendRes?.ok) {
+          await api("setMessageReaction", {
+            chat_id: chatId,
+            message_id: msg.message_id,
+            reaction: [{ type: "emoji", emoji: "👍" }],
+          }).catch(() => null);
         } else {
           await api("sendMessage", {
             chat_id: chatId,
-            text: "ℹ️ <b>Формат команди:</b>\n<code>/reply &lt;user_id&gt; &lt;текст відповіді&gt;</code>\n\nАбо просто зробіть Telegram Reply на повідомлення студента.",
+            text: `⚠️ Не вдалося доставити повідомлення до <code>#id${activeTargetId}</code>: ${escapeHtml(sendRes?.description || "користувач заблокував бота або сталася помилка")}`,
             parse_mode: "HTML",
             reply_to_message_id: msg.message_id,
           });
-          return new Response("OK");
         }
+        return new Response("OK");
       }
 
       if (msg?.reply_to_message) {
@@ -2494,6 +2869,40 @@ if (data === "link:site") {
     };
 
     const prefs = await getPrefs(userId);
+    const BROADCAST_PASSWORD = env.BROADCAST_PASSWORD ?? "0711";
+    const isXmice = (fromUser?.username ?? "").toLowerCase().replace("@", "") === "xmice" || userId === ADMIN_USER_ID;
+
+    // Check active direct chat session for admin in private chat
+    if (isXmice && KV) {
+      const activeTargetId = await KV.get("active_chat:" + chatId);
+      if (activeTargetId) {
+        const adminText = msg?.text ? msg.text.trim() : (msg?.caption ? msg.caption.trim() : "");
+        if (adminText === "/stop" || adminText === "/close" || adminText === "/exit") {
+          await KV.delete("active_chat:" + chatId);
+          await sendPlain(chatId, "⏹ Режим прямого діалогу завершено.");
+          return new Response("OK");
+        }
+        const handled = await handleAdminAction(adminText, msg, chatId);
+        if (handled) return new Response("OK");
+
+        const sendRes = await api("copyMessage", {
+          chat_id: activeTargetId,
+          from_chat_id: chatId,
+          message_id: msg.message_id,
+        });
+
+        if (sendRes?.ok) {
+          await api("setMessageReaction", {
+            chat_id: chatId,
+            message_id: msg.message_id,
+            reaction: [{ type: "emoji", emoji: "👍" }],
+          }).catch(() => null);
+        } else {
+          await sendPlain(chatId, `⚠️ Не вдалося надіслати до <code>#id${activeTargetId}</code>: ${escapeHtml(sendRes?.description || "помилка")}`);
+        }
+        return new Response("OK");
+      }
+    }
 
     if (!msg?.text) {
       await forwardToSupport(msg, prefs);
@@ -2501,22 +2910,9 @@ if (data === "link:site") {
     }
     const text = msg.text.trim();
 
-    const BROADCAST_PASSWORD = env.BROADCAST_PASSWORD ?? "0711";
-    const isXmice = (fromUser?.username ?? "").toLowerCase().replace("@", "") === "xmice" || userId === ADMIN_USER_ID;
-
-    if (text.startsWith("/reply") && isXmice) {
-      const parts = text.split(/\s+/);
-      const manualTarget = parts[1]?.replace(/^#?id/i, "").replace(/[^\d]/g, "");
-      const replyBody = parts.slice(2).join(" ");
-      if (manualTarget && replyBody) {
-        const sendRes = await api("sendMessage", { chat_id: manualTarget, text: replyBody });
-        if (sendRes?.ok) {
-          await sendPlain(chatId, `✅ Відповідь надіслано користувачу <code>#id${manualTarget}</code>`);
-        } else {
-          await sendPlain(chatId, `⚠️ Не вдалося надіслати: ${escapeHtml(sendRes?.description || "помилка")}`);
-        }
-        return new Response("OK");
-      }
+    if (isXmice) {
+      const handled = await handleAdminAction(text, msg, chatId);
+      if (handled) return new Response("OK");
     }
 
     if (text === "/donate" || text.startsWith("/start donate")) {
@@ -2568,10 +2964,25 @@ if (data === "link:site") {
 
     if (text === "/admin") {
       if (isXmice) {
-        await send(chatId, "🔐 *Вітаємо, @xmice\\!*\n\nВи маєте адмін\\-доступ без пароля\\. Натисніть нижче, щоб відкрити додаток і адмін\\-панель 👇", {
-          inline_keyboard: [
-            [{ text: "⚡ Відкрити додаток", web_app: { url: SITE_URL } }]
-          ]
+        const adminHelp =
+          `🔐 <b>Панель адміністратора (@xmice)</b>\n\n` +
+          `⚡ <b>Керування чатом та користувачами:</b>\n` +
+          `• <code>/users</code> — список останніх користувачів бота\n` +
+          `• <code>/find &lt;запит&gt;</code> — пошук студента за ім'ям, юзернеймом або групою\n` +
+          `• <code>/chat &lt;id або @username&gt;</code> — відкрити прямий діалог зі студентом\n` +
+          `• <code>/send &lt;id або @username&gt; &lt;текст&gt;</code> — надіслати одне повідомлення\n` +
+          `• <code>/stop</code> — завершити відкритий діалог\n` +
+          `• <code>/mes</code> — розсилка повідомлення всім користувачам\n\n` +
+          `Також ви можете відкрити додаток за кнопкою нижче 👇`;
+        await api("sendMessage", {
+          chat_id: chatId,
+          text: adminHelp,
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "⚡ Відкрити додаток", web_app: { url: SITE_URL } }]
+            ]
+          }
         });
         return new Response("OK");
       } else {
