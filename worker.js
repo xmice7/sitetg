@@ -1016,6 +1016,7 @@ let memoryLastUserTs = 0;
 const memoryAcks = new Set();
 let memoryAllUsers = null;
 let memoryAllUsersTs = 0;
+const memoryPrefs = new Map();
 
 export default {
   async fetch(request, env, ctx) {
@@ -1810,6 +1811,11 @@ export default {
     const kvKey  = (uid) => `u:${uid}`;
 
     const getPrefs = async (uid) => {
+      if (!uid) return null;
+      const sUid = String(uid);
+      if (memoryPrefs.has(sUid)) {
+        return memoryPrefs.get(sUid);
+      }
       let p = null;
       if (KV) {
         try {
@@ -1827,16 +1833,19 @@ export default {
             const grp = f.group?.stringValue || "";
             if (grp) {
               p = { group: grp, subgroup: "all", eng: "all", step: "done" };
-              await safeKvPut(kvKey(uid), JSON.stringify(p));
             }
           }
         } catch {}
       }
       if (p && LEGACY_GROUP_NAMES[p.group]) p.group = LEGACY_GROUP_NAMES[p.group]; 
+      if (p) memoryPrefs.set(sUid, p);
       return p;
     };
 
     const setPrefs = async (uid, data) => {
+      if (!uid) return;
+      const sUid = String(uid);
+      memoryPrefs.set(sUid, data);
       await safeKvPut(kvKey(uid), JSON.stringify(data));
     };
 
@@ -3568,18 +3577,21 @@ if (text.startsWith("/start code_")) {
 
     
     if (text.startsWith("/start")) {
+      const isParamGroup = text.includes("group") || text.includes("change");
+      if (prefs?.group && prefs?.step === "done" && !isParamGroup) {
+        await send(chatId, menuText(prefs), kb.main(prefs));
+        return new Response("OK");
+      }
       await setPrefs(userId, { step: "group", await_group: true });
       await send(chatId, ONBOARD.welcome(userName), null);
       return new Response("OK");
     }
 
-    
     if (text === "/cancel" && prefs?.step === "done") {
       await send(chatId, menuText(prefs), kb.main(prefs));
       return new Response("OK");
     }
 
-    
     if (prefs?.await_group) {
       if (text.startsWith("/")) {
         await send(chatId, ONBOARD.askGroup, null);
@@ -3589,7 +3601,16 @@ if (text.startsWith("/start code_")) {
       return new Response("OK");
     }
 
-    
+    // Smart group query detection (e.g. user typed "Феп-23", "ФЕП 12", "ПМІ-2")
+    if (/^[а-яіїєґa-z]{2,5}[-\s]?\d{1,2}[а-яіїєґa-z]?$/i.test(text)) {
+      let candidateOptions = [];
+      try { candidateOptions = (await getSuggestionGroups(text)).slice(0, 12); } catch {}
+      if (candidateOptions.length > 0) {
+        await handleGroupQuery(prefs, text);
+        return new Response("OK");
+      }
+    }
+
     if (!prefs?.step || prefs.step !== "done" || !prefs.group) {
       await setPrefs(userId, { ...(prefs ?? {}), step: "group", await_group: true });
       await send(chatId, ONBOARD.welcome(userName), null);
