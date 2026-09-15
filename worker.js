@@ -1009,6 +1009,14 @@ async function handleDekanatRoutes(request, env, ctx) {
   return json({ error: 'Not found' }, 404);
 }
 
+// In-memory runtime caching to eliminate KV write limits and duplicate notifications
+const memoryActiveChats = new Map();
+let memoryLastUser = null;
+let memoryLastUserTs = 0;
+const memoryAcks = new Set();
+let memoryAllUsers = null;
+let memoryAllUsersTs = 0;
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -1564,9 +1572,10 @@ export default {
     
     if (request.method !== "POST") return new Response("OK");
 
-    let update;
-    try { update = await request.json(); }
-    catch { return new Response("Bad JSON", { status: 400 }); }
+    try {
+      let update;
+      try { update = await request.json(); }
+      catch { return new Response("Bad JSON", { status: 400 }); }
 
     const token = env.BOT_TOKEN;
     if (!token) return new Response("Missing BOT_TOKEN", { status: 500 });
@@ -1601,36 +1610,81 @@ export default {
       return s === `-${base}` || s === `-100${base}` || s === SUPPORT_GROUP_ID;
     };
 
+    const safeKvPut = async (key, val, opt) => {
+      if (!KV) return false;
+      try {
+        await KV.put(key, val, opt);
+        return true;
+      } catch (e) {
+        console.warn(`KV put ignored (${key}):`, e?.message || e);
+        return false;
+      }
+    };
+
+    const safeKvDelete = async (key) => {
+      if (!KV) return false;
+      try {
+        await KV.delete(key);
+        return true;
+      } catch (e) {
+        console.warn(`KV delete ignored (${key}):`, e?.message || e);
+        return false;
+      }
+    };
+
     const getActiveChat = async (cId) => {
-      if (!KV || !cId) return null;
+      if (!cId) return null;
       const s = String(cId);
       const base = s.replace(/^-100/, "").replace(/^-/, "");
-      return (
-        await KV.get("active_chat:" + s) ||
-        (base ? await KV.get("active_chat:-" + base) : null) ||
-        (base ? await KV.get("active_chat:-100" + base) : null)
-      );
+      if (memoryActiveChats.has(s)) return memoryActiveChats.get(s);
+      if (base && memoryActiveChats.has("-" + base)) return memoryActiveChats.get("-" + base);
+      if (base && memoryActiveChats.has("-100" + base)) return memoryActiveChats.get("-100" + base);
+
+      if (KV) {
+        try {
+          const v = (
+            await KV.get("active_chat:" + s) ||
+            (base ? await KV.get("active_chat:-" + base) : null) ||
+            (base ? await KV.get("active_chat:-100" + base) : null)
+          );
+          if (v) {
+            memoryActiveChats.set(s, v);
+            return v;
+          }
+        } catch {}
+      }
+      return null;
     };
 
     const setActiveChat = async (cId, targetUid) => {
-      if (!KV || !cId || !targetUid) return;
+      if (!cId || !targetUid) return;
       const s = String(cId);
       const base = s.replace(/^-100/, "").replace(/^-/, "");
-      await KV.put("active_chat:" + s, String(targetUid), { expirationTtl: 86400 });
+      memoryActiveChats.set(s, String(targetUid));
       if (base) {
-        await KV.put("active_chat:-" + base, String(targetUid), { expirationTtl: 86400 });
-        await KV.put("active_chat:-100" + base, String(targetUid), { expirationTtl: 86400 });
+        memoryActiveChats.set("-" + base, String(targetUid));
+        memoryActiveChats.set("-100" + base, String(targetUid));
+      }
+      await safeKvPut("active_chat:" + s, String(targetUid), { expirationTtl: 86400 });
+      if (base) {
+        await safeKvPut("active_chat:-" + base, String(targetUid), { expirationTtl: 86400 });
+        await safeKvPut("active_chat:-100" + base, String(targetUid), { expirationTtl: 86400 });
       }
     };
 
     const deleteActiveChat = async (cId) => {
-      if (!KV || !cId) return;
+      if (!cId) return;
       const s = String(cId);
       const base = s.replace(/^-100/, "").replace(/^-/, "");
-      await KV.delete("active_chat:" + s);
+      memoryActiveChats.delete(s);
       if (base) {
-        await KV.delete("active_chat:-" + base);
-        await KV.delete("active_chat:-100" + base);
+        memoryActiveChats.delete("-" + base);
+        memoryActiveChats.delete("-100" + base);
+      }
+      await safeKvDelete("active_chat:" + s);
+      if (base) {
+        await safeKvDelete("active_chat:-" + base);
+        await safeKvDelete("active_chat:-100" + base);
       }
     };
 
@@ -1998,12 +2052,20 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
     };
 
     const getAllUsers = async () => {
+      if (memoryAllUsers && (Date.now() - memoryAllUsersTs < 3600000)) {
+        return memoryAllUsers;
+      }
+
       if (KV) {
         try {
           const raw = await KV.get("all_cached_users");
           if (raw) {
             const list = JSON.parse(raw);
-            if (Array.isArray(list) && list.length > 0) return list;
+            if (Array.isArray(list) && list.length > 0) {
+              memoryAllUsers = list;
+              memoryAllUsersTs = Date.now();
+              return list;
+            }
           }
         } catch {}
       }
@@ -2025,14 +2087,10 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
               return { id: String(id), name, first_name: fn, last_name: ln, username: uname, group: grp };
             });
 
-            if (users.length > 0 && KV) {
-              await KV.put("all_cached_users", JSON.stringify(users), { expirationTtl: 300 });
-              for (const u of users) {
-                if (u.username) {
-                  await KV.put("uname:" + u.username.toLowerCase(), u.id, { expirationTtl: 2592000 });
-                }
-                await KV.put("uinfo:" + u.id, JSON.stringify(u), { expirationTtl: 2592000 });
-              }
+            if (users.length > 0) {
+              memoryAllUsers = users;
+              memoryAllUsersTs = Date.now();
+              await safeKvPut("all_cached_users", JSON.stringify(users), { expirationTtl: 3600 });
             }
             return users;
           }
@@ -2041,13 +2099,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
         }
       }
 
-      if (KV) {
-        try {
-          const rawRecent = await KV.get("recent_bot_users");
-          if (rawRecent) return JSON.parse(rawRecent);
-        } catch {}
-      }
-      return [];
+      return memoryAllUsers || [];
     };
 
     const transMap = {
@@ -3006,7 +3058,13 @@ if (data === "link:site") {
     }
 
     const forwardToSupport = async (studentMsg, studentPrefs) => {
-      let activeGroup = (KV ? await KV.get("active_support_group_id") : null) || SUPPORT_GROUP_ID;
+      let activeGroup = SUPPORT_GROUP_ID;
+      if (KV) {
+        try {
+          const stored = await KV.get("active_support_group_id");
+          if (stored) activeGroup = stored;
+        } catch {}
+      }
 
       const sUser = studentMsg?.from || fromUser;
       const sUserId = String(sUser?.id || userId);
@@ -3028,10 +3086,18 @@ if (data === "link:site") {
 
       const signature = `by ${userTag} (#id${sUserId})`;
 
-      const lastUser = KV ? await KV.get("sup_last_user") : null;
+      let lastUser = memoryLastUser;
+      if (!lastUser && KV) {
+        try { lastUser = await KV.get("sup_last_user"); } catch {}
+      }
       let headerRes = null;
 
-      if (lastUser !== sUserId) {
+      // Only send student card when a DIFFERENT user writes, or after 5 minutes of inactivity
+      if (lastUser !== sUserId || (Date.now() - memoryLastUserTs > 300000)) {
+        memoryLastUser = sUserId;
+        memoryLastUserTs = Date.now();
+        await safeKvPut("sup_last_user", sUserId, { expirationTtl: 300 });
+
         const headerHtml =
           `📩 <b>Нове повідомлення від студента</b>\n` +
           `👤 <b>Користувач:</b> <a href="tg://user?id=${sUserId}">${escapeHtml(sFullName || "Студент")}</a> (${escapeHtml(sUsername || "немає ніка")})\n` +
@@ -3047,20 +3113,18 @@ if (data === "link:site") {
 
         if (!headerRes?.ok && headerRes?.parameters?.migrate_to_chat_id) {
           activeGroup = String(headerRes.parameters.migrate_to_chat_id);
-          if (KV) await KV.put("active_support_group_id", activeGroup);
+          await safeKvPut("active_support_group_id", activeGroup);
           headerRes = await api("sendMessage", {
             chat_id: activeGroup,
             text: headerHtml,
             parse_mode: "HTML",
           });
         }
-
-        if (KV) await KV.put("sup_last_user", sUserId, { expirationTtl: 300 });
       }
 
       let sentMsgId = null;
 
-      if (studentMsg.text) {
+      if (studentMsg?.text) {
         // Text message: append signature at bottom
         const sigHtml = `\n\n<i>by ${escapeHtml(userTag)} (<code>#id${sUserId}</code>)</i>`;
         let textToSend = escapeHtml(studentMsg.text) + sigHtml;
@@ -3077,7 +3141,7 @@ if (data === "link:site") {
 
         if (!sentRes?.ok && sentRes?.parameters?.migrate_to_chat_id) {
           activeGroup = String(sentRes.parameters.migrate_to_chat_id);
-          if (KV) await KV.put("active_support_group_id", activeGroup);
+          await safeKvPut("active_support_group_id", activeGroup);
           sentRes = await api("sendMessage", {
             chat_id: activeGroup,
             text: textToSend,
@@ -3085,7 +3149,7 @@ if (data === "link:site") {
           });
         }
         sentMsgId = sentRes?.result?.message_id;
-      } else {
+      } else if (studentMsg) {
         // Media messages: photo, video, audio, document, voice, sticker, etc.
         const canHaveCaption = Boolean(
           studentMsg.photo ||
@@ -3113,7 +3177,7 @@ if (data === "link:site") {
 
           if (!copyRes?.ok && copyRes?.parameters?.migrate_to_chat_id) {
             activeGroup = String(copyRes.parameters.migrate_to_chat_id);
-            if (KV) await KV.put("active_support_group_id", activeGroup);
+            await safeKvPut("active_support_group_id", activeGroup);
             copyRes = await api("copyMessage", {
               chat_id: activeGroup,
               from_chat_id: chatId,
@@ -3132,7 +3196,7 @@ if (data === "link:site") {
 
           if (!copyRes?.ok && copyRes?.parameters?.migrate_to_chat_id) {
             activeGroup = String(copyRes.parameters.migrate_to_chat_id);
-            if (KV) await KV.put("active_support_group_id", activeGroup);
+            await safeKvPut("active_support_group_id", activeGroup);
             copyRes = await api("copyMessage", {
               chat_id: activeGroup,
               from_chat_id: chatId,
@@ -3148,26 +3212,28 @@ if (data === "link:site") {
               parse_mode: "HTML",
               reply_to_message_id: sentMsgId,
             });
-            if (KV && badgeRes?.result?.message_id) {
-              await KV.put(`sup:${badgeRes.result.message_id}`, sUserId, { expirationTtl: 604800 });
+            if (badgeRes?.result?.message_id) {
+              await safeKvPut(`sup:${badgeRes.result.message_id}`, sUserId, { expirationTtl: 604800 });
             }
           }
         }
       }
 
-      if (KV) {
-        if (headerRes?.result?.message_id) {
-          await KV.put(`sup:${headerRes.result.message_id}`, sUserId, { expirationTtl: 604800 });
-        }
-        if (sentMsgId) {
-          await KV.put(`sup:${sentMsgId}`, sUserId, { expirationTtl: 604800 });
-        }
+      if (headerRes?.result?.message_id) {
+        await safeKvPut(`sup:${headerRes.result.message_id}`, sUserId, { expirationTtl: 604800 });
+      }
+      if (sentMsgId) {
+        await safeKvPut(`sup:${sentMsgId}`, sUserId, { expirationTtl: 604800 });
       }
 
       const ackKey = `sup_ack:${sUserId}`;
-      const alreadyAcked = KV ? await KV.get(ackKey) : null;
-      if (!alreadyAcked) {
-        if (KV) await KV.put(ackKey, "1", { expirationTtl: 60 });
+      let alreadyAcked = memoryAcks.has(sUserId);
+      if (!alreadyAcked && KV) {
+        try { alreadyAcked = Boolean(await KV.get(ackKey)); } catch {}
+      }
+      if (!alreadyAcked && studentMsg) {
+        memoryAcks.add(sUserId);
+        await safeKvPut(ackKey, "1", { expirationTtl: 60 });
         await api("sendMessage", {
           chat_id: chatId,
           text: "✅ Ваше повідомлення надіслано адміністратору розкладу. Очікуйте на відповідь!",
@@ -3568,8 +3634,12 @@ if (text.startsWith("/start code_")) {
       return new Response("OK");
     }
 
-    await forwardToSupport(msg, prefs);
-    return new Response("OK");
+      await forwardToSupport(msg, prefs);
+      return new Response("OK");
+    } catch (err) {
+      console.error("FATAL ERROR in bot update:", err);
+      return new Response("OK");
+    }
   },
 
   // ─── HOURLY CRON: auto-check Dekanat grades for all users ───────────────────
