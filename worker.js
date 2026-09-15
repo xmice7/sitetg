@@ -1036,6 +1036,25 @@ const memoryPrefs = new Map();
 let memorySupportGroupId = null;
 const memorySupMessages = new Map();
 
+// Deduplication store to prevent any message or update from processing twice
+const memoryProcessedEvents = new Map();
+function isDuplicateEvent(key, ttlMs = 120000) {
+  if (!key) return false;
+  const now = Date.now();
+  if (memoryProcessedEvents.has(key)) {
+    const ts = memoryProcessedEvents.get(key);
+    if (now - ts < ttlMs) return true;
+  }
+  memoryProcessedEvents.set(key, now);
+  if (memoryProcessedEvents.size > 1000) {
+    const cutoff = now - ttlMs;
+    for (const [k, t] of memoryProcessedEvents.entries()) {
+      if (t < cutoff) memoryProcessedEvents.delete(k);
+    }
+  }
+  return false;
+}
+
 // In-memory stores for auth linking
 const memoryCodeTokens = new Map(); // code -> { status, userData, expiresAt }
 const memoryLinkTokens = new Map(); // token -> { userData, expiresAt }
@@ -1911,6 +1930,62 @@ export default {
     
     
     
+    if (url.pathname === "/bot-old" && request.method === "POST") {
+      const oldToken = env.OLD_BOT_TOKEN || "8578336635:AAG2VuApAstUwp0dszRnjQVzHjnNCI_CfEI";
+      try {
+        const update = await request.json();
+        if (update?.update_id && isDuplicateEvent(`old_upd:${update.update_id}`, 120000)) {
+          return new Response("OK");
+        }
+        const msg = update?.message || update?.edited_message;
+        const cb = update?.callback_query;
+
+        if (cb) {
+          await fetch(`https://api.telegram.org/bot${oldToken}/answerCallbackQuery`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              callback_query_id: cb.id,
+              text: "⚠️ Ми переїхали на нового бота @schedapp_bot!",
+              show_alert: true,
+            })
+          }).catch(() => null);
+          return new Response("OK");
+        }
+
+        if (msg) {
+          const chatType = msg.chat?.type || "private";
+          if (chatType !== "private") {
+            return new Response("OK");
+          }
+
+          const migText =
+            `👋 <b>Привіт! Ми повністю оновилися та переїхали на нового бота:</b>\n` +
+            `👉 @schedapp_bot\n\n` +
+            `🚀 <i>Увесь актуальний розклад занять, дзвінки, нагадування та оцінки тепер працюють там!</i>\n\n` +
+            `Натисніть кнопку нижче, щоб перейти 👇`;
+
+          await fetch(`https://api.telegram.org/bot${oldToken}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: msg.chat.id,
+              text: migText,
+              parse_mode: "HTML",
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "🚀 Перейти в @schedapp_bot", url: "https://t.me/schedapp_bot" }]
+                ]
+              }
+            })
+          }).catch(() => null);
+        }
+      } catch (e) {
+        console.error("bot-old error:", e);
+      }
+      return new Response("OK");
+    }
+
     if (request.method !== "POST") return new Response("OK");
 
     try {
@@ -1918,8 +1993,12 @@ export default {
       try { update = await request.json(); }
       catch { return new Response("Bad JSON", { status: 400 }); }
 
-    const token = env.BOT_TOKEN;
-    if (!token) return new Response("Missing BOT_TOKEN", { status: 500 });
+      if (update?.update_id && isDuplicateEvent(`upd:${update.update_id}`, 120000)) {
+        return new Response("OK");
+      }
+
+      const token = env.BOT_TOKEN;
+      if (!token) return new Response("Missing BOT_TOKEN", { status: 500 });
 
     if (update.pre_checkout_query) {
       await fetch(`https://api.telegram.org/bot${token}/answerPreCheckoutQuery`, {
@@ -3190,6 +3269,8 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
         // Check active direct chat session in the support group
         const activeTargetId = await getActiveChat(chatId);
         if (activeTargetId && msg) {
+          const dedupeKey = `active_fwd:${chatId}:${msg.message_id}`;
+          if (msg.message_id && isDuplicateEvent(dedupeKey, 60000)) return new Response("OK");
           const sendRes = await api("copyMessage", {
             chat_id: activeTargetId,
             from_chat_id: chatId,
@@ -3214,6 +3295,8 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
         }
 
         if (msg?.reply_to_message) {
+          const dedupeKey = `rep_fwd:${chatId}:${msg.message_id}`;
+          if (msg.message_id && isDuplicateEvent(dedupeKey, 60000)) return new Response("OK");
           let targetUserId = null;
           const repMsg = msg.reply_to_message;
           const repMsgId = String(repMsg.message_id);
@@ -3577,10 +3660,12 @@ if (data === "link:site") {
     }
 
     const forwardToSupport = async (studentMsg, studentPrefs) => {
-      let activeGroup = await getActiveSupportGroupId();
-
       const sUser = studentMsg?.from || fromUser;
       const sUserId = String(sUser?.id || userId);
+      const dedupeKey = `stud_fwd:${sUserId}:${studentMsg?.message_id}`;
+      if (studentMsg?.message_id && isDuplicateEvent(dedupeKey, 60000)) return;
+
+      let activeGroup = await getActiveSupportGroupId();
       const sFullName = [sUser?.first_name, sUser?.last_name].filter(Boolean).join(" ");
       const sUsername = sUser?.username ? `@${sUser.username}` : "";
       const sGroup = studentPrefs?.group || "не обрано";
