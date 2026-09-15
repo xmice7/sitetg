@@ -1877,7 +1877,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
     ...(reply_markup ? { reply_markup } : {}),
   });
 
-    const answer = (id) => api("answerCallbackQuery", { callback_query_id: id });
+    const answer = (id, text = "") => api("answerCallbackQuery", text ? { callback_query_id: id, text } : { callback_query_id: id });
 
     
     
@@ -1964,6 +1964,170 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       }
     };
 
+    const getAllUsers = async () => {
+      if (KV) {
+        try {
+          const raw = await KV.get("all_cached_users");
+          if (raw) {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list) && list.length > 0) return list;
+          }
+        } catch {}
+      }
+
+      if (env.FIREBASE_API_KEY) {
+        try {
+          const url = `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/users?pageSize=300&key=${env.FIREBASE_API_KEY}`;
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            const users = (data.documents || []).map(doc => {
+              const f = doc.fields || {};
+              const id = f.id?.stringValue || doc.name.split("/").pop();
+              const fn = f.first_name?.stringValue || "";
+              const ln = f.last_name?.stringValue || "";
+              const uname = f.username?.stringValue || "";
+              const grp = f.group?.stringValue || "";
+              const name = [fn, ln].filter(Boolean).join(" ") || uname || "Студент";
+              return { id: String(id), name, first_name: fn, last_name: ln, username: uname, group: grp };
+            });
+
+            if (users.length > 0 && KV) {
+              await KV.put("all_cached_users", JSON.stringify(users), { expirationTtl: 300 });
+              for (const u of users) {
+                if (u.username) {
+                  await KV.put("uname:" + u.username.toLowerCase(), u.id, { expirationTtl: 2592000 });
+                }
+                await KV.put("uinfo:" + u.id, JSON.stringify(u), { expirationTtl: 2592000 });
+              }
+            }
+            return users;
+          }
+        } catch (e) {
+          console.error("getAllUsers Firestore fetch error:", e);
+        }
+      }
+
+      if (KV) {
+        try {
+          const rawRecent = await KV.get("recent_bot_users");
+          if (rawRecent) return JSON.parse(rawRecent);
+        } catch {}
+      }
+      return [];
+    };
+
+    const transMap = {
+      "а": "a", "б": "b", "в": "v", "г": "h", "ґ": "g", "д": "d", "е": "e", "є": "ye",
+      "ж": "zh", "з": "z", "и": "y", "і": "i", "ї": "yi", "й": "y", "к": "k", "л": "l",
+      "м": "m", "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u",
+      "ф": "f", "х": "kh", "ц": "ts", "ч": "ch", "ш": "sh", "щ": "shch", "ю": "yu", "я": "ya", "ь": ""
+    };
+    const toLatin = (s) => String(s || "").toLowerCase().split("").map(c => transMap[c] !== undefined ? transMap[c] : c).join("");
+
+    const searchUsers = async (query) => {
+      const all = await getAllUsers();
+      if (!query || !query.trim()) return all;
+      const rawQ = query.trim().toLowerCase().replace(/^@/, "").replace(/^#?id:?\s*/i, "");
+      if (!rawQ) return all;
+      const words = rawQ.split(/\s+/).filter(Boolean);
+
+      const norm = (s) => String(s || "").toLowerCase().replace(/i/g, "і");
+
+      return all.filter(u => {
+        const idStr = String(u.id || "").toLowerCase();
+        const uname = String(u.username || "").toLowerCase();
+        const name = String(u.name || "").toLowerCase();
+        const fn = String(u.first_name || "").toLowerCase();
+        const ln = String(u.last_name || "").toLowerCase();
+        const grp = String(u.group || "").toLowerCase();
+        const lat = toLatin(name) + " " + toLatin(fn) + " " + toLatin(ln);
+
+        const target1 = `${idStr} ${uname} ${name} ${fn} ${ln} ${grp} ${lat}`;
+        const target2 = norm(target1);
+
+        return words.every(w => {
+          const nw = norm(w);
+          return target1.includes(w) || target2.includes(nw) || target1.includes(toLatin(w));
+        });
+      });
+    };
+
+    const renderSearchResults = async (query, targetChatId, page = 0, editMsgId = null) => {
+      const cleanQ = (query || "").trim();
+      const matches = await searchUsers(cleanQ);
+      const PAGE_SIZE = 8;
+      const totalPages = Math.ceil(matches.length / PAGE_SIZE) || 1;
+      const currentPage = Math.max(0, Math.min(page, totalPages - 1));
+      const pageItems = matches.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+
+      if (!matches.length) {
+        const notFoundText =
+          `😕 За запитом «<b>${escapeHtml(cleanQ)}</b>» нічого не знайдено серед користувачів розкладу.\n\n` +
+          `Спробуйте ввести частину імені (наприклад, <i>Мілана</i>, <i>Максим</i>), прізвище, групу (<i>ФЕП-21</i>), @username або цифри Telegram ID.`;
+        if (editMsgId) {
+          await api("editMessageText", {
+            chat_id: targetChatId,
+            message_id: editMsgId,
+            text: notFoundText,
+            parse_mode: "HTML",
+          });
+        } else {
+          await api("sendMessage", {
+            chat_id: targetChatId,
+            text: notFoundText,
+            parse_mode: "HTML",
+          });
+        }
+        return;
+      }
+
+      let header = cleanQ
+        ? `🔎 <b>Знайдено користувачів (${matches.length}) за запитом «${escapeHtml(cleanQ)}»:</b>`
+        : `👥 <b>Усі користувачі розкладу: ${matches.length}</b>`;
+
+      if (totalPages > 1) {
+        header += ` <i>(стор. ${currentPage + 1}/${totalPages})</i>`;
+      }
+      header += `\n\nОберіть користувача кнопкою нижче, щоб розпочати прямий діалог 👇`;
+
+      const rows = pageItems.map(u => {
+        const uLabel = `${u.name || "Студент"}${u.username ? ` (@${u.username})` : ""} · ${u.group || "ФЕП"}`;
+        return [{ text: `👤 ${uLabel.slice(0, 42)}`, callback_data: `adm:chat:${u.id}` }];
+      });
+
+      const navRow = [];
+      if (currentPage > 0) {
+        navRow.push({ text: "⬅️ Назад", callback_data: `adm:find:${encodeURIComponent(cleanQ)}:${currentPage - 1}` });
+      }
+      if (totalPages > 1) {
+        navRow.push({ text: `📄 ${currentPage + 1}/${totalPages}`, callback_data: "adm:noop" });
+      }
+      if (currentPage < totalPages - 1) {
+        navRow.push({ text: "Вперед ➡️", callback_data: `adm:find:${encodeURIComponent(cleanQ)}:${currentPage + 1}` });
+      }
+      if (navRow.length > 0) rows.push(navRow);
+
+      const markup = { inline_keyboard: rows };
+
+      if (editMsgId) {
+        await api("editMessageText", {
+          chat_id: targetChatId,
+          message_id: editMsgId,
+          text: header,
+          parse_mode: "HTML",
+          reply_markup: markup,
+        });
+      } else {
+        await api("sendMessage", {
+          chat_id: targetChatId,
+          text: header,
+          parse_mode: "HTML",
+          reply_markup: markup,
+        });
+      }
+    };
+
     const resolveTargetUserId = async (query) => {
       if (!query) return null;
       const s = String(query).trim();
@@ -1974,55 +2138,13 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       const cleanUname = s.replace(/^@/, "").toLowerCase();
       if (!cleanUname) return null;
 
-      if (KV) {
-        try {
-          const cached = await KV.get("uname:" + cleanUname);
-          if (cached) return cached;
-          const rawRecent = await KV.get("recent_bot_users");
-          if (rawRecent) {
-            const list = JSON.parse(rawRecent);
-            const found = list.find(u => (u.username || "").toLowerCase() === cleanUname);
-            if (found) {
-              await KV.put("uname:" + cleanUname, String(found.id), { expirationTtl: 2592000 });
-              return String(found.id);
-            }
-          }
-        } catch {}
-      }
-
-      if (env.FIREBASE_API_KEY) {
-        try {
-          const fsQuery = {
-            structuredQuery: {
-              from: [{ collectionId: "users" }],
-              where: {
-                fieldFilter: {
-                  field: { fieldPath: "username" },
-                  op: "EQUAL",
-                  value: { stringValue: cleanUname }
-                }
-              },
-              limit: 1
-            }
-          };
-          const res = await fetch(`https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents:runQuery?key=${env.FIREBASE_API_KEY}`, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify(fsQuery)
-          });
-          if (res.ok) {
-            const data = await res.json();
-            const doc = data?.[0]?.document;
-            if (doc?.fields?.id?.stringValue) {
-              const uid = doc.fields.id.stringValue;
-              if (KV) await KV.put("uname:" + cleanUname, uid, { expirationTtl: 2592000 });
-              return uid;
-            }
-          }
-        } catch (e) {
-          console.error("Firestore username lookup error:", e);
-        }
-      }
+      const all = await getAllUsers();
+      const found = all.find(u =>
+        (u.username || "").toLowerCase() === cleanUname ||
+        (u.name || "").toLowerCase() === cleanUname ||
+        String(u.id) === cleanUname
+      );
+      if (found) return found.id;
       return null;
     };
 
@@ -2034,6 +2156,11 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
           if (raw) Object.assign(info, JSON.parse(raw));
         } catch {}
       }
+      if (info.name === "Користувач" || !info.username) {
+        const all = await getAllUsers();
+        const found = all.find(u => String(u.id) === String(uid));
+        if (found) Object.assign(info, found);
+      }
       if (!info.group || info.group === "не обрано") {
         const p = await getPrefs(uid);
         if (p?.group) info.group = p.group;
@@ -2043,156 +2170,88 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
 
     const handleAdminAction = async (msgText, currentMsg, activeChatId) => {
       const cleanText = (msgText || "").trim();
+      if (!cleanText) return false;
+
+      const firstToken = cleanText.split(/\s+/)[0] || "";
+      const cmd = firstToken.toLowerCase().replace(/@\w+$/, "");
+      const remainder = cleanText.slice(firstToken.length).trim();
 
       // 1. Exit active direct chat session
-      if (cleanText === "/stop" || cleanText === "/close" || cleanText === "/exit") {
+      if (cmd === "/stop" || cmd === "/close" || cmd === "/exit") {
         if (KV) await KV.delete("active_chat:" + activeChatId);
         await api("sendMessage", {
           chat_id: activeChatId,
-          text: "⏹ <b>Режим прямого діалогу завершено.</b> Повідомлення більше не пересилаються користувачу.",
+          text: "⏹ <b>Режим прямого діалогу завершено.</b> Повідомлення більше не пересилаються користувачу.\n\n<i>Щоб знову комусь написати:</i> /users <i>або</i> <code>/find &lt;ім'я&gt;</code>",
           parse_mode: "HTML",
           reply_to_message_id: currentMsg?.message_id,
         });
         return true;
       }
 
-      // 2. /users or /recent
-      if (cleanText === "/users" || cleanText === "/recent") {
-        let list = [];
-        if (KV) {
-          try {
-            const raw = await KV.get("recent_bot_users");
-            if (raw) list = JSON.parse(raw);
-          } catch {}
-        }
-        if (!list.length && KV) {
-          try {
-            const page = await KV.list({ prefix: "u:", limit: 15 });
-            for (const k of page.keys) {
-              const uId = k.name.slice(2);
-              const card = await getUserCardInfo(uId);
-              list.push(card);
-            }
-          } catch {}
-        }
-
-        if (!list.length) {
-          await api("sendMessage", {
-            chat_id: activeChatId,
-            text: "👥 <b>Список користувачів порожній.</b> Зачекайте на перші взаємодії студентів з ботом.",
-            parse_mode: "HTML",
-            reply_to_message_id: currentMsg?.message_id,
-          });
-          return true;
-        }
-
-        let out = `👥 <b>Останні активні користувачі (${list.length}):</b>\n\n`;
-        list.slice(0, 15).forEach((u, i) => {
-          const nameStr = escapeHtml(u.name || "Студент");
-          const unameStr = u.username ? `@${escapeHtml(u.username)}` : "немає";
-          const grpStr = escapeHtml(u.group || "ФЕП");
-          out += `${i + 1}. <b>${nameStr}</b> (${unameStr}) — ${grpStr}\n`;
-          out += `   └ 💬 <code>/chat ${u.id}</code> · <code>#id${u.id}</code>\n\n`;
-        });
-        out += `💡 <i>Натисніть на команду <code>/chat &lt;id&gt;</code>, щоб розпочати постійний діалог, або <code>/send &lt;id&gt; &lt;текст&gt;</code>.</i>`;
-
+      // 2. /id or /status
+      if (cmd === "/id" || cmd === "/status") {
+        const uId = String(currentMsg?.from?.id || "");
         await api("sendMessage", {
           chat_id: activeChatId,
-          text: out,
+          text: `ℹ️ <b>Статус бота:</b> активний\n🆔 <b>Chat ID:</b> <code>${activeChatId}</code>\n👤 <b>Ваш Telegram ID:</b> <code>${uId}</code>`,
           parse_mode: "HTML",
           reply_to_message_id: currentMsg?.message_id,
         });
         return true;
       }
 
-      // 3. /find or /user or /search
-      if (cleanText.startsWith("/find") || cleanText.startsWith("/user ") || cleanText.startsWith("/search ")) {
-        const query = cleanText.replace(/^\/(find|user|search)\s+/i, "").trim().toLowerCase();
-        if (!query) {
-          await api("sendMessage", {
-            chat_id: activeChatId,
-            text: "ℹ️ <b>Формат пошуку:</b>\n<code>/find &lt;юзернейм, ім'я або група&gt;</code>",
-            parse_mode: "HTML",
-            reply_to_message_id: currentMsg?.message_id,
-          });
-          return true;
-        }
-
-        let matches = [];
-        if (KV) {
-          try {
-            const raw = await KV.get("recent_bot_users");
-            if (raw) {
-              const all = JSON.parse(raw);
-              matches = all.filter(u =>
-                (u.username || "").toLowerCase().includes(query) ||
-                (u.name || "").toLowerCase().includes(query) ||
-                (u.group || "").toLowerCase().includes(query) ||
-                String(u.id).includes(query)
-              );
-            }
-          } catch {}
-        }
-
-        if (!matches.length) {
-          const directUid = await resolveTargetUserId(query);
-          if (directUid) {
-            const card = await getUserCardInfo(directUid);
-            matches.push(card);
-          }
-        }
-
-        if (!matches.length) {
-          await api("sendMessage", {
-            chat_id: activeChatId,
-            text: `😕 За запитом «${escapeHtml(query)}» користувачів не знайдено.\nСпробуйте ввести точний Telegram ID або @username.`,
-            parse_mode: "HTML",
-            reply_to_message_id: currentMsg?.message_id,
-          });
-          return true;
-        }
-
-        let out = `🔎 <b>Знайдено користувачів (${matches.length}):</b>\n\n`;
-        matches.slice(0, 10).forEach((u, i) => {
-          const nameStr = escapeHtml(u.name || "Студент");
-          const unameStr = u.username ? `@${escapeHtml(u.username)}` : "немає";
-          out += `${i + 1}. <b>${nameStr}</b> (${unameStr}) — ${escapeHtml(u.group || "ФЕП")}\n`;
-          out += `   └ 💬 <code>/chat ${u.id}</code> · <code>#id${u.id}</code>\n\n`;
-        });
-        out += `💡 <i>Натисніть на команду <code>/chat &lt;id&gt;</code> для відкриття прямого діалогу.</i>`;
-
-        await api("sendMessage", {
-          chat_id: activeChatId,
-          text: out,
-          parse_mode: "HTML",
-          reply_to_message_id: currentMsg?.message_id,
-        });
+      // 3. /users or /recent
+      if (cmd === "/users" || cmd === "/recent") {
+        await renderSearchResults(remainder, activeChatId, 0);
         return true;
       }
 
-      // 4. /chat or /talk
-      if (cleanText.startsWith("/chat") || cleanText.startsWith("/talk") || (cleanText.startsWith("/dm") && !cleanText.includes(" "))) {
-        const parts = cleanText.split(/\s+/);
-        const targetParam = parts[1];
-        if (!targetParam) {
+      // 4. /find or /user or /search
+      if (cmd === "/find" || cmd === "/user" || cmd === "/search") {
+        if (!remainder) {
           await api("sendMessage", {
             chat_id: activeChatId,
-            text: "ℹ️ <b>Формат команди:</b>\n<code>/chat &lt;id або @username&gt;</code>\n\nПриклад:\n<code>/chat 918235475</code>\n<code>/chat @taras</code>\n\nДля перегляду списку останніх користувачів: /users",
+            text: "ℹ️ <b>Формат пошуку:</b>\n<code>/find &lt;юзернейм, ім'я або група&gt;</code>\n\nМожна шукати навіть по одній букві або цифрі, наприклад: <code>/find м</code> або <code>/find 21</code>",
             parse_mode: "HTML",
             reply_to_message_id: currentMsg?.message_id,
           });
           return true;
         }
 
-        const targetUid = await resolveTargetUserId(targetParam);
+        await renderSearchResults(remainder, activeChatId, 0);
+        return true;
+      }
+
+      // 5. /chat or /talk
+      if (cmd === "/chat" || cmd === "/talk") {
+        if (!remainder) {
+          await api("sendMessage", {
+            chat_id: activeChatId,
+            text: "ℹ️ <b>Формат команди:</b>\n<code>/chat &lt;id або @username або ім'я&gt;</code>\n\nПриклад:\n<code>/chat 918235475</code>\n<code>/chat @taras</code>\n<code>/chat мілана</code>\n\nДля перегляду списку всіх користувачів: /users",
+            parse_mode: "HTML",
+            reply_to_message_id: currentMsg?.message_id,
+          });
+          return true;
+        }
+
+        let targetUid = await resolveTargetUserId(remainder);
         if (!targetUid) {
-          await api("sendMessage", {
-            chat_id: activeChatId,
-            text: `❌ Користувача «<b>${escapeHtml(targetParam)}</b>» не знайдено.\nПеревірте Telegram ID або @username, або скористайтесь /users.`,
-            parse_mode: "HTML",
-            reply_to_message_id: currentMsg?.message_id,
-          });
-          return true;
+          // Search candidates
+          const matches = await searchUsers(remainder);
+          if (matches.length === 1) {
+            targetUid = matches[0].id;
+          } else if (matches.length > 1) {
+            await renderSearchResults(remainder, activeChatId, 0);
+            return true;
+          } else {
+            await api("sendMessage", {
+              chat_id: activeChatId,
+              text: `❌ Користувача «<b>${escapeHtml(remainder)}</b>» не знайдено.\nСпробуйте пошук: <code>/find ${escapeHtml(remainder)}</code> або відкрийте <code>/users</code>.`,
+              parse_mode: "HTML",
+              reply_to_message_id: currentMsg?.message_id,
+            });
+            return true;
+          }
         }
 
         if (KV) await KV.put("active_chat:" + activeChatId, targetUid, { expirationTtl: 86400 });
@@ -2204,22 +2263,27 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
           `🎓 <b>Група:</b> ${escapeHtml(uinfo.group)}\n` +
           `🆔 <b>ID:</b> <code>#id${targetUid}</code>\n\n` +
           `💬 <b>Тепер надсилайте сюди будь-що:</b> текст, фото, голосові, кружечки, файли, стікери — вони будуть миттєво доставлені студенту від імені бота!\n\n` +
-          `👉 <i>Для завершення надішліть:</i> <code>/stop</code>`;
+          `👉 <i>Для завершення натисніть кнопку нижче або надішліть:</i> <code>/stop</code>`;
 
         await api("sendMessage", {
           chat_id: activeChatId,
           text: cardText,
           parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "⏹ Завершити діалог", callback_data: "adm:stop" }]
+            ]
+          },
           reply_to_message_id: currentMsg?.message_id,
         });
         return true;
       }
 
-      // 5. /send, /reply, /write, /dm, /msg
-      if (/^\/(send|reply|write|dm|msg)\b/i.test(cleanText)) {
-        const parts = cleanText.split(/\s+/);
-        const targetParam = parts[1];
-        const replyBody = parts.slice(2).join(" ");
+      // 6. /send, /reply, /write, /dm, /msg
+      if (cmd === "/send" || cmd === "/reply" || cmd === "/write" || cmd === "/dm" || cmd === "/msg") {
+        const parts = remainder.split(/\s+/);
+        const targetParam = parts[0];
+        const replyBody = parts.slice(1).join(" ");
 
         if (targetParam) {
           const targetUid = await resolveTargetUserId(targetParam);
@@ -2277,6 +2341,27 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
           }
           return true;
         }
+      }
+
+      // 7. /help or /admin
+      if (cmd === "/help" || cmd === "/admin") {
+        const helpText =
+          `🛠 <b>Панель керування та підтримки:</b>\n\n` +
+          `👥 <code>/users</code> — переглянути всіх користувачів з кнопками вибору\n` +
+          `🔎 <code>/find &lt;запит&gt;</code> — пошук по імені, прізвищу, @username або групі (працює навіть по одній літері або цифрі)\n` +
+          `💬 <code>/chat &lt;id або ім'я&gt;</code> — розпочати постійний діалог з користувачем від імені бота\n` +
+          `⏹ <code>/stop</code> — завершити активний діалог\n` +
+          `✉️ <code>/send &lt;id&gt; &lt;текст&gt;</code> — надіслати швидке повідомлення користувачу\n` +
+          `ℹ️ <code>/id</code> — перевірити ID поточного чату та свій ID\n\n` +
+          `💡 <i>Також можна просто зробити <b>Reply</b> на будь-яке повідомлення студента в групі підтримки, щоб відповісти йому!</i>`;
+
+        await api("sendMessage", {
+          chat_id: activeChatId,
+          text: helpText,
+          parse_mode: "HTML",
+          reply_to_message_id: currentMsg?.message_id,
+        });
+        return true;
       }
 
       return false;
@@ -2426,6 +2511,102 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
     const fromUser = msg?.from ?? cb?.from;
     if (fromUser) await saveUserToFirebase(fromUser);
 
+    // Admin interactive callbacks (works in both support group and private messages)
+    if (cb && cb.data && cb.data.startsWith("adm:")) {
+      const isXmice = (fromUser?.username ?? "").toLowerCase().replace("@", "") === "xmice" || userId === ADMIN_USER_ID;
+      const isGroup = isSupportGroup(chatId);
+
+      if (!isGroup && !isXmice) {
+        await answer(cb.id, "⛔ Немає доступу");
+        return new Response("OK");
+      }
+
+      const cbData = cb.data;
+
+      if (cbData === "adm:noop") {
+        await answer(cb.id);
+        return new Response("OK");
+      }
+
+      if (cbData === "adm:stop") {
+        if (KV) await KV.delete("active_chat:" + chatId);
+        await answer(cb.id, "⏹ Діалог завершено");
+        const stopText =
+          "⏹ <b>Режим прямого діалогу завершено.</b> Повідомлення більше не пересилаються користувачу.\n\n" +
+          "<i>Щоб знову комусь написати:</i> /users <i>або</i> <code>/find &lt;ім'я&gt;</code>";
+        try {
+          await api("editMessageText", {
+            chat_id: chatId,
+            message_id: cb.message.message_id,
+            text: stopText,
+            parse_mode: "HTML",
+          });
+        } catch {
+          await api("sendMessage", {
+            chat_id: chatId,
+            text: stopText,
+            parse_mode: "HTML",
+          });
+        }
+        return new Response("OK");
+      }
+
+      if (cbData.startsWith("adm:chat:")) {
+        const targetUid = cbData.split(":")[2];
+        if (targetUid) {
+          if (KV) await KV.put("active_chat:" + chatId, targetUid, { expirationTtl: 86400 });
+          const uinfo = await getUserCardInfo(targetUid);
+          await answer(cb.id, `🟢 Діалог з ${uinfo.name || "користувачем"} розпочато!`);
+
+          const cardText =
+            `🟢 <b>Режим прямого діалогу активовано!</b>\n\n` +
+            `👤 <b>Користувач:</b> <a href="tg://user?id=${targetUid}">${escapeHtml(uinfo.name)}</a> ${uinfo.username ? `(@${escapeHtml(uinfo.username)})` : ""}\n` +
+            `🎓 <b>Група:</b> ${escapeHtml(uinfo.group)}\n` +
+            `🆔 <b>ID:</b> <code>#id${targetUid}</code>\n\n` +
+            `💬 <b>Тепер надсилайте сюди будь-що:</b> текст, фото, голосові, кружечки, файли, стікери — вони будуть миттєво доставлені студенту від імені бота!\n\n` +
+            `👉 <i>Для завершення натисніть кнопку нижче або надішліть:</i> <code>/stop</code>`;
+
+          try {
+            await api("editMessageText", {
+              chat_id: chatId,
+              message_id: cb.message.message_id,
+              text: cardText,
+              parse_mode: "HTML",
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "⏹ Завершити діалог", callback_data: "adm:stop" }]
+                ]
+              },
+            });
+          } catch {
+            await api("sendMessage", {
+              chat_id: chatId,
+              text: cardText,
+              parse_mode: "HTML",
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "⏹ Завершити діалог", callback_data: "adm:stop" }]
+                ]
+              },
+            });
+          }
+        }
+        return new Response("OK");
+      }
+
+      const findMatch = cbData.match(/^adm:find:(.*?):(-?\d+)$/);
+      if (findMatch) {
+        const q = decodeURIComponent(findMatch[1] || "");
+        const p = parseInt(findMatch[2], 10) || 0;
+        await answer(cb.id);
+        await renderSearchResults(q, chatId, p, cb.message.message_id);
+        return new Response("OK");
+      }
+
+      await answer(cb.id);
+      return new Response("OK");
+    }
+
     if (isSupportGroup(chatId)) {
       if (KV) await KV.put("active_support_group_id", String(chatId));
 
@@ -2449,7 +2630,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
 
       // Check active direct chat session in the support group
       const activeTargetId = KV ? await KV.get("active_chat:" + chatId) : null;
-      if (activeTargetId) {
+      if (activeTargetId && msg) {
         const sendRes = await api("copyMessage", {
           chat_id: activeTargetId,
           from_chat_id: chatId,
@@ -2796,10 +2977,23 @@ if (data === "link:site") {
 
       const sUser = studentMsg?.from || fromUser;
       const sUserId = String(sUser?.id || userId);
-      const sFullName = [sUser?.first_name, sUser?.last_name].filter(Boolean).join(" ") || "Студент";
-      const sUsername = sUser?.username ? `@${sUser.username}` : "немає";
+      const sFullName = [sUser?.first_name, sUser?.last_name].filter(Boolean).join(" ");
+      const sUsername = sUser?.username ? `@${sUser.username}` : "";
       const sGroup = studentPrefs?.group || "не обрано";
       const sSubgroup = studentPrefs?.subgroup ? subLabel(studentPrefs.subgroup) : "всі";
+
+      let userTag = "";
+      if (sUsername && sFullName) {
+        userTag = `${sUsername} (${sFullName})`;
+      } else if (sUsername) {
+        userTag = sUsername;
+      } else if (sFullName) {
+        userTag = sFullName;
+      } else {
+        userTag = "Студент";
+      }
+
+      const signature = `by ${userTag} (#id${sUserId})`;
 
       const lastUser = KV ? await KV.get("sup_last_user") : null;
       let headerRes = null;
@@ -2807,10 +3001,10 @@ if (data === "link:site") {
       if (lastUser !== sUserId) {
         const headerHtml =
           `📩 <b>Нове повідомлення від студента</b>\n` +
-          `👤 <b>Користувач:</b> <a href="tg://user?id=${sUserId}">${escapeHtml(sFullName)}</a> (${escapeHtml(sUsername)})\n` +
+          `👤 <b>Користувач:</b> <a href="tg://user?id=${sUserId}">${escapeHtml(sFullName || "Студент")}</a> (${escapeHtml(sUsername || "немає ніка")})\n` +
           `🎓 <b>Група:</b> ${escapeHtml(sGroup)} (підгрупа: ${escapeHtml(sSubgroup)})\n` +
           `🆔 <b>ID:</b> <code>#id${sUserId}</code>\n\n` +
-          `<i>Зробіть Reply на це повідомлення, щоб відповісти студенту від імені бота 👇</i>`;
+          `<i>Зробіть Reply на будь-яке повідомлення, щоб відповісти студенту від імені бота 👇</i>`;
 
         headerRes = await api("sendMessage", {
           chat_id: activeGroup,
@@ -2831,28 +3025,109 @@ if (data === "link:site") {
         if (KV) await KV.put("sup_last_user", sUserId, { expirationTtl: 300 });
       }
 
-      let copyRes = await api("copyMessage", {
-        chat_id: activeGroup,
-        from_chat_id: chatId,
-        message_id: studentMsg.message_id,
-      });
+      let sentMsgId = null;
 
-      if (!copyRes?.ok && copyRes?.parameters?.migrate_to_chat_id) {
-        activeGroup = String(copyRes.parameters.migrate_to_chat_id);
-        if (KV) await KV.put("active_support_group_id", activeGroup);
-        copyRes = await api("copyMessage", {
+      if (studentMsg.text) {
+        // Text message: append signature at bottom
+        const sigHtml = `\n\n<i>by ${escapeHtml(userTag)} (<code>#id${sUserId}</code>)</i>`;
+        let textToSend = escapeHtml(studentMsg.text) + sigHtml;
+        if (textToSend.length > 4000) {
+          const maxBody = 4000 - sigHtml.length;
+          textToSend = escapeHtml(studentMsg.text.slice(0, maxBody)) + "..." + sigHtml;
+        }
+
+        let sentRes = await api("sendMessage", {
           chat_id: activeGroup,
-          from_chat_id: chatId,
-          message_id: studentMsg.message_id,
+          text: textToSend,
+          parse_mode: "HTML",
         });
+
+        if (!sentRes?.ok && sentRes?.parameters?.migrate_to_chat_id) {
+          activeGroup = String(sentRes.parameters.migrate_to_chat_id);
+          if (KV) await KV.put("active_support_group_id", activeGroup);
+          sentRes = await api("sendMessage", {
+            chat_id: activeGroup,
+            text: textToSend,
+            parse_mode: "HTML",
+          });
+        }
+        sentMsgId = sentRes?.result?.message_id;
+      } else {
+        // Media messages: photo, video, audio, document, voice, sticker, etc.
+        const canHaveCaption = Boolean(
+          studentMsg.photo ||
+          studentMsg.video ||
+          studentMsg.audio ||
+          studentMsg.document ||
+          studentMsg.animation ||
+          studentMsg.voice
+        );
+
+        if (canHaveCaption) {
+          const baseCaption = studentMsg.caption ? `${studentMsg.caption}\n\n` : "";
+          let mediaCaption = `${baseCaption}${signature}`;
+          if (mediaCaption.length > 1024) {
+            const maxBase = 1020 - signature.length;
+            mediaCaption = `${studentMsg.caption.slice(0, maxBase)}...\n\n${signature}`;
+          }
+
+          let copyRes = await api("copyMessage", {
+            chat_id: activeGroup,
+            from_chat_id: chatId,
+            message_id: studentMsg.message_id,
+            caption: mediaCaption,
+          });
+
+          if (!copyRes?.ok && copyRes?.parameters?.migrate_to_chat_id) {
+            activeGroup = String(copyRes.parameters.migrate_to_chat_id);
+            if (KV) await KV.put("active_support_group_id", activeGroup);
+            copyRes = await api("copyMessage", {
+              chat_id: activeGroup,
+              from_chat_id: chatId,
+              message_id: studentMsg.message_id,
+              caption: mediaCaption,
+            });
+          }
+          sentMsgId = copyRes?.result?.message_id;
+        } else {
+          // Stickers, video notes (кружечки), etc. that cannot have a caption
+          let copyRes = await api("copyMessage", {
+            chat_id: activeGroup,
+            from_chat_id: chatId,
+            message_id: studentMsg.message_id,
+          });
+
+          if (!copyRes?.ok && copyRes?.parameters?.migrate_to_chat_id) {
+            activeGroup = String(copyRes.parameters.migrate_to_chat_id);
+            if (KV) await KV.put("active_support_group_id", activeGroup);
+            copyRes = await api("copyMessage", {
+              chat_id: activeGroup,
+              from_chat_id: chatId,
+              message_id: studentMsg.message_id,
+            });
+          }
+          sentMsgId = copyRes?.result?.message_id;
+
+          if (sentMsgId) {
+            const badgeRes = await api("sendMessage", {
+              chat_id: activeGroup,
+              text: `<i>by ${escapeHtml(userTag)} (<code>#id${sUserId}</code>)</i>`,
+              parse_mode: "HTML",
+              reply_to_message_id: sentMsgId,
+            });
+            if (KV && badgeRes?.result?.message_id) {
+              await KV.put(`sup:${badgeRes.result.message_id}`, sUserId, { expirationTtl: 604800 });
+            }
+          }
+        }
       }
 
       if (KV) {
         if (headerRes?.result?.message_id) {
           await KV.put(`sup:${headerRes.result.message_id}`, sUserId, { expirationTtl: 604800 });
         }
-        if (copyRes?.result?.message_id) {
-          await KV.put(`sup:${copyRes.result.message_id}`, sUserId, { expirationTtl: 604800 });
+        if (sentMsgId) {
+          await KV.put(`sup:${sentMsgId}`, sUserId, { expirationTtl: 604800 });
         }
       }
 
