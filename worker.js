@@ -1413,7 +1413,7 @@ export default {
       let isAuthed = false;
       if (adminUser) {
         const u = String(adminUser).toLowerCase().replace("@", "");
-        if (u === "xmice" || String(adminUser) === String(env.ADMIN_USER_ID ?? "")) {
+        if (u === "xmice" || String(adminUser) === String(env.ADMIN_USER_ID || "918235475")) {
           isAuthed = true;
         }
       }
@@ -1549,9 +1549,24 @@ export default {
     
     
     
-    const KV         = env.PREFS_KV ?? null;
-    const WORKER_URL = env.WORKER_URL ?? "";
-    const SITE_URL   = env.SITE_URL ?? "https://xmice7.github.io/sitetg/";
+    const KV               = env.PREFS_KV ?? null;
+    const WORKER_URL       = env.WORKER_URL ?? "";
+    const SITE_URL         = env.SITE_URL ?? "https://xmice7.github.io/sitetg/";
+    const SUPPORT_GROUP_ID = String(env.SUPPORT_GROUP_ID || "-5380258098");
+    const ADMIN_USER_ID    = String(env.ADMIN_USER_ID || "918235475");
+
+    const isSupportGroup = (cId) => {
+      const s = String(cId || "");
+      const base = SUPPORT_GROUP_ID.replace(/^-100/, "").replace(/^-/, "");
+      return s === `-${base}` || s === `-100${base}` || s === SUPPORT_GROUP_ID;
+    };
+
+    const escapeHtml = (s) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
 
     
     
@@ -2030,6 +2045,100 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
     const fromUser = msg?.from ?? cb?.from;
     if (fromUser) await saveUserToFirebase(fromUser);
 
+    if (isSupportGroup(chatId)) {
+      if (KV) await KV.put("active_support_group_id", String(chatId));
+
+      if (msg?.migrate_to_chat_id && KV) {
+        await KV.put("active_support_group_id", String(msg.migrate_to_chat_id));
+      }
+
+      const groupText = msg?.text ? msg.text.trim() : "";
+      if (groupText === "/id" || groupText === "/status") {
+        await api("sendMessage", {
+          chat_id: chatId,
+          text: `ℹ️ <b>Статус бота:</b> активний\n🆔 <b>Chat ID:</b> <code>${chatId}</code>\n👤 <b>Ваш Telegram ID:</b> <code>${userId}</code>`,
+          parse_mode: "HTML",
+          reply_to_message_id: msg?.message_id,
+        });
+        return new Response("OK");
+      }
+
+      if (groupText.startsWith("/reply")) {
+        const parts = groupText.split(/\s+/);
+        const manualTarget = parts[1]?.replace(/^#?id/i, "").replace(/[^\d]/g, "");
+        const replyBody = parts.slice(2).join(" ");
+        if (manualTarget && replyBody) {
+          const sendRes = await api("sendMessage", {
+            chat_id: manualTarget,
+            text: replyBody,
+          });
+          if (sendRes?.ok) {
+            await api("setMessageReaction", {
+              chat_id: chatId,
+              message_id: msg.message_id,
+              reaction: [{ type: "emoji", emoji: "👍" }],
+            }).catch(() => null);
+          } else {
+            await api("sendMessage", {
+              chat_id: chatId,
+              text: `⚠️ Не вдалося надіслати до <code>#id${manualTarget}</code>: ${escapeHtml(sendRes?.description || "помилка")}`,
+              parse_mode: "HTML",
+              reply_to_message_id: msg.message_id,
+            });
+          }
+          return new Response("OK");
+        } else {
+          await api("sendMessage", {
+            chat_id: chatId,
+            text: "ℹ️ <b>Формат команди:</b>\n<code>/reply &lt;user_id&gt; &lt;текст відповіді&gt;</code>\n\nАбо просто зробіть Telegram Reply на повідомлення студента.",
+            parse_mode: "HTML",
+            reply_to_message_id: msg.message_id,
+          });
+          return new Response("OK");
+        }
+      }
+
+      if (msg?.reply_to_message) {
+        let targetUserId = null;
+        const repMsgId = msg.reply_to_message.message_id;
+
+        if (KV) {
+          targetUserId = await KV.get(`sup:${repMsgId}`);
+        }
+        if (!targetUserId) {
+          const repText = msg.reply_to_message.text || msg.reply_to_message.caption || "";
+          const m = repText.match(/(?:#id|ID:\s*|id:)(\d+)/i);
+          if (m) targetUserId = m[1];
+        }
+
+        if (targetUserId) {
+          const sendRes = await api("copyMessage", {
+            chat_id: targetUserId,
+            from_chat_id: chatId,
+            message_id: msg.message_id,
+          });
+
+          if (sendRes?.ok) {
+            await api("setMessageReaction", {
+              chat_id: chatId,
+              message_id: msg.message_id,
+              reaction: [{ type: "emoji", emoji: "👍" }],
+            }).catch(() => null);
+          } else {
+            await api("sendMessage", {
+              chat_id: chatId,
+              text: `⚠️ Не вдалося надіслати відповідь користувачу <code>#id${targetUserId}</code>: ${escapeHtml(sendRes?.description || "користувач заблокував бота або сталася помилка")}`,
+              parse_mode: "HTML",
+              reply_to_message_id: msg.message_id,
+            });
+          }
+          return new Response("OK");
+        }
+      }
+
+      return new Response("OK");
+    }
+
     if (msg?.successful_payment) {
       const sp = msg.successful_payment;
       const stars = sp.total_amount;
@@ -2307,10 +2416,108 @@ if (data === "link:site") {
       return new Response("OK");
     }
 
-    if (!msg?.text) return new Response("OK");
-    const text = msg.text.trim();
+    const forwardToSupport = async (studentMsg, studentPrefs) => {
+      let activeGroup = (KV ? await KV.get("active_support_group_id") : null) || SUPPORT_GROUP_ID;
+
+      const sUser = studentMsg?.from || fromUser;
+      const sUserId = String(sUser?.id || userId);
+      const sFullName = [sUser?.first_name, sUser?.last_name].filter(Boolean).join(" ") || "Студент";
+      const sUsername = sUser?.username ? `@${sUser.username}` : "немає";
+      const sGroup = studentPrefs?.group || "не обрано";
+      const sSubgroup = studentPrefs?.subgroup ? subLabel(studentPrefs.subgroup) : "всі";
+
+      const lastUser = KV ? await KV.get("sup_last_user") : null;
+      let headerRes = null;
+
+      if (lastUser !== sUserId) {
+        const headerHtml =
+          `📩 <b>Нове повідомлення від студента</b>\n` +
+          `👤 <b>Користувач:</b> <a href="tg://user?id=${sUserId}">${escapeHtml(sFullName)}</a> (${escapeHtml(sUsername)})\n` +
+          `🎓 <b>Група:</b> ${escapeHtml(sGroup)} (підгрупа: ${escapeHtml(sSubgroup)})\n` +
+          `🆔 <b>ID:</b> <code>#id${sUserId}</code>\n\n` +
+          `<i>Зробіть Reply на це повідомлення, щоб відповісти студенту від імені бота 👇</i>`;
+
+        headerRes = await api("sendMessage", {
+          chat_id: activeGroup,
+          text: headerHtml,
+          parse_mode: "HTML",
+        });
+
+        if (!headerRes?.ok && headerRes?.parameters?.migrate_to_chat_id) {
+          activeGroup = String(headerRes.parameters.migrate_to_chat_id);
+          if (KV) await KV.put("active_support_group_id", activeGroup);
+          headerRes = await api("sendMessage", {
+            chat_id: activeGroup,
+            text: headerHtml,
+            parse_mode: "HTML",
+          });
+        }
+
+        if (KV) await KV.put("sup_last_user", sUserId, { expirationTtl: 300 });
+      }
+
+      let copyRes = await api("copyMessage", {
+        chat_id: activeGroup,
+        from_chat_id: chatId,
+        message_id: studentMsg.message_id,
+      });
+
+      if (!copyRes?.ok && copyRes?.parameters?.migrate_to_chat_id) {
+        activeGroup = String(copyRes.parameters.migrate_to_chat_id);
+        if (KV) await KV.put("active_support_group_id", activeGroup);
+        copyRes = await api("copyMessage", {
+          chat_id: activeGroup,
+          from_chat_id: chatId,
+          message_id: studentMsg.message_id,
+        });
+      }
+
+      if (KV) {
+        if (headerRes?.result?.message_id) {
+          await KV.put(`sup:${headerRes.result.message_id}`, sUserId, { expirationTtl: 604800 });
+        }
+        if (copyRes?.result?.message_id) {
+          await KV.put(`sup:${copyRes.result.message_id}`, sUserId, { expirationTtl: 604800 });
+        }
+      }
+
+      const ackKey = `sup_ack:${sUserId}`;
+      const alreadyAcked = KV ? await KV.get(ackKey) : null;
+      if (!alreadyAcked) {
+        if (KV) await KV.put(ackKey, "1", { expirationTtl: 60 });
+        await api("sendMessage", {
+          chat_id: chatId,
+          text: "✅ Ваше повідомлення надіслано адміністратору розкладу. Очікуйте на відповідь!",
+          reply_to_message_id: studentMsg.message_id,
+        });
+      }
+    };
 
     const prefs = await getPrefs(userId);
+
+    if (!msg?.text) {
+      await forwardToSupport(msg, prefs);
+      return new Response("OK");
+    }
+    const text = msg.text.trim();
+
+    const BROADCAST_PASSWORD = env.BROADCAST_PASSWORD ?? "0711";
+    const isXmice = (fromUser?.username ?? "").toLowerCase().replace("@", "") === "xmice" || userId === ADMIN_USER_ID;
+
+    if (text.startsWith("/reply") && isXmice) {
+      const parts = text.split(/\s+/);
+      const manualTarget = parts[1]?.replace(/^#?id/i, "").replace(/[^\d]/g, "");
+      const replyBody = parts.slice(2).join(" ");
+      if (manualTarget && replyBody) {
+        const sendRes = await api("sendMessage", { chat_id: manualTarget, text: replyBody });
+        if (sendRes?.ok) {
+          await sendPlain(chatId, `✅ Відповідь надіслано користувачу <code>#id${manualTarget}</code>`);
+        } else {
+          await sendPlain(chatId, `⚠️ Не вдалося надіслати: ${escapeHtml(sendRes?.description || "помилка")}`);
+        }
+        return new Response("OK");
+      }
+    }
 
     if (text === "/donate" || text.startsWith("/start donate")) {
       const textIntro = "*⭐️ Підтримка розкладу ФЕП*\n\nОберіть кількість зірочок Telegram Stars для підтримки проєкту:";
@@ -2340,8 +2547,6 @@ if (data === "link:site") {
     
     
     
-    const BROADCAST_PASSWORD = env.BROADCAST_PASSWORD ?? "0711";
-    const isXmice = (fromUser?.username ?? "").toLowerCase().replace("@", "") === "xmice" || userId === String(env.ADMIN_USER_ID ?? "");
 
     const clearBroadcastState = async () => {
       const updated = { ...(prefs ?? {}) };
@@ -2605,7 +2810,46 @@ if (text.startsWith("/start code_")) {
     }
 
     
-    await send(chatId, menuText(prefs), kb.main(prefs));
+    if (/^(сьогодні|пар[иі] на сьогодні|розклад на сьогодні)$/i.test(text)) {
+      let info;
+      try { info = await getInfoFor(userId, prefs); }
+      catch { await send(chatId, SCHEDULE_ERROR, kb.main(prefs)); return new Response("OK"); }
+      await send(chatId, formatDay(today, info, prefs), kb.main(prefs));
+      return new Response("OK");
+    }
+
+    if (/^(завтра|пар[иі] на завтра|розклад на завтра)$/i.test(text)) {
+      let info;
+      try { info = await getInfoFor(userId, prefs); }
+      catch { await send(chatId, SCHEDULE_ERROR, kb.main(prefs)); return new Response("OK"); }
+      await send(chatId, formatDay(tomorrow, info, prefs), kb.main(prefs));
+      return new Response("OK");
+    }
+
+    if (/^(тиждень|розклад на тиждень|цей тиждень)$/i.test(text)) {
+      let info;
+      try { info = await getInfoFor(userId, prefs); }
+      catch { await send(chatId, SCHEDULE_ERROR, kb.main(prefs)); return new Response("OK"); }
+      await send(chatId, formatWeek(mondayOf(today), info, prefs), kb.main(prefs));
+      return new Response("OK");
+    }
+
+    if (text === "/menu" || /^(меню|головне меню)$/i.test(text)) {
+      await send(chatId, menuText(prefs), kb.main(prefs));
+      return new Response("OK");
+    }
+
+    if (text === "/help" || text === "/support") {
+      await sendPlain(chatId, "💬 Напишіть сюди будь-яке запитання, відгук або надішліть фото чи голосове повідомлення — і адміністратор відповість вам прямо тут у чаті!");
+      return new Response("OK");
+    }
+
+    if (text.startsWith("/help ") || text.startsWith("/support ")) {
+      await forwardToSupport(msg, prefs);
+      return new Response("OK");
+    }
+
+    await forwardToSupport(msg, prefs);
     return new Response("OK");
   },
 
