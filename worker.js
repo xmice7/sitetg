@@ -1601,6 +1601,39 @@ export default {
       return s === `-${base}` || s === `-100${base}` || s === SUPPORT_GROUP_ID;
     };
 
+    const getActiveChat = async (cId) => {
+      if (!KV || !cId) return null;
+      const s = String(cId);
+      const base = s.replace(/^-100/, "").replace(/^-/, "");
+      return (
+        await KV.get("active_chat:" + s) ||
+        (base ? await KV.get("active_chat:-" + base) : null) ||
+        (base ? await KV.get("active_chat:-100" + base) : null)
+      );
+    };
+
+    const setActiveChat = async (cId, targetUid) => {
+      if (!KV || !cId || !targetUid) return;
+      const s = String(cId);
+      const base = s.replace(/^-100/, "").replace(/^-/, "");
+      await KV.put("active_chat:" + s, String(targetUid), { expirationTtl: 86400 });
+      if (base) {
+        await KV.put("active_chat:-" + base, String(targetUid), { expirationTtl: 86400 });
+        await KV.put("active_chat:-100" + base, String(targetUid), { expirationTtl: 86400 });
+      }
+    };
+
+    const deleteActiveChat = async (cId) => {
+      if (!KV || !cId) return;
+      const s = String(cId);
+      const base = s.replace(/^-100/, "").replace(/^-/, "");
+      await KV.delete("active_chat:" + s);
+      if (base) {
+        await KV.delete("active_chat:-" + base);
+        await KV.delete("active_chat:-100" + base);
+      }
+    };
+
     const escapeHtml = (s) =>
       String(s ?? "")
         .replace(/&/g, "&amp;")
@@ -2178,7 +2211,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
 
       // 1. Exit active direct chat session
       if (cmd === "/stop" || cmd === "/close" || cmd === "/exit") {
-        if (KV) await KV.delete("active_chat:" + activeChatId);
+        await deleteActiveChat(activeChatId);
         await api("sendMessage", {
           chat_id: activeChatId,
           text: "⏹ <b>Режим прямого діалогу завершено.</b> Повідомлення більше не пересилаються користувачу.\n\n<i>Щоб знову комусь написати:</i> /users <i>або</i> <code>/find &lt;ім'я&gt;</code>",
@@ -2254,7 +2287,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
           }
         }
 
-        if (KV) await KV.put("active_chat:" + activeChatId, targetUid, { expirationTtl: 86400 });
+        await setActiveChat(activeChatId, targetUid);
         const uinfo = await getUserCardInfo(targetUid);
 
         const cardText =
@@ -2529,7 +2562,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       }
 
       if (cbData === "adm:stop") {
-        if (KV) await KV.delete("active_chat:" + chatId);
+        await deleteActiveChat(chatId);
         await answer(cb.id, "⏹ Діалог завершено");
         const stopText =
           "⏹ <b>Режим прямого діалогу завершено.</b> Повідомлення більше не пересилаються користувачу.\n\n" +
@@ -2554,7 +2587,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       if (cbData.startsWith("adm:chat:")) {
         const targetUid = cbData.split(":")[2];
         if (targetUid) {
-          if (KV) await KV.put("active_chat:" + chatId, targetUid, { expirationTtl: 86400 });
+          await setActiveChat(chatId, targetUid);
           const uinfo = await getUserCardInfo(targetUid);
           await answer(cb.id, `🟢 Діалог з ${uinfo.name || "користувачем"} розпочато!`);
 
@@ -2629,7 +2662,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       if (handled) return new Response("OK");
 
       // Check active direct chat session in the support group
-      const activeTargetId = KV ? await KV.get("active_chat:" + chatId) : null;
+      const activeTargetId = await getActiveChat(chatId);
       if (activeTargetId && msg) {
         const sendRes = await api("copyMessage", {
           chat_id: activeTargetId,
@@ -3148,12 +3181,12 @@ if (data === "link:site") {
     const isXmice = (fromUser?.username ?? "").toLowerCase().replace("@", "") === "xmice" || userId === ADMIN_USER_ID;
 
     // Check active direct chat session for admin in private chat
-    if (isXmice && KV) {
-      const activeTargetId = await KV.get("active_chat:" + chatId);
+    if (isXmice) {
+      const activeTargetId = await getActiveChat(chatId);
       if (activeTargetId) {
         const adminText = msg?.text ? msg.text.trim() : (msg?.caption ? msg.caption.trim() : "");
         if (adminText === "/stop" || adminText === "/close" || adminText === "/exit") {
-          await KV.delete("active_chat:" + chatId);
+          await deleteActiveChat(chatId);
           await sendPlain(chatId, "⏹ Режим прямого діалогу завершено.");
           return new Response("OK");
         }
