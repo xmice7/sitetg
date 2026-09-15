@@ -1782,8 +1782,8 @@ export default {
           const info = normalizeSchedule(raw);
           if (KV) {
             try {
-              await KV.put(key, JSON.stringify(info), { expirationTtl: 1800 });
-              await KV.put(fallbackKey, JSON.stringify({ ts: Date.now(), schedule: raw }), { expirationTtl: 1209600 });
+              await safeKvPut(key, JSON.stringify(info), { expirationTtl: 1800 });
+              await safeKvPut(fallbackKey, JSON.stringify({ ts: Date.now(), schedule: raw }), { expirationTtl: 1209600 });
             } catch {}
           }
           return info;
@@ -2032,16 +2032,16 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
             const uGroup = userGroup || "";
 
             if (uUser) {
-              await KV.put("uname:" + uUser.toLowerCase(), uidStr, { expirationTtl: 2592000 });
+              await safeKvPut("uname:" + uUser.toLowerCase(), uidStr, { expirationTtl: 2592000 });
             }
-            await KV.put("uinfo:" + uidStr, JSON.stringify({ id: uidStr, name: uName, username: uUser, group: uGroup }), { expirationTtl: 2592000 });
+            await safeKvPut("uinfo:" + uidStr, JSON.stringify({ id: uidStr, name: uName, username: uUser, group: uGroup }), { expirationTtl: 2592000 });
 
             const rawRecent = await KV.get("recent_bot_users");
             let list = rawRecent ? JSON.parse(rawRecent) : [];
             list = list.filter(u => String(u.id) !== uidStr);
             list.unshift({ id: uidStr, name: uName, username: uUser, group: uGroup, ts: Date.now() });
             if (list.length > 30) list = list.slice(0, 30);
-            await KV.put("recent_bot_users", JSON.stringify(list));
+            await safeKvPut("recent_bot_users", JSON.stringify(list));
           } catch (e) {
             console.warn("KV saveUser cache error:", e);
           }
@@ -2693,10 +2693,10 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
     }
 
     if (isSupportGroup(chatId)) {
-      if (KV) await KV.put("active_support_group_id", String(chatId));
+      await safeKvPut("active_support_group_id", String(chatId));
 
-      if (msg?.migrate_to_chat_id && KV) {
-        await KV.put("active_support_group_id", String(msg.migrate_to_chat_id));
+      if (msg?.migrate_to_chat_id) {
+        await safeKvPut("active_support_group_id", String(msg.migrate_to_chat_id));
       }
 
       const groupText = msg?.text ? msg.text.trim() : (msg?.caption ? msg.caption.trim() : "");
@@ -2804,7 +2804,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
             });
           }
           list.sort((a, b) => (b.stars || 0) - (a.stars || 0));
-          await KV.put("stars_leaderboard", JSON.stringify(list));
+          await safeKvPut("stars_leaderboard", JSON.stringify(list));
         } catch (e) {
           console.error("Failed to save donation to leaderboard:", e);
         }
@@ -3430,7 +3430,7 @@ if (prefs?.await_link_code) {
       photo_url:  WORKER_URL ? `${WORKER_URL}/avatar/${msg.from.id}` : "",
     });
 
-    await KV.put(key, userData, { expirationTtl: 600 });
+    await safeKvPut(key, userData, { expirationTtl: 600 });
     await saveUserToFirebase(msg.from);
 
     const updated = { ...(prefs ?? {}) };
@@ -3474,7 +3474,7 @@ if (text.startsWith("/start code_")) {
       photo_url:  WORKER_URL ? `${WORKER_URL}/avatar/${msg.from.id}` : "",
     });
 
-    await KV.put(key, userData, { expirationTtl: 600 });
+    await safeKvPut(key, userData, { expirationTtl: 600 });
     await saveUserToFirebase(msg.from);
 
     await sendPlain(chatId, "Готово. Акаунт прив'язано. Повернись у додаток/сайт - дані підтягнуться автоматично.");
@@ -3509,7 +3509,7 @@ if (text.startsWith("/start code_")) {
         });
 
         
-        await KV.put(`link_token:${linkToken}`, userData, { expirationTtl: 600 });
+        await safeKvPut(`link_token:${linkToken}`, userData, { expirationTtl: 600 });
 
         
         await saveUserToFirebase(msg.from);
