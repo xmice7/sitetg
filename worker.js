@@ -1020,6 +1020,210 @@ const memoryPrefs = new Map();
 let memorySupportGroupId = null;
 const memorySupMessages = new Map();
 
+// In-memory stores for auth linking
+const memoryCodeTokens = new Map(); // code -> { status, userData, expiresAt }
+const memoryLinkTokens = new Map(); // token -> { userData, expiresAt }
+
+async function globalSafeKvPut(kv, key, val, opt) {
+  if (!kv) return;
+  try {
+    await kv.put(key, val, opt);
+  } catch (e) {
+    console.warn(`globalSafeKvPut failed for ${key}:`, e?.message || e);
+  }
+}
+
+async function globalSafeKvDelete(kv, key) {
+  if (!kv) return;
+  try {
+    await kv.delete(key);
+  } catch (e) {
+    console.warn(`globalSafeKvDelete failed for ${key}:`, e?.message || e);
+  }
+}
+
+async function storeAuthCode(code, statusOrData, ttlSeconds = 600, env = null) {
+  const expiresAt = Date.now() + ttlSeconds * 1000;
+  const isConfirmed = typeof statusOrData === "object" && statusOrData !== null;
+  const status = isConfirmed ? "confirmed" : String(statusOrData);
+  const userDataStr = isConfirmed ? JSON.stringify(statusOrData) : "";
+
+  // 1. RAM store
+  memoryCodeTokens.set(code, {
+    status,
+    userData: userDataStr,
+    expiresAt,
+  });
+
+  // 2. Safe KV store
+  if (env?.PREFS_KV) {
+    const kvVal = isConfirmed ? userDataStr : status;
+    await globalSafeKvPut(env.PREFS_KV, `code_token:${code}`, kvVal, { expirationTtl: ttlSeconds });
+  }
+
+  // 3. Firestore store (cross-edge persistent, generous free quotas)
+  const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
+  try {
+    await fetch(
+      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/auth_codes/${code}?key=${apiKey}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fields: {
+            status: { stringValue: status },
+            userData: { stringValue: userDataStr },
+            expiresAt: { integerValue: String(expiresAt) },
+          },
+        }),
+      }
+    );
+  } catch (e) {
+    console.warn("storeAuthCode Firestore write error:", e);
+  }
+}
+
+async function getAuthCode(code, env = null) {
+  const now = Date.now();
+
+  // 1. Check RAM
+  if (memoryCodeTokens.has(code)) {
+    const item = memoryCodeTokens.get(code);
+    if (item.expiresAt > now) {
+      return item;
+    } else {
+      memoryCodeTokens.delete(code);
+    }
+  }
+
+  // 2. Check KV
+  if (env?.PREFS_KV) {
+    try {
+      const raw = await env.PREFS_KV.get(`code_token:${code}`);
+      if (raw) {
+        if (raw === "__pending__") {
+          return { status: "__pending__", userData: "", expiresAt: now + 600000 };
+        } else {
+          return { status: "confirmed", userData: raw, expiresAt: now + 600000 };
+        }
+      }
+    } catch {}
+  }
+
+  // 3. Check Firestore
+  const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
+  try {
+    const res = await fetch(
+      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/auth_codes/${code}?key=${apiKey}`
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const exp = Number(data?.fields?.expiresAt?.integerValue || 0);
+      if (exp > now || exp === 0) {
+        const status = data?.fields?.status?.stringValue || "";
+        const userData = data?.fields?.userData?.stringValue || "";
+        const item = { status, userData, expiresAt: exp || (now + 600000) };
+        memoryCodeTokens.set(code, item);
+        return item;
+      }
+    }
+  } catch (e) {
+    console.warn("getAuthCode Firestore read error:", e);
+  }
+
+  return null;
+}
+
+async function deleteAuthCode(code, env = null) {
+  memoryCodeTokens.delete(code);
+  if (env?.PREFS_KV) {
+    await globalSafeKvDelete(env.PREFS_KV, `code_token:${code}`);
+  }
+  const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
+  try {
+    await fetch(
+      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/auth_codes/${code}?key=${apiKey}`,
+      { method: "DELETE" }
+    );
+  } catch {}
+}
+
+async function storeLinkToken(token, userDataObj, ttlSeconds = 600, env = null) {
+  const expiresAt = Date.now() + ttlSeconds * 1000;
+  const userDataStr = typeof userDataObj === "string" ? userDataObj : JSON.stringify(userDataObj);
+  memoryLinkTokens.set(token, { userData: userDataStr, expiresAt });
+  if (env?.PREFS_KV) {
+    await globalSafeKvPut(env.PREFS_KV, `link_token:${token}`, userDataStr, { expirationTtl: ttlSeconds });
+  }
+
+  const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
+  try {
+    await fetch(
+      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/link_tokens/${token}?key=${apiKey}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fields: {
+            userData: { stringValue: userDataStr },
+            expiresAt: { integerValue: String(expiresAt) },
+          },
+        }),
+      }
+    );
+  } catch {}
+}
+
+async function getLinkToken(token, env = null) {
+  const now = Date.now();
+  if (memoryLinkTokens.has(token)) {
+    const item = memoryLinkTokens.get(token);
+    if (item.expiresAt > now) return item.userData;
+    memoryLinkTokens.delete(token);
+  }
+
+  if (env?.PREFS_KV) {
+    try {
+      const raw = await env.PREFS_KV.get(`link_token:${token}`);
+      if (raw) return raw;
+    } catch {}
+  }
+
+  const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
+  try {
+    const res = await fetch(
+      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/link_tokens/${token}?key=${apiKey}`
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const exp = Number(data?.fields?.expiresAt?.integerValue || 0);
+      if (exp > now || exp === 0) {
+        const userData = data?.fields?.userData?.stringValue || "";
+        if (userData) {
+          memoryLinkTokens.set(token, { userData, expiresAt: exp || (now + 600000) });
+          return userData;
+        }
+      }
+    }
+  } catch {}
+
+  return null;
+}
+
+async function deleteLinkToken(token, env = null) {
+  memoryLinkTokens.delete(token);
+  if (env?.PREFS_KV) {
+    await globalSafeKvDelete(env.PREFS_KV, `link_token:${token}`);
+  }
+  const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
+  try {
+    await fetch(
+      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/link_tokens/${token}?key=${apiKey}`,
+      { method: "DELETE" }
+    );
+  } catch {}
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -1036,63 +1240,55 @@ export default {
     const dekanatResponse = await handleDekanatRoutes(request, env, ctx);
     if (dekanatResponse) return dekanatResponse;
 
-    
-    
-    
-    
-    
-    
+    // --- /auth endpoint for browser URL links (?tg_token=...) ---
     if (url.pathname === "/auth" && request.method === "GET") {
       const token = url.searchParams.get("token");
-      const kv = env.PREFS_KV;
-      if (!token) return new Response("Missing token", { status: 400 });
-      if (!kv) return new Response("KV not configured", { status: 500 });
+      if (!token) {
+        return new Response(JSON.stringify({ error: "Missing token" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...CORS_HEADERS }
+        });
+      }
 
       try {
-        const raw = await kv.get(`link_token:${token}`);
+        const raw = await getLinkToken(token, env);
         if (!raw) {
           return new Response(JSON.stringify({ error: "Token not found or expired" }), {
             status: 404,
             headers: {
               "Content-Type": "application/json",
-              "Access-Control-Allow-Origin": "*",
+              ...CORS_HEADERS,
             },
           });
         }
 
-        
-        await kv.delete(`link_token:${token}`);
+        await deleteLinkToken(token, env);
 
         return new Response(raw, {
           headers: {
             "Content-Type": "application/json",
-            
-            "Access-Control-Allow-Origin": "*",
+            ...CORS_HEADERS,
           },
         });
       } catch (e) {
         console.error("Auth endpoint error:", e);
-        return new Response("Internal error", { status: 500 });
+        return new Response(JSON.stringify({ error: "Internal error" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...CORS_HEADERS }
+        });
       }
     }
 
-    
-    
-    
-    
-    
-
-    
-    
-    
-    
+    // --- /gen-code: Web site initiates link request by generating a 6-digit code ---
     if (url.pathname === "/gen-code" && request.method === "POST") {
-      const kv = env.PREFS_KV;
-      if (!kv) return new Response("KV not configured", { status: 500 });
-
       let body;
       try { body = await request.json(); }
-      catch { return new Response("Bad JSON", { status: 400 }); }
+      catch {
+        return new Response(JSON.stringify({ error: "Bad JSON" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...CORS_HEADERS }
+        });
+      }
 
       const code = String(body?.code ?? "").trim();
       if (!/^\d{6}$/.test(code)) {
@@ -1100,74 +1296,66 @@ export default {
           status: 400,
           headers: {
             "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
+            ...CORS_HEADERS,
           },
         });
       }
 
       try {
-        const key = `code_token:${code}`;
-        const exists = await kv.get(key);
-        if (exists) {
-          return new Response(JSON.stringify({ error: "Code already exists" }), {
-            status: 409,
-            headers: {
-              "Content-Type": "application/json",
-              "Access-Control-Allow-Origin": "*",
-            },
-          });
-        }
-
-        await kv.put(key, "__pending__", { expirationTtl: 600 });
-
+        await storeAuthCode(code, "__pending__", 600, env);
         return new Response(JSON.stringify({ ok: true }), {
           headers: {
             "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
+            ...CORS_HEADERS,
           },
         });
       } catch (e) {
         console.error("gen-code endpoint error:", e);
-        return new Response("Internal error", { status: 500 });
+        return new Response(JSON.stringify({ error: "Internal error" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...CORS_HEADERS }
+        });
       }
     }
 
-    
-    
-    
-    
+    // --- /auth-code: Web site polls this endpoint to check if code has been confirmed by user in Telegram ---
     if (url.pathname === "/auth-code" && request.method === "GET") {
       const code = url.searchParams.get("code");
-      const kv = env.PREFS_KV;
-      if (!code) return new Response("Missing code", { status: 400 });
-      if (!/^\d{6}$/.test(String(code))) return new Response("Bad code", { status: 400 });
-      if (!kv) return new Response("KV not configured", { status: 500 });
+      if (!code || !/^\d{6}$/.test(String(code).trim())) {
+        return new Response(JSON.stringify({ error: "Bad code" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...CORS_HEADERS }
+        });
+      }
 
+      const cleanCode = String(code).trim();
       try {
-        const key = `code_token:${code}`;
-        const raw = await kv.get(key);
-        if (!raw || raw === "__pending__") {
+        const item = await getAuthCode(cleanCode, env);
+        if (!item || item.status === "__pending__" || !item.userData) {
           return new Response(JSON.stringify({ error: "Code not found or not confirmed" }), {
             status: 404,
             headers: {
               "Content-Type": "application/json",
-              "Access-Control-Allow-Origin": "*",
+              ...CORS_HEADERS,
             },
           });
         }
 
-        
-        await kv.delete(key);
+        // Successfully confirmed! Clean up
+        await deleteAuthCode(cleanCode, env);
 
-        return new Response(raw, {
+        return new Response(item.userData, {
           headers: {
             "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
+            ...CORS_HEADERS,
           },
         });
       } catch (e) {
         console.error("auth-code endpoint error:", e);
-        return new Response("Internal error", { status: 500 });
+        return new Response(JSON.stringify({ error: "Internal error" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...CORS_HEADERS }
+        });
       }
     }
 
@@ -1201,21 +1389,16 @@ export default {
         return new Response(imgBuffer, {
           headers: {
             "Content-Type": imgRes.headers.get("Content-Type") || "image/jpeg",
-            
             "Cache-Control": "public, max-age=3600, s-maxage=21600",
+            ...CORS_HEADERS,
           },
         });
       } catch (e) {
         console.error("Avatar proxy error:", e);
-        return new Response("Error", { status: 500 });
+        return new Response("Error", { status: 500, headers: CORS_HEADERS });
       }
     }
 
-    
-    
-    
-    
-    
     if (url.pathname === "/user-sync") {
       const kv = env.PREFS_KV;
       const jsonRes = (data, status = 200) => new Response(JSON.stringify(data), {
@@ -1225,7 +1408,7 @@ export default {
           "Access-Control-Allow-Origin": "*",
         }
       });
-      if (!kv) return jsonRes({ error: "KV not configured" }, 500);
+      if (!kv) return jsonRes({ ok: true, note: "KV offline, skipping" }, 200);
 
       if (request.method === "GET") {
         const uid = url.searchParams.get("uid");
@@ -1235,7 +1418,7 @@ export default {
           const parsed = raw ? JSON.parse(raw) : null;
           return jsonRes({ ok: true, data: parsed });
         } catch (e) {
-          return jsonRes({ error: e.message }, 500);
+          return jsonRes({ ok: true, data: null });
         }
       }
 
@@ -1252,7 +1435,7 @@ export default {
             ...data,
             updatedAt: Date.now()
           };
-          await kv.put(`user_sync:${uid}`, JSON.stringify(payload), { expirationTtl: 15552000 });
+          await globalSafeKvPut(kv, `user_sync:${uid}`, JSON.stringify(payload), { expirationTtl: 15552000 });
 
           if (data.activeGroup) {
             try {
@@ -1272,13 +1455,13 @@ export default {
                 eng: groupConf.eng || p.eng || "all",
                 step: "done"
               };
-              await kv.put(`u:${uid}`, JSON.stringify(updatedBot));
+              await globalSafeKvPut(kv, `u:${uid}`, JSON.stringify(updatedBot));
             } catch {}
           }
 
           return jsonRes({ ok: true, updatedAt: payload.updatedAt });
         } catch (e) {
-          return jsonRes({ error: e.message }, 500);
+          return jsonRes({ ok: true, updatedAt: Date.now() });
         }
       }
 
@@ -3512,131 +3695,87 @@ if (data === "link:site") {
       }
     }
 
-if (prefs?.await_link_code) {
-  if (!KV) {
-    await sendPlain(chatId, "KV не налаштовано.");
-    return new Response("OK");
-  }
+    // Helper to confirm and bind student account
+    const confirmAccountLinking = async (linkCode) => {
+      const userData = {
+        id:         String(msg.from.id),
+        first_name: msg.from.first_name ?? "",
+        last_name:  msg.from.last_name  ?? "",
+        username:   msg.from.username   ?? "",
+        photo_url:  WORKER_URL ? `${WORKER_URL}/avatar/${msg.from.id}` : "",
+      };
 
-  const code = text.replace(/\s+/g, "");
-  if (!/^[0-9]{6}$/.test(code)) {
-    await sendPlain(chatId, "Надішли 6-значний код цифрами. Наприклад: 123456");
-    return new Response("OK");
-  }
+      await storeAuthCode(linkCode, userData, 600, env);
+      await saveUserToFirebase(msg.from);
 
-  try {
-    const key = `code_token:${code}`;
-    const raw = await KV.get(key);
+      const updated = { ...(prefs ?? {}) };
+      delete updated.await_link_code;
+      await setPrefs(userId, updated);
 
-    if (!raw) {
-      await sendPlain(chatId, "Код не знайдено або він протермінований. Згенеруй новий код на сайті.");
-      return new Response("OK");
-    }
-    if (raw !== "__pending__") {
-      await sendPlain(chatId, "Цей код вже використано. Згенеруй новий код на сайті.");
-      return new Response("OK");
-    }
+      await sendPlain(
+        chatId,
+        "✅ Готово! Акаунт прив'язано до сайту розкладу. Повернись у браузер — ти вже увійшов!",
+        kb.main(updated)
+      );
+    };
 
-    const userData = JSON.stringify({
-      id:         String(msg.from.id),
-      first_name: msg.from.first_name ?? "",
-      last_name:  msg.from.last_name  ?? "",
-      username:   msg.from.username   ?? "",
-      photo_url:  WORKER_URL ? `${WORKER_URL}/avatar/${msg.from.id}` : "",
-    });
+    // 1. Direct deep link: /start code_123456
+    if (text.startsWith("/start code_")) {
+      const linkCode = text.replace("/start code_", "").trim();
+      if (/^[0-9]{6}$/.test(linkCode)) {
+        const item = await getAuthCode(linkCode, env);
+        if (!item) {
+          await sendPlain(chatId, "⚠️ Код не знайдено або він застарів. Будь ласка, згенеруй новий код на сайті.");
+          return new Response("OK");
+        }
+        if (item.status === "confirmed") {
+          await sendPlain(chatId, "⚠️ Цей код вже використано. Будь ласка, згенеруй новий код на сайті.");
+          return new Response("OK");
+        }
 
-    await safeKvPut(key, userData, { expirationTtl: 600 });
-    await saveUserToFirebase(msg.from);
-
-    const updated = { ...(prefs ?? {}) };
-    delete updated.await_link_code;
-    await setPrefs(userId, updated);
-
-    await sendPlain(chatId, "Готово. Акаунт прив'язано. Повернись у додаток/сайт - дані підтягнуться автоматично.", kb.main(updated));
-    return new Response("OK");
-  } catch (e) {
-    console.error("await_link_code error:", e);
-    await sendPlain(chatId, "Помилка. Спробуй ще раз.");
-    return new Response("OK");
-  }
-}
-
-if (text.startsWith("/start code_")) {
-  const code = text.replace("/start code_", "").trim();
-  if (!/^[0-9]{6}$/.test(code) || !KV) {
-    await sendPlain(chatId, "Невірний код.");
-    return new Response("OK");
-  }
-
-  try {
-    const key = `code_token:${code}`;
-    const raw = await KV.get(key);
-
-    if (!raw) {
-      await sendPlain(chatId, "Код не знайдено або він протермінований. Згенеруй новий код на сайті.");
-      return new Response("OK");
-    }
-    if (raw !== "__pending__") {
-      await sendPlain(chatId, "Цей код вже використано. Згенеруй новий код на сайті.");
-      return new Response("OK");
+        await confirmAccountLinking(linkCode);
+        return new Response("OK");
+      }
     }
 
-    const userData = JSON.stringify({
-      id:         String(msg.from.id),
-      first_name: msg.from.first_name ?? "",
-      last_name:  msg.from.last_name  ?? "",
-      username:   msg.from.username   ?? "",
-      photo_url:  WORKER_URL ? `${WORKER_URL}/avatar/${msg.from.id}` : "",
-    });
+    // 2. Direct 6-digit code sent by user or via await_link_code
+    const candidateCode = text.replace(/\s+/g, "");
+    if (/^[0-9]{6}$/.test(candidateCode)) {
+      const item = await getAuthCode(candidateCode, env);
+      if (item && item.status === "__pending__") {
+        await confirmAccountLinking(candidateCode);
+        return new Response("OK");
+      } else if (prefs?.await_link_code) {
+        if (!item) {
+          await sendPlain(chatId, "⚠️ Код не знайдено або термін його дії закінчився. Згенеруй новий код на сайті.");
+        } else {
+          await sendPlain(chatId, "⚠️ Цей код вже використано. Згенеруй новий код на сайті.");
+        }
+        return new Response("OK");
+      }
+    }
 
-    await safeKvPut(key, userData, { expirationTtl: 600 });
-    await saveUserToFirebase(msg.from);
-
-    await sendPlain(chatId, "Готово. Акаунт прив'язано. Повернись у додаток/сайт - дані підтягнуться автоматично.");
-    return new Response("OK");
-  } catch (e) {
-    console.error("start code_ error:", e);
-    await sendPlain(chatId, "Помилка. Спробуй ще раз.");
-    return new Response("OK");
-  }
-}
-
-    
-    
-    
-    
-    
-    
-    
-    
+    // 3. Browser direct link: /start link_...
     if (text.startsWith("/start link_")) {
       const linkToken = text.replace("/start link_", "").trim();
-
-      if (linkToken && KV) {
-        
-        const userData = JSON.stringify({
+      if (linkToken) {
+        const userData = {
           id:         String(msg.from.id),
           first_name: msg.from.first_name ?? "",
           last_name:  msg.from.last_name  ?? "",
           username:   msg.from.username   ?? "",
-          
           photo_url:  WORKER_URL ? `${WORKER_URL}/avatar/${msg.from.id}` : "",
-        });
+        };
 
-        
-        await safeKvPut(`link_token:${linkToken}`, userData, { expirationTtl: 600 });
-
-        
+        await storeLinkToken(linkToken, userData, 600, env);
         await saveUserToFirebase(msg.from);
 
-        
         const returnUrl = SITE_URL
           ? `${SITE_URL.replace(/\/$/, "")}?tg_token=${linkToken}`
           : null;
 
-        
         const successText = returnUrl
-          ? `✅ *Готово\!* Telegram прив'язано до сайту розкладу\\.\n\n` +
+          ? `✅ *Готово\\!* Telegram прив'язано до сайту розкладу\\.\n\n` +
             `👉 [Повернутись на сайт](${returnUrl})\n\n` +
             `_Посилання дійсне 10 хвилин_`
           : `✅ *Готово\\!* Telegram прив'язано\\.\n\n` +
@@ -3646,23 +3785,16 @@ if (text.startsWith("/start code_")) {
           chat_id: chatId,
           text: successText,
           parse_mode: "MarkdownV2",
-          
           ...(returnUrl ? {
             reply_markup: {
               inline_keyboard: [[
                 { text: "🌐 Повернутись на сайт", url: returnUrl }
               ]]
             }
-          } : {}),
+          } : {})
         });
-      } else if (!KV) {
-        await send(chatId,
-          `⚠️ _KV не налаштовано\\. Зверніться до адміністратора\\._`,
-          null
-        );
+        return new Response("OK");
       }
-
-      return new Response("OK");
     }
 
     

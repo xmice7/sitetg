@@ -9082,6 +9082,14 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                 const formatted = code.slice(0,2) + ' ' + code.slice(2,4) + ' ' + code.slice(4,6);
                 displayEl.textContent = formatted;
             }
+            const quickBtn = document.getElementById('tg-quick-open-btn');
+            if (quickBtn) {
+                quickBtn.href = 'https://t.me/schedapp_bot?start=code_' + code;
+            }
+            const openLink = document.getElementById('tg-open-bot-link');
+            if (openLink) {
+                openLink.href = 'https://t.me/schedapp_bot?start=code_' + code;
+            }
             if (timerEl) { timerEl.style.color = ''; }
             if (status) { status.style.color = 'var(--text-muted)'; status.textContent = 'Очікуємо підтвердження від бота…'; }
 
@@ -9219,7 +9227,7 @@ if ('serviceWorker' in navigator) {
                 <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
                     <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;">
                         <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;">1</div>
-                        <div style="font-size:13px;color:var(--text-main);">Відкрий бота <a href="https://t.me/schedapp_bot" target="_blank" style="color:#2AABEE;font-weight:700;">@schedapp_bot ↗</a></div>
+                        <div style="font-size:13px;color:var(--text-main);">Відкрий бота <a id="tg-open-bot-link" href="https://t.me/schedapp_bot" target="_blank" style="color:#2AABEE;font-weight:700;">@schedapp_bot ↗</a></div>
                     </div>
                     <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;">
                         <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;">2</div>
@@ -9230,6 +9238,10 @@ if ('serviceWorker' in navigator) {
                         <div style="font-size:13px;color:var(--text-main);">Сайт <strong>автоматично</strong> увійде — нічого більше робити не треба</div>
                     </div>
                 </div>
+
+                <a id="tg-quick-open-btn" href="https://t.me/schedapp_bot" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;background:linear-gradient(135deg,#2AABEE,#229ED9);border-radius:16px;color:#fff;font-size:15px;font-weight:800;text-decoration:none;margin-bottom:14px;box-shadow:0 4px 16px rgba(42,171,238,0.35);transition:opacity 0.2s;">
+                    <span style="font-size:18px;">🚀</span> Підтвердити в 1 клік у Telegram
+                </a>
 
                 
                 <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;">
