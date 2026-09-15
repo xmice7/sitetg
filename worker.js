@@ -856,8 +856,9 @@ async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
     (total ? `📈 *Поточний бал з предмета:* *${total} / 100*\n` : '') +
     `\nПереглянути журнал: у додатку в розділі «Корисне» ➡️ «Мої бали» ↗️`;
 
+  const oldToken = env.OLD_BOT_TOKEN || "8578336635:AAG2VuApAstUwp0dszRnjQVzHjnNCI_CfEI";
   try {
-    await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
+    let r = await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -866,6 +867,21 @@ async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
         parse_mode: "Markdown"
       })
     });
+    let d = await r.json().catch(() => null);
+    if (!d?.ok && oldToken) {
+      await fetch(`https://api.telegram.org/bot${oldToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: tgChatId,
+          text: text + "\n\n⚠️ _Оновіть бота для отримання сповіщень:_ 👇",
+          parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [[{ text: "🚀 Оновити до @schedapp_bot", url: "https://t.me/schedapp_bot" }]]
+          }
+        })
+      });
+    }
   } catch (err) {
     console.error("notifyTelegramNewGrade error:", err);
   }
@@ -1654,7 +1670,6 @@ export default {
       });
 
       if (!token) return jsonRes({ error: "BOT_TOKEN not configured" }, 500);
-      if (!kv) return jsonRes({ error: "KV not configured" }, 500);
 
       let body;
       try { body = await request.json(); }
@@ -1699,11 +1714,18 @@ export default {
 
       const normGroup = (g) => {
         if (!g) return "";
-        const s = String(g).trim().toLowerCase();
-        if (s === "fep11" || s === "феп-11с" || s === "феп11" || s === "феп 11") return "fep11";
-        if (s === "fep12" || s === "феп-12с" || s === "феп12" || s === "феп 12") return "fep12";
-        if (s === "fep13" || s === "феп-13с" || s === "феп13" || s === "феп 13") return "fep13";
-        return s.replace(/[\s\-_]/g, "");
+        let s = String(g).trim().toLowerCase();
+        s = s.replace(/феп/g, "fep")
+             .replace(/фес/g, "fes")
+             .replace(/феі/g, "fei")
+             .replace(/фем/g, "fem")
+             .replace(/фел/g, "fel")
+             .replace(/жрн/g, "zhrn")
+             .replace(/юрд/g, "yurd")
+             .replace(/екп/g, "ekp");
+        s = s.replace(/[\s\-_]/g, "");
+        s = s.replace(/[сcs]$/g, "");
+        return s;
       };
 
       const headerPrefix = !isAll
@@ -1711,24 +1733,62 @@ export default {
         : `📢 *Загальне оголошення:*\n\n`;
       const fullMessage = `${headerPrefix}${cleanText}`;
 
+      const oldToken = env.OLD_BOT_TOKEN || "8578336635:AAG2VuApAstUwp0dszRnjQVzHjnNCI_CfEI";
       const sendTg = async (chatId, msg) => {
         try {
+          // 1. Try sending via current bot (@schedapp_bot)
           let r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: "Markdown" }),
           });
-          let res = await r.json();
-          if (!res.ok) {
-            
+          let res = await r.json().catch(() => null);
+          if (!res?.ok) {
             r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
               method: "POST",
               headers: { "content-type": "application/json" },
               body: JSON.stringify({ chat_id: chatId, text: msg }),
             });
-            res = await r.json();
+            res = await r.json().catch(() => null);
           }
-          return !!res.ok;
+          if (res?.ok) return true;
+
+          // 2. If new bot failed (e.g. 403 Forbidden because student hasn't started @schedapp_bot yet),
+          // fallback to old bot (@shedulefep_bot) with an action button to migrate to @schedapp_bot!
+          if (oldToken) {
+            const migNotice = "\n\n⚠️ _Ми переїхали на нового бота! Натисніть кнопку нижче, щоб оновити:_ 👇";
+            const updateMarkup = {
+              inline_keyboard: [
+                [{ text: "🚀 Перейти в @schedapp_bot", url: "https://t.me/schedapp_bot" }]
+              ]
+            };
+            let rOld = await fetch(`https://api.telegram.org/bot${oldToken}/sendMessage`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: msg + migNotice,
+                parse_mode: "Markdown",
+                reply_markup: updateMarkup
+              }),
+            });
+            let resOld = await rOld.json().catch(() => null);
+            if (!resOld?.ok) {
+              rOld = await fetch(`https://api.telegram.org/bot${oldToken}/sendMessage`, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  text: msg + "\n\n⚠️ Ми переїхали на нового бота @schedapp_bot",
+                  reply_markup: updateMarkup
+                }),
+              });
+              resOld = await rOld.json().catch(() => null);
+            }
+            if (resOld?.ok) return true;
+          }
+
+          return false;
         } catch {
           return false;
         }
@@ -1821,13 +1881,31 @@ export default {
         }
       }
 
-      const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      let r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ chat_id: targetUid, text }),
       });
-      const data = await r.json();
-      return jsonRes(data, data.ok ? 200 : 400);
+      let data = await r.json().catch(() => null);
+      if (!data?.ok) {
+        const oldToken = env.OLD_BOT_TOKEN || "8578336635:AAG2VuApAstUwp0dszRnjQVzHjnNCI_CfEI";
+        if (oldToken) {
+          const rOld = await fetch(`https://api.telegram.org/bot${oldToken}/sendMessage`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              chat_id: targetUid,
+              text: text + "\n\n⚠️ Ми переїхали на нового бота @schedapp_bot",
+              reply_markup: {
+                inline_keyboard: [[{ text: "🚀 Перейти в @schedapp_bot", url: "https://t.me/schedapp_bot" }]]
+              }
+            }),
+          });
+          const dataOld = await rOld.json().catch(() => null);
+          if (dataOld?.ok) return jsonRes(dataOld, 200);
+        }
+      }
+      return jsonRes(data || { ok: false }, data?.ok ? 200 : 400);
     }
 
     
@@ -2147,14 +2225,48 @@ export default {
       const result = { total: 0, sent: 0, failed: 0 };
       const users = await getAllUsers();
       if (!users || !users.length) return result;
+      const oldToken = env.OLD_BOT_TOKEN || "8578336635:AAG2VuApAstUwp0dszRnjQVzHjnNCI_CfEI";
 
       for (const u of users) {
         if (!u.id) continue;
         result.total++;
-        const r = await api("sendMessage", {
+        let r = await api("sendMessage", {
           chat_id: u.id,
           text: messageText,
         });
+        if (!r?.ok && oldToken) {
+          try {
+            const updateMarkup = {
+              inline_keyboard: [
+                [{ text: "🚀 Перейти в @schedapp_bot", url: "https://t.me/schedapp_bot" }]
+              ]
+            };
+            let rOld = await fetch(`https://api.telegram.org/bot${oldToken}/sendMessage`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                chat_id: u.id,
+                text: messageText + "\n\n⚠️ _Ми переїхали на нового бота! Натисніть кнопку нижче, щоб оновити:_ 👇",
+                parse_mode: "Markdown",
+                reply_markup: updateMarkup
+              }),
+            });
+            let resOld = await rOld.json().catch(() => null);
+            if (!resOld?.ok) {
+              rOld = await fetch(`https://api.telegram.org/bot${oldToken}/sendMessage`, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({
+                  chat_id: u.id,
+                  text: messageText + "\n\n⚠️ Ми переїхали на нового бота @schedapp_bot",
+                  reply_markup: updateMarkup
+                }),
+              });
+              resOld = await rOld.json().catch(() => null);
+            }
+            if (resOld?.ok) r = resOld;
+          } catch {}
+        }
         if (r?.ok) result.sent++; else result.failed++;
         await new Promise(r => setTimeout(r, 40));
       }

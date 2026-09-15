@@ -20,5 +20,6 @@ VERCEL_URL = "https://sitetg-kappa.vercel.app"
 WORKER_URL = "https://telegram2.korglosa.workers.dev"
 SUPPORT_GROUP_ID = "-1004491637172"
 ADMIN_USER_ID = "918235475"
+OLD_BOT_TOKEN = "8578336635:AAG2VuApAstUwp0dszRnjQVzHjnNCI_CfEI"
 
 
