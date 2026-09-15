@@ -1224,6 +1224,67 @@ async function deleteLinkToken(token, env = null) {
   } catch {}
 }
 
+async function storeSupMessage(msgId, targetUserId, env = null) {
+  if (!msgId || !targetUserId) return;
+  const sMsgId = String(msgId);
+  const sUserId = String(targetUserId);
+  memorySupMessages.set(sMsgId, sUserId);
+
+  if (env?.PREFS_KV) {
+    await globalSafeKvPut(env.PREFS_KV, `sup:${sMsgId}`, sUserId, { expirationTtl: 604800 });
+  }
+
+  const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
+  try {
+    await fetch(
+      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/sup_messages/${sMsgId}?key=${apiKey}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fields: {
+            userId: { stringValue: sUserId },
+            createdAt: { integerValue: String(Date.now()) },
+          },
+        }),
+      }
+    );
+  } catch {}
+}
+
+async function getSupMessage(msgId, env = null) {
+  if (!msgId) return null;
+  const sMsgId = String(msgId);
+  if (memorySupMessages.has(sMsgId)) return memorySupMessages.get(sMsgId);
+
+  if (env?.PREFS_KV) {
+    try {
+      const v = await env.PREFS_KV.get(`sup:${sMsgId}`);
+      if (v) {
+        memorySupMessages.set(sMsgId, v);
+        return v;
+      }
+    } catch {}
+  }
+
+  const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
+  try {
+    const res = await fetch(
+      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/sup_messages/${sMsgId}?key=${apiKey}`
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const uid = data?.fields?.userId?.stringValue;
+      if (uid) {
+        memorySupMessages.set(sMsgId, uid);
+        return uid;
+      }
+    }
+  } catch {}
+
+  return null;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -1803,8 +1864,15 @@ export default {
     const KV               = env.PREFS_KV ?? null;
     const WORKER_URL       = env.WORKER_URL ?? "";
     const SITE_URL         = env.SITE_URL ?? "https://xmice7.github.io/sitetg/";
-    const SUPPORT_GROUP_ID = String(env.SUPPORT_GROUP_ID || "-5380258098");
+    const SUPPORT_GROUP_ID = String(env.SUPPORT_GROUP_ID || "-1004491637172");
     const ADMIN_USER_ID    = String(env.ADMIN_USER_ID || "918235475");
+
+    const KNOWN_SUPPORT_IDS = new Set([
+      "-1004491637172",
+      "-5380258098",
+      "4491637172",
+      "5380258098",
+    ]);
 
     const getActiveSupportGroupId = async () => {
       if (memorySupportGroupId) return memorySupportGroupId;
@@ -1817,23 +1885,23 @@ export default {
           }
         } catch {}
       }
-      return SUPPORT_GROUP_ID;
+      return SUPPORT_GROUP_ID || "-1004491637172";
     };
 
     const isSupportGroup = (cId) => {
       if (!cId) return false;
       const s = String(cId);
-      const activeId = memorySupportGroupId || SUPPORT_GROUP_ID;
-      const base = activeId.replace(/^-100/, "").replace(/^-/, "");
-      const origBase = SUPPORT_GROUP_ID.replace(/^-100/, "").replace(/^-/, "");
-      return (
-        s === activeId ||
-        s === `-${base}` ||
-        s === `-100${base}` ||
-        s === SUPPORT_GROUP_ID ||
-        s === `-${origBase}` ||
-        s === `-100${origBase}`
-      );
+      const base = s.replace(/^-100/, "").replace(/^-/, "");
+      if (KNOWN_SUPPORT_IDS.has(s) || KNOWN_SUPPORT_IDS.has(base)) return true;
+      if (memorySupportGroupId) {
+        const memBase = memorySupportGroupId.replace(/^-100/, "").replace(/^-/, "");
+        if (s === memorySupportGroupId || base === memBase) return true;
+      }
+      if (SUPPORT_GROUP_ID) {
+        const supBase = SUPPORT_GROUP_ID.replace(/^-100/, "").replace(/^-/, "");
+        if (s === SUPPORT_GROUP_ID || base === supBase) return true;
+      }
+      return false;
     };
 
     const safeKvPut = async (key, val, opt) => {
@@ -3035,26 +3103,58 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
 
         if (msg?.reply_to_message) {
           let targetUserId = null;
-          const repMsgId = String(msg.reply_to_message.message_id);
+          const repMsg = msg.reply_to_message;
+          const repMsgId = String(repMsg.message_id);
 
-          if (memorySupMessages.has(repMsgId)) {
-            targetUserId = memorySupMessages.get(repMsgId);
-          }
-          if (!targetUserId && KV) {
-            targetUserId = await KV.get(`sup:${repMsgId}`);
-          }
+          // 1. Check RAM / KV / Firestore
+          targetUserId = await getSupMessage(repMsgId, env);
+
+          // 2. Regex search in text and caption
           if (!targetUserId) {
-            const repText = msg.reply_to_message.text || msg.reply_to_message.caption || "";
+            const repText = repMsg.text || repMsg.caption || "";
             const m = repText.match(/(?:#id|ID:\s*|id:)(\d+)/i);
             if (m) targetUserId = m[1];
           }
 
+          // 3. Search in entities (e.g. tg://user?id=123456 or text_mention)
+          if (!targetUserId && repMsg.entities) {
+            for (const ent of repMsg.entities) {
+              if (ent.type === "text_link" && ent.url) {
+                const um = ent.url.match(/tg:\/\/user\?id=(\d+)/);
+                if (um) { targetUserId = um[1]; break; }
+              }
+              if (ent.type === "text_mention" && ent.user?.id) {
+                targetUserId = String(ent.user.id);
+                break;
+              }
+            }
+          }
+
+          // 4. Fallback to memoryLastUser / KV sup_last_user
+          if (!targetUserId) {
+            targetUserId = memoryLastUser;
+            if (!targetUserId && KV) {
+              try { targetUserId = await KV.get("sup_last_user"); } catch {}
+            }
+          }
+
           if (targetUserId) {
-            const sendRes = await api("copyMessage", {
+            let sendRes = await api("copyMessage", {
               chat_id: targetUserId,
               from_chat_id: chatId,
               message_id: msg.message_id,
             });
+
+            // If copyMessage fails (e.g. privacy or restricted forwards), fallback to sendMessage
+            if (!sendRes?.ok) {
+              const replyText = msg.text || msg.caption || "";
+              if (replyText) {
+                sendRes = await api("sendMessage", {
+                  chat_id: targetUserId,
+                  text: replyText,
+                });
+              }
+            }
 
             if (sendRes?.ok) {
               await api("setMessageReaction", {
@@ -3070,6 +3170,14 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
                 reply_to_message_id: msg.message_id,
               });
             }
+            return new Response("OK");
+          } else {
+            await api("sendMessage", {
+              chat_id: chatId,
+              text: `⚠️ Не вдалося визначити ID студента для цього повідомлення. Будь ласка, зробіть Reply безпосередньо на повідомлення з тегом <code>#id...</code> або картку студента.`,
+              parse_mode: "HTML",
+              reply_to_message_id: msg.message_id,
+            });
             return new Response("OK");
           }
         }
@@ -3506,20 +3614,17 @@ if (data === "link:site") {
               reply_to_message_id: sentMsgId,
             });
             if (badgeRes?.result?.message_id) {
-              memorySupMessages.set(String(badgeRes.result.message_id), sUserId);
-              await safeKvPut(`sup:${badgeRes.result.message_id}`, sUserId, { expirationTtl: 604800 });
+              await storeSupMessage(badgeRes.result.message_id, sUserId, env);
             }
           }
         }
       }
 
       if (headerRes?.result?.message_id) {
-        memorySupMessages.set(String(headerRes.result.message_id), sUserId);
-        await safeKvPut(`sup:${headerRes.result.message_id}`, sUserId, { expirationTtl: 604800 });
+        await storeSupMessage(headerRes.result.message_id, sUserId, env);
       }
       if (sentMsgId) {
-        memorySupMessages.set(String(sentMsgId), sUserId);
-        await safeKvPut(`sup:${sentMsgId}`, sUserId, { expirationTtl: 604800 });
+        await storeSupMessage(sentMsgId, sUserId, env);
       }
 
       const ackKey = `sup_ack:${sUserId}`;
