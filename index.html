@@ -8945,11 +8945,56 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             if (window.CloudSync && typeof window.CloudSync.pull === 'function') window.CloudSync.pull();
         }
 
+        window.onTelegramAuth = function(user) {
+            if (!user || !user.id) return;
+            try {
+                const userData = {
+                    id: user.id,
+                    first_name: user.first_name || '',
+                    last_name: user.last_name || '',
+                    username: user.username || '',
+                    photo_url: user.photo_url || '',
+                    auth_date: user.auth_date || Math.floor(Date.now() / 1000)
+                };
+                localStorage.setItem('tg_user_cache', JSON.stringify(userData));
+                if ((userData.username || '').toLowerCase().replace('@', '') === 'xmice' || String(userData.id) === '918235475') {
+                    try {
+                        storage.set('admin_unlocked_xmice', 'true');
+                        storage.set('admin_authed_id', String(userData.id));
+                        const directRow = document.getElementById('admin-settings-row');
+                        if (directRow) directRow.style.display = 'block';
+                    } catch(e) {}
+                }
+                if (typeof window.renderProfileBar === 'function') window.renderProfileBar();
+                if (window.CloudSync && typeof window.CloudSync.pull === 'function') window.CloudSync.pull();
+                closeSheet();
+                showSuccessBanner(userData.first_name || 'Студент');
+            } catch(e) {
+                console.error('onTelegramAuth error:', e);
+            }
+        };
+
+        function loadTelegramLoginWidget() {
+            const mount = document.getElementById('tg-widget-mount');
+            if (!mount) return;
+            if (mount.querySelector('iframe') || mount.querySelector('script')) return;
+            const script = document.createElement('script');
+            script.async = true;
+            script.src = 'https://telegram.org/js/telegram-widget.js?22';
+            script.setAttribute('data-telegram-login', 'schedapp_bot');
+            script.setAttribute('data-size', 'large');
+            script.setAttribute('data-radius', '14');
+            script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+            script.setAttribute('data-request-access', 'write');
+            mount.appendChild(script);
+        }
+
         function hasCachedUser() {
             try { const u = JSON.parse(localStorage.getItem('tg_user_cache') || 'null'); return !!(u && u.id); } catch { return false; }
         }
 
         function openSheet() {
+            if (!isMiniApp) loadTelegramLoginWidget();
             overlay.style.opacity = '0';
             overlay.style.pointerEvents = 'all';
             overlay.style.display = 'flex';
@@ -9240,6 +9285,21 @@ if ('serviceWorker' in navigator) {
         </div>
 
         <div id="tg-auth-browser-ui">
+
+            <!-- Official Telegram Login Widget (1 click) -->
+            <div id="tg-widget-section" style="background:var(--bg-body);border:1px solid var(--border);border-radius:18px;padding:18px 16px;margin-bottom:18px;text-align:center;">
+                <div style="font-size:14px;font-weight:700;color:var(--text-main);margin-bottom:4px;">⚡️ Швидкий вхід в 1 клік</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.4;">Натисни кнопку Telegram для миттєвої авторизації</div>
+                <div id="tg-widget-mount" style="min-height:44px;display:flex;align-items:center;justify-content:center;">
+                    <!-- Telegram Widget is rendered here -->
+                </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:12px;margin:18px 0 16px;">
+                <div style="flex:1;height:1px;background:var(--border);"></div>
+                <span style="font-size:11px;color:var(--text-muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">або через код</span>
+                <div style="flex:1;height:1px;background:var(--border);"></div>
+            </div>
 
             
             <div id="tg-step-generate">
