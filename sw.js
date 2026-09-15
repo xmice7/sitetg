@@ -12,7 +12,7 @@
       ╚═════════╝               
 */
 
-const CACHE_NAME = 'fep-schedule-v4';
+const CACHE_NAME = 'fep-schedule-v5';
 const OFFLINE_PAGE = './index.html';
 
 const PRECACHE_URLS = [

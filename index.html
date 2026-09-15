@@ -358,46 +358,46 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         [data-theme="aurora"] .bg-orb-3 { background: #a855f7; }
         [data-theme="aurora"] .bg-orb-4 { background: #38bdf8; }
 
-        /* --- Dotted Animation (Liquid Metal) Theme --- */
-        [data-theme="dotted"] {
-            --bg-body: #080a10;
-            --bg-card: rgba(18, 24, 38, 0.72);
-            --text-main: #f1f5f9;
+        /* --- Floating Paths (Lines) Theme --- */
+        [data-theme="lines"] {
+            --bg-body: #07080c;
+            --bg-card: rgba(16, 19, 28, 0.76);
+            --text-main: #f8fafc;
             --text-muted: #94a3b8;
-            --border: rgba(148, 163, 184, 0.16);
+            --border: rgba(255, 255, 255, 0.1);
             --accent-green: #34d399;
             --bg-green: rgba(52, 211, 153, 0.15);
-            --accent-purple: #818cf8;
-            --bg-purple: rgba(129, 140, 248, 0.15);
-            --bg-blue: rgba(56, 189, 248, 0.15);
-            --primary: #38bdf8;
-            --shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-            --shadow-hover: 0 12px 40px rgba(56, 189, 248, 0.22);
-            --modal-bg: rgba(15, 20, 32, 0.88);
+            --accent-purple: #a78bfa;
+            --bg-purple: rgba(167, 139, 250, 0.15);
+            --bg-blue: rgba(96, 165, 250, 0.15);
+            --primary: #60a5fa;
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            --shadow-hover: 0 12px 40px rgba(96, 165, 250, 0.25);
+            --modal-bg: rgba(13, 15, 23, 0.92);
             --orb-opacity: 0;
         }
-        [data-theme="dotted"] .lesson-card {
-            background: rgba(18, 24, 38, 0.68) !important;
-            backdrop-filter: blur(20px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+        [data-theme="lines"] .lesson-card {
+            background: rgba(16, 19, 28, 0.72) !important;
+            backdrop-filter: blur(24px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
             border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45) !important;
         }
-        [data-theme="dotted"] .lesson-card:hover {
-            border-color: rgba(56, 189, 248, 0.45) !important;
-            box-shadow: 0 12px 32px rgba(56, 189, 248, 0.15) !important;
+        [data-theme="lines"] .lesson-card:hover {
+            border-color: rgba(96, 165, 250, 0.45) !important;
+            box-shadow: 0 14px 38px rgba(96, 165, 250, 0.18) !important;
         }
-        [data-theme="dotted"] .bottom-nav {
-            background: rgba(15, 20, 32, 0.75) !important;
+        [data-theme="lines"] .bottom-nav {
+            background: rgba(13, 15, 23, 0.8) !important;
             backdrop-filter: blur(25px) saturate(180%) !important;
             -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
             border-color: rgba(255, 255, 255, 0.1) !important;
         }
-        [data-theme="dotted"] .bg-canvas {
+        [data-theme="lines"] .bg-canvas {
             display: none !important;
         }
 
-        .shader-bg-canvas {
+        .lines-bg-container {
             position: fixed;
             top: 0;
             left: 0;
@@ -405,28 +405,19 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             height: 100vh;
             pointer-events: none;
             z-index: 0;
-            opacity: 0;
-            transition: opacity 0.6s ease;
+            overflow: hidden;
             display: none;
-        }
-        .shader-dotted-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            pointer-events: none;
-            z-index: 0;
             opacity: 0;
-            transition: opacity 0.6s ease;
-            background-image: radial-gradient(rgba(255, 255, 255, 0.22) 1.2px, transparent 1.2px);
-            background-size: 24px 24px;
-            display: none;
+            transition: opacity 0.5s ease;
         }
-        [data-theme="dotted"] .shader-bg-canvas,
-        [data-theme="dotted"] .shader-dotted-overlay {
+        [data-theme="lines"] .lines-bg-container {
             display: block;
             opacity: 1;
+        }
+        .lines-bg-svg {
+            width: 100%;
+            height: 100%;
+            color: #ffffff;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--apple-font); -webkit-tap-highlight-color: transparent; }
@@ -816,7 +807,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         [data-theme="black"],
         [data-theme="cyber"],
         [data-theme="aurora"],
-        [data-theme="dotted"] {
+        [data-theme="lines"] {
             --ios-bg: #000000;
             --ios-card-bg: #1c1c1e;
             --ios-card-border: rgba(255, 255, 255, 0.08);
@@ -826,9 +817,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             --ios-switch-off: #39393d;
             --ios-search-bg: rgba(120, 120, 128, 0.22);
         }
-        [data-theme="dotted"] {
-            --ios-bg: #07090e;
-            --ios-card-bg: rgba(18, 24, 38, 0.88);
+        [data-theme="lines"] {
+            --ios-bg: #07080c;
+            --ios-card-bg: rgba(18, 21, 32, 0.9);
             --ios-card-border: rgba(255, 255, 255, 0.1);
             --ios-separator: rgba(255, 255, 255, 0.08);
             --ios-row-hover: rgba(255, 255, 255, 0.08);
@@ -838,15 +829,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         #settings-modal .modal-content {
             background: var(--ios-bg) !important;
             border-radius: 28px 28px 0 0;
-            max-width: 600px;
-            max-height: 90vh;
-            max-height: 90dvh;
+            max-width: 640px;
+            max-height: 92vh;
+            max-height: 92dvh;
             display: flex;
             flex-direction: column;
             border: 1px solid var(--ios-card-border);
-            box-shadow: 0 -24px 64px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 -24px 64px rgba(0, 0, 0, 0.55);
             overflow: hidden;
             padding: 0;
+            overscroll-behavior-y: contain;
         }
         @media (min-width: 680px) {
             #settings-modal {
@@ -854,9 +846,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                 padding: 24px;
             }
             #settings-modal .modal-content {
-                border-radius: 24px;
-                max-height: 86vh;
-                transform: translateY(24px) scale(0.97);
+                border-radius: 26px;
+                max-height: 88vh;
+                box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--ios-card-border);
+                transform: translateY(20px) scale(0.97);
                 transition: transform 0.36s var(--spring-easing), opacity 0.3s ease;
             }
             #settings-modal.active .modal-content {
@@ -872,17 +865,18 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             z-index: 30;
             background: var(--ios-bg);
             border-bottom: 0.5px solid var(--ios-separator);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            padding: 8px 18px 10px;
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            padding: 10px 20px 12px;
             flex-shrink: 0;
         }
         .ios-grabber {
-            width: 36px;
+            width: 38px;
             height: 5px;
             border-radius: 10px;
-            background: rgba(120, 120, 128, 0.35);
+            background: rgba(142, 142, 147, 0.35);
             margin: 0 auto 10px;
+            transition: opacity 0.2s;
         }
         .ios-title-row {
             display: flex;
@@ -891,43 +885,52 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             margin-bottom: 10px;
         }
         .ios-large-title {
-            font-size: 24px;
+            font-size: 26px;
             font-weight: 700;
-            letter-spacing: -0.5px;
+            letter-spacing: -0.6px;
             color: var(--text-main);
         }
         .ios-done-button {
-            background: none;
+            background: rgba(59, 130, 246, 0.12);
             border: none;
-            font-size: 16.5px;
+            font-size: 15px;
             font-weight: 600;
             color: var(--primary);
             cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 8px;
-            transition: opacity 0.15s;
+            padding: 6px 14px;
+            border-radius: 18px;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
-        .ios-done-button:active { opacity: 0.5; }
+        .ios-done-button:active {
+            transform: scale(0.95);
+            opacity: 0.7;
+        }
 
         /* Spotlight Search */
         .ios-search-field {
             display: flex;
             align-items: center;
             background: var(--ios-search-bg);
-            border-radius: 10px;
-            height: 36px;
-            padding: 0 10px;
-            gap: 8px;
-            transition: background 0.2s;
+            border-radius: 12px;
+            height: 38px;
+            padding: 0 12px;
+            gap: 9px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
         }
         .ios-search-field:focus-within {
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+            border-color: rgba(96, 165, 250, 0.4);
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
         }
         .ios-search-icon {
-            width: 15px;
-            height: 15px;
+            width: 16px;
+            height: 16px;
             color: var(--ios-subtext);
             flex-shrink: 0;
+            opacity: 0.8;
         }
         .ios-search-input {
             border: none;
@@ -951,31 +954,35 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            transition: opacity 0.15s;
         }
+        .ios-search-clear:hover { opacity: 0.8; }
 
         /* Settings Body Scroll */
         .ios-scroll-body {
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            padding: 14px 0 40px;
+            padding: 16px 0 44px;
             flex: 1;
         }
 
         /* Profile Banner (Apple ID style) */
         .ios-profile-banner {
             background: var(--ios-card-bg);
-            border-radius: 14px;
+            border-radius: 16px;
             border: 1px solid var(--ios-card-border);
-            margin: 0 16px 14px;
-            padding: 14px 16px;
+            margin: 0 18px 14px;
+            padding: 14px 18px;
             display: flex;
             align-items: center;
             gap: 14px;
             cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
             transition: transform 0.2s cubic-bezier(0.32, 0.72, 0, 1),
                         background 0.2s ease,
                         border-radius 0.25s ease,
-                        border-color 0.25s ease;
+                        border-color 0.25s ease,
+                        box-shadow 0.2s ease;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
@@ -984,23 +991,23 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             background: var(--ios-row-hover);
         }
         .ios-profile-banner.drawer-open {
-            border-radius: 14px 14px 0 0;
+            border-radius: 16px 16px 0 0;
             margin-bottom: 0;
             border-bottom-color: transparent;
         }
         .ios-avatar-badge {
-            width: 50px;
-            height: 50px;
+            width: 52px;
+            height: 52px;
             border-radius: 50%;
             background: linear-gradient(135deg, #007aff, #5856d6);
             color: #ffffff;
-            font-size: 20px;
+            font-size: 22px;
             font-weight: 700;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+            box-shadow: 0 4px 16px rgba(0, 122, 255, 0.28);
             overflow: hidden;
         }
         .ios-profile-text {
@@ -1008,9 +1015,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             min-width: 0;
         }
         .ios-profile-title {
-            font-size: 17px;
+            font-size: 17.5px;
             font-weight: 600;
-            letter-spacing: -0.3px;
+            letter-spacing: -0.35px;
             color: var(--text-main);
             white-space: nowrap;
             overflow: hidden;
@@ -1028,19 +1035,23 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             font-size: 22px;
             color: var(--ios-subtext);
             font-weight: 400;
-            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s;
             user-select: none;
+        }
+        .ios-profile-banner.drawer-open .ios-chevron-right {
+            transform: rotate(90deg);
+            color: var(--primary);
         }
         .ios-profile-drawer {
             max-height: 0;
             opacity: 0;
             overflow: hidden;
-            margin: 0 16px 18px;
+            margin: 0 18px 18px;
             background: var(--ios-card-bg);
-            border-radius: 0 0 14px 14px;
+            border-radius: 0 0 16px 16px;
             border: 1px solid var(--ios-card-border);
             border-top: 0.5px solid var(--ios-separator);
-            padding: 0 16px;
+            padding: 0 18px;
             transform: translateY(-6px) scale(0.99);
             transition: max-height 0.42s cubic-bezier(0.32, 0.72, 0, 1),
                         opacity 0.28s ease,
@@ -1054,8 +1065,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             max-height: 900px;
             opacity: 1;
             transform: translateY(0) scale(1);
-            padding: 16px;
-            margin: 0 16px 18px;
+            padding: 16px 18px;
+            margin: 0 18px 18px;
             pointer-events: auto;
         }
 
@@ -1064,28 +1075,28 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             margin-bottom: 22px;
         }
         .ios-section-header {
-            font-size: 12px;
-            font-weight: 500;
+            font-size: 12.5px;
+            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.2px;
+            letter-spacing: 0.4px;
             color: var(--ios-subtext);
-            padding: 0 32px 6px;
+            padding: 0 34px 7px;
         }
         .ios-card-container {
             background: var(--ios-card-bg);
-            border-radius: 13px;
+            border-radius: 16px;
             border: 1px solid var(--ios-card-border);
-            margin: 0 16px;
+            margin: 0 18px;
             overflow: hidden;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
         .ios-item-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 12px 16px;
-            min-height: 48px;
-            gap: 12px;
+            padding: 13px 18px;
+            min-height: 50px;
+            gap: 14px;
             position: relative;
             transition: background 0.15s ease;
         }
@@ -1095,21 +1106,21 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .ios-item-left {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 13px;
             flex: 1;
             min-width: 0;
         }
         .ios-icon-box {
-            width: 30px;
-            height: 30px;
-            border-radius: 7px;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 16px;
             flex-shrink: 0;
             color: #ffffff;
-            box-shadow: 0 1.5px 4px rgba(0, 0, 0, 0.12);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
         }
         .ios-icon-blue   { background: linear-gradient(180deg, #007aff, #0051d5); }
         .ios-icon-green  { background: linear-gradient(180deg, #34c759, #28a745); }
@@ -1125,12 +1136,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .ios-item-text {
             display: flex;
             flex-direction: column;
-            gap: 1px;
+            gap: 1.5px;
             min-width: 0;
         }
         .ios-item-title {
             font-size: 16px;
-            font-weight: 400;
+            font-weight: 500;
             letter-spacing: -0.2px;
             color: var(--text-main);
         }
@@ -1148,7 +1159,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .ios-hairline {
             height: 0.5px;
             background: var(--ios-separator);
-            margin-left: 58px;
+            margin-left: 63px;
         }
 
         /* Apple UISwitch */
@@ -1197,9 +1208,39 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 12px;
-            padding: 16px;
+            padding: 18px;
         }
         @media (max-width: 440px) {
+            .ios-top-bar {
+                padding: 8px 14px 10px;
+            }
+            .ios-large-title {
+                font-size: 22px;
+            }
+            .ios-profile-banner {
+                margin: 0 12px 12px;
+                padding: 12px 14px;
+            }
+            .ios-profile-drawer {
+                margin: 0 12px 14px;
+            }
+            .ios-profile-drawer.active {
+                margin: 0 12px 14px;
+                padding: 14px;
+            }
+            .ios-card-container {
+                margin: 0 12px;
+                border-radius: 14px;
+            }
+            .ios-section-header {
+                padding: 0 24px 6px;
+            }
+            .ios-item-row {
+                padding: 11px 14px;
+            }
+            .ios-hairline {
+                margin-left: 54px;
+            }
             .ios-themes-container {
                 gap: 8px;
                 padding: 12px;
@@ -1218,23 +1259,27 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         }
         .ios-screen-preview {
             width: 100%;
-            height: 86px;
-            border-radius: 12px;
+            height: 88px;
+            border-radius: 13px;
             border: 2px solid transparent;
-            padding: 7px;
+            padding: 8px;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 6px;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
-            transition: transform 0.2s var(--spring-bounce), border-color 0.2s ease;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+            transition: transform 0.25s var(--spring-bounce), border-color 0.2s ease, box-shadow 0.25s ease;
+        }
+        .ios-theme-card:hover .ios-screen-preview {
+            transform: translateY(-2px);
         }
         .ios-theme-card:active .ios-screen-preview {
             transform: scale(0.95);
         }
         .ios-theme-card.active .ios-screen-preview {
             border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--primary), 0 8px 24px rgba(59, 130, 246, 0.28);
             transform: scale(1.02);
         }
         .preview-bar {
@@ -1267,9 +1312,18 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .preview-theme-aurora .preview-bar { background: #10e7aa; opacity: 0.5; }
         .preview-theme-aurora .preview-tile { background: rgba(16, 231, 170, 0.15); border-color: #10e7aa; }
 
-        .preview-theme-dotted { background: #080a10; }
-        .preview-theme-dotted .preview-bar { background: #38bdf8; opacity: 0.6; }
-        .preview-theme-dotted .preview-tile { background: rgba(56, 189, 248, 0.2); border-color: #38bdf8; }
+        .preview-theme-lines { background: #07080c; position: relative; }
+        .preview-theme-lines .preview-bar { background: #60a5fa; opacity: 0.75; }
+        .preview-theme-lines .preview-tile { background: rgba(96, 165, 250, 0.16); border-color: rgba(96, 165, 250, 0.4); }
+        .preview-theme-lines::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(96, 165, 250, 0.18) 0%, transparent 60%),
+                radial-gradient(circle at 80% 80%, rgba(167, 139, 250, 0.15) 0%, transparent 60%);
+            pointer-events: none;
+        }
 
         .ios-theme-label {
             font-size: 13px;
@@ -2716,8 +2770,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
     <div class="bg-orb bg-orb-4"></div>
 </div>
 
-<canvas id="shader-bg-canvas" class="shader-bg-canvas" aria-hidden="true"></canvas>
-<div id="shader-dotted-overlay" class="shader-dotted-overlay" aria-hidden="true"></div>
+<div id="lines-bg-container" class="lines-bg-container" aria-hidden="true">
+    <svg id="lines-bg-svg" class="lines-bg-svg" viewBox="0 0 696 316" fill="none" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <title>Background Paths</title>
+    </svg>
+</div>
 
 <div class="app-wrapper">
     <div id="page-schedule" class="page active">
@@ -3664,7 +3721,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             </div>
 
             <!-- SECTION 2: ОФОРМЛЕННЯ -->
-            <div class="ios-section" data-search-section="оформлення тема колір шрифт вигляд темна світла black чорна аврора dotted сайбер">
+            <div class="ios-section" data-search-section="оформлення тема колір шрифт вигляд темна світла black чорна аврора lines лінії paths хвилі сайбер">
                 <div class="ios-section-header">Оформлення</div>
                 <div class="ios-card-container">
                     <!-- 6 Theme Previews -->
@@ -3709,12 +3766,17 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                             <span class="ios-theme-label">Aurora</span>
                             <span class="ios-radio-dot"></span>
                         </button>
-                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="dotted" title="Dotted Animation (Liquid Metal)">
-                            <div class="ios-screen-preview preview-theme-dotted">
+                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="lines" title="Плаваючи лінії (Floating Paths)">
+                            <div class="ios-screen-preview preview-theme-lines">
+                                <svg viewBox="0 0 100 46" fill="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0.75;">
+                                    <path d="M-10 12 C 20 4, 45 40, 75 22 C 90 14, 105 28, 115 36" stroke="rgba(96,165,250,0.85)" stroke-width="1.2"/>
+                                    <path d="M-10 24 C 25 18, 55 42, 85 14 C 98 6, 108 22, 115 28" stroke="rgba(255,255,255,0.75)" stroke-width="0.9"/>
+                                    <path d="M-10 36 C 20 30, 48 12, 78 28 C 96 36, 108 14, 115 20" stroke="rgba(167,139,250,0.7)" stroke-width="0.8"/>
+                                </svg>
                                 <div class="preview-bar"></div>
                                 <div class="preview-tile"></div>
                             </div>
-                            <span class="ios-theme-label">✨ Dotted</span>
+                            <span class="ios-theme-label">〰️ Lines</span>
                             <span class="ios-radio-dot"></span>
                         </button>
                     </div>
@@ -4285,6 +4347,7 @@ const CloudSync = {
             }
             if (cloud.theme) {
                 let syncTheme = cloud.theme === 'oled' ? 'black' : cloud.theme;
+                if (syncTheme === 'dotted') syncTheme = 'lines';
                 if (syncTheme !== document.documentElement.getAttribute('data-theme')) {
                     document.documentElement.setAttribute('data-theme', syncTheme);
                     storage.set('theme', syncTheme);
@@ -4624,6 +4687,7 @@ const colors = {
 };
 let rawTheme = gget(ACTIVE_GROUP,'theme','dark');
 if (rawTheme === 'oled') rawTheme = 'black';
+if (rawTheme === 'dotted') rawTheme = 'lines';
 let state = {
     scheduleGroup: ACTIVE_GROUP,       
     groupName: ACTIVE_GROUP_NAME,      
@@ -5263,7 +5327,7 @@ function initNewSettings() {
 
                 const themeContainer = sec.querySelector('.ios-themes-container');
                 if (themeContainer) {
-                    const themeMatch = secMatch || 'тема оформлення колір light dark black oled cyber aurora dotted'.includes(query);
+                    const themeMatch = secMatch || 'тема оформлення колір light dark black oled cyber aurora lines лінії paths хвилі'.includes(query);
                     themeContainer.style.display = themeMatch ? '' : 'none';
                     if (themeMatch) hasVisibleItem = true;
                 }
@@ -5286,330 +5350,120 @@ function updateThemeUI() {
     if (els.themeBtns) {
         els.themeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.themeVal === state.theme));
     }
-    if (window.ShaderBg) {
-        window.ShaderBg.toggle(state.theme === 'dotted');
+    if (window.LinesBg) {
+        window.LinesBg.toggle(state.theme === 'lines');
     }
 }
 
 /* =========================================================================
-   SHADER BACKGROUND (LIQUID METAL / DOTTED ANIMATION)
-   Zero-dependency WebGL manager for "dotted" theme
-   Runs only when data-theme="dotted" is active to preserve GPU and battery
+   FLOATING PATHS BACKGROUND (LINES THEME)
+   Dynamic 72-path curved waves manager for "lines" theme
+   Runs only when data-theme="lines" is active to preserve CPU and battery
    ========================================================================= */
 (function() {
-    const VERT_SRC = `
-attribute vec2 a_position;
-void main() {
-    gl_Position = vec4(a_position, 0.0, 1.0);
-}
-`;
-
-    const FRAG_SRC = `
-#extension GL_OES_standard_derivatives : enable
-#ifdef GL_FRAGMENT_PRECISION_HIGH
-precision highp float;
-#else
-precision mediump float;
-#endif
-
-uniform vec2 u_resolution;
-uniform float u_time;
-uniform vec4 u_colors[8];
-uniform vec4 u_scene;
-uniform vec4 u_shape;
-uniform vec4 u_surface;
-uniform vec4 u_finish;
-uniform vec4 u_transform;
-uniform vec4 u_space;
-uniform vec4 u_cursor;
-
-#define PI 3.141592653589793
-
-mat2 rot2D(float angle) {
-    float s = sin(angle);
-    float c = cos(angle);
-    return mat2(c, -s, s, c);
-}
-
-vec2 coverScreen(vec2 fragCoord, vec2 resolution, float aspect) {
-    vec2 uv = 2.0 * (fragCoord / resolution) - 1.0;
-    uv.x *= resolution.x / resolution.y;
-    float canvasAspect = resolution.x / resolution.y;
-    if (canvasAspect > aspect) {
-        uv.y *= canvasAspect / aspect;
-    } else {
-        uv.x *= aspect / canvasAspect;
-    }
-    return uv;
-}
-
-vec4 getPaletteColor(float idx, vec4 colors[8]) {
-    int i = int(mod(idx, 8.0));
-    for (int c = 0; c < 8; c++) {
-        if (c == i) return colors[c];
-    }
-    return colors[0];
-}
-
-void main() {
-    vec2 fragCoord = gl_FragCoord.xy;
-    vec2 resolution = u_resolution;
-    float time = u_time * u_scene.x;
-
-    float colorCount = max(u_scene.z, 1.0);
-    float patternAngle = u_transform.y * PI / 180.0;
-    vec2 scale = u_transform.zw;
-    vec2 center = u_space.xy;
-    float aspect = u_space.z;
-    float edgeSoftness = u_space.w;
-
-    float noiseFreq = u_surface.x;
-    float noiseAmp = u_surface.y;
-    float noiseSpeed = u_surface.z;
-    float noiseDetail = u_surface.w;
-
-    float roughness = u_finish.y;
-    float metallic = u_finish.z;
-    float reflection = u_finish.w;
-
-    vec2 uv = coverScreen(fragCoord, resolution, aspect);
-    uv -= center;
-    uv = rot2D(patternAngle) * uv;
-    uv *= scale;
-
-    vec2 pointer = u_cursor.xy;
-    float cursorDist = length(uv - pointer);
-    float cursorForce = exp(-cursorDist * 2.5) * u_cursor.z;
-    uv += normalize(uv - pointer + 0.001) * cursorForce * 0.12;
-
-    float t = time * noiseSpeed;
-    vec2 p = uv * noiseFreq;
-
-    float noise = 0.0;
-    float amp = 1.0;
-    float totalAmp = 0.0;
-    for (int i = 0; i < 4; i++) {
-        if (float(i) >= noiseDetail) break;
-        noise += amp * sin(p.x + cos(p.y + t) + sin(t * 0.5));
-        p = rot2D(1.0) * p * 2.0;
-        t *= 1.3;
-        totalAmp += amp;
-        amp *= 0.5;
-    }
-    noise /= max(totalAmp, 0.001);
-    noise = noise * 0.5 + 0.5;
-
-    float dist = length(uv) + (noise - 0.5) * noiseAmp;
-    float d = sin(dist * u_shape.x - time * u_shape.y);
-    d = d * 0.5 + 0.5;
-    d = smoothstep(0.5 - edgeSoftness, 0.5 + edgeSoftness, d);
-
-    float colorPos = d * (colorCount - 1.0) + noise * 0.5;
-    float colorIdx = floor(colorPos);
-    float colorFrac = fract(colorPos);
-
-    vec4 col1 = getPaletteColor(colorIdx, u_colors);
-    vec4 col2 = getPaletteColor(colorIdx + 1.0, u_colors);
-    vec4 color = mix(col1, col2, colorFrac);
-
-#ifdef GL_OES_standard_derivatives
-    vec3 normal = normalize(vec3(
-        dFdx(dist) * roughness * 50.0,
-        dFdy(dist) * roughness * 50.0,
-        1.0
-    ));
-#else
-    vec3 normal = vec3(0.0, 0.0, 1.0);
-#endif
-
-    vec3 lightDir = normalize(vec3(0.5, 0.8, 0.6));
-    float diff = max(dot(normal, lightDir), 0.0);
-    vec3 viewDir = vec3(0.0, 0.0, 1.0);
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), max(32.0 * (1.0 - roughness), 1.0));
-
-    color.rgb = mix(color.rgb, color.rgb * diff + spec * reflection, metallic);
-    color.rgb += spec * (1.0 - roughness) * reflection;
-
-    gl_FragColor = color;
-}
-`;
-
-    const PALETTE_COLORS = new Float32Array([
-        0.04, 0.05, 0.09, 1.0,
-        0.08, 0.12, 0.20, 1.0,
-        0.15, 0.22, 0.35, 1.0,
-        0.22, 0.38, 0.58, 1.0,
-        0.35, 0.58, 0.85, 1.0,
-        0.60, 0.80, 0.98, 1.0,
-        0.85, 0.93, 1.00, 1.0,
-        0.06, 0.08, 0.14, 1.0
-    ]);
-
-    let canvas = null;
-    let gl = null;
-    let program = null;
-    let animId = null;
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    let container = null;
+    let svg = null;
     let isRunning = false;
+    let animId = null;
     let startTime = performance.now();
-    let locations = {};
+    let pathsData = [];
+    let isInitialized = false;
 
-    let targetPointer = { x: 0, y: 0, force: 0 };
-    let currentPointer = { x: 0, y: 0, force: 0 };
+    function buildPaths() {
+        if (isInitialized) return;
+        svg = document.getElementById('lines-bg-svg');
+        container = document.getElementById('lines-bg-container');
+        if (!svg) return;
 
-    function createShader(glCtx, type, src) {
-        const s = glCtx.createShader(type);
-        glCtx.shaderSource(s, src);
-        glCtx.compileShader(s);
-        if (!glCtx.getShaderParameter(s, glCtx.COMPILE_STATUS)) {
-            console.warn('Shader compile err:', glCtx.getShaderInfoLog(s));
-            glCtx.deleteShader(s);
-            return null;
+        svg.innerHTML = '<title>Background Paths</title>';
+        pathsData = [];
+
+        // position 1 and -1 (each with 36 paths = 72 paths total)
+        for (const pos of [1, -1]) {
+            const g = document.createElementNS(SVG_NS, 'g');
+            g.setAttribute('class', pos === 1 ? 'floating-paths-1' : 'floating-paths-2');
+
+            for (let i = 0; i < 36; i++) {
+                const path = document.createElementNS(SVG_NS, 'path');
+                const d = `M-${380 - i * 5 * pos} -${189 + i * 6}C-${380 - i * 5 * pos} -${189 + i * 6} -${312 - i * 5 * pos} ${216 - i * 6} ${152 - i * 5 * pos} ${343 - i * 6}C${616 - i * 5 * pos} ${470 - i * 6} ${684 - i * 5 * pos} ${875 - i * 6} ${684 - i * 5 * pos} ${875 - i * 6}`;
+                const width = 0.5 + i * 0.03;
+                const baseOpacity = 0.1 + i * 0.03;
+                const duration = 20 + Math.random() * 10;
+                const delay = Math.random() * duration;
+
+                path.setAttribute('d', d);
+                path.setAttribute('pathLength', '1');
+                path.setAttribute('stroke', 'currentColor');
+                path.setAttribute('stroke-width', width.toFixed(3));
+                path.setAttribute('stroke-linecap', 'round');
+                path.setAttribute('stroke-linejoin', 'round');
+                path.setAttribute('fill', 'none');
+
+                g.appendChild(path);
+
+                pathsData.push({
+                    el: path,
+                    baseOpacity,
+                    duration,
+                    delay
+                });
+            }
+            svg.appendChild(g);
         }
-        return s;
+
+        isInitialized = true;
     }
 
-    function initGL() {
-        if (gl) return true;
-        canvas = document.getElementById('shader-bg-canvas');
-        if (!canvas) return false;
-
-        gl = canvas.getContext('webgl', { alpha: false, depth: false, antialias: false, powerPreference: 'low-power' });
-        if (!gl) return false;
-
-        gl.getExtension('OES_standard_derivatives');
-
-        const vs = createShader(gl, gl.VERTEX_SHADER, VERT_SRC);
-        const fs = createShader(gl, gl.FRAGMENT_SHADER, FRAG_SRC);
-        if (!vs || !fs) return false;
-
-        program = gl.createProgram();
-        gl.attachShader(program, vs);
-        gl.attachShader(program, fs);
-        gl.linkProgram(program);
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            console.warn('Program link err:', gl.getProgramInfoLog(program));
-            return false;
-        }
-
-        gl.useProgram(program);
-
-        const posBuf = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-            -1, -1,
-             1, -1,
-            -1,  1,
-            -1,  1,
-             1, -1,
-             1,  1
-        ]), gl.STATIC_DRAW);
-
-        const aPos = gl.getAttribLocation(program, 'a_position');
-        gl.enableVertexAttribArray(aPos);
-        gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
-
-        locations = {
-            u_resolution: gl.getUniformLocation(program, 'u_resolution'),
-            u_time: gl.getUniformLocation(program, 'u_time'),
-            u_colors: gl.getUniformLocation(program, 'u_colors'),
-            u_scene: gl.getUniformLocation(program, 'u_scene'),
-            u_shape: gl.getUniformLocation(program, 'u_shape'),
-            u_surface: gl.getUniformLocation(program, 'u_surface'),
-            u_finish: gl.getUniformLocation(program, 'u_finish'),
-            u_transform: gl.getUniformLocation(program, 'u_transform'),
-            u_space: gl.getUniformLocation(program, 'u_space'),
-            u_cursor: gl.getUniformLocation(program, 'u_cursor')
-        };
-
-        resize();
-        window.addEventListener('resize', resize, { passive: true });
-
-        const onPointerMove = (e) => {
-            if (!isRunning) return;
-            const x = (e.clientX / window.innerWidth) * 2 - 1;
-            const y = -((e.clientY / window.innerHeight) * 2 - 1);
-            targetPointer.x = x;
-            targetPointer.y = y;
-            targetPointer.force = 1.0;
-        };
-        window.addEventListener('pointermove', onPointerMove, { passive: true });
-        window.addEventListener('pointerleave', () => { targetPointer.force = 0; }, { passive: true });
-
-        if (!canvas._glLossHandled) {
-            canvas._glLossHandled = true;
-            canvas.addEventListener('webglcontextlost', (e) => {
-                e.preventDefault();
-                if (window.ShaderBg) window.ShaderBg.stop();
-                gl = null;
-                program = null;
-            }, false);
-            canvas.addEventListener('webglcontextrestored', () => {
-                const curTheme = document.documentElement.getAttribute('data-theme');
-                if (curTheme === 'dotted' && window.ShaderBg) {
-                    window.ShaderBg.start();
-                }
-            }, false);
-        }
-
-        return true;
-    }
-
-    function resize() {
-        if (!canvas || !gl) return;
-        const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
-        const w = Math.floor(window.innerWidth * dpr);
-        const h = Math.floor(window.innerHeight * dpr);
-        if (canvas.width !== w || canvas.height !== h) {
-            canvas.width = w;
-            canvas.height = h;
-            gl.viewport(0, 0, w, h);
-        }
-    }
-
-    function renderFrame(now) {
+    function render(now) {
         if (!isRunning) return;
-
-        currentPointer.x += (targetPointer.x - currentPointer.x) * 0.08;
-        currentPointer.y += (targetPointer.y - currentPointer.y) * 0.08;
-        currentPointer.force += (targetPointer.force - currentPointer.force) * 0.05;
-
         const elapsed = (now - startTime) * 0.001;
 
-        gl.useProgram(program);
-        gl.uniform2f(locations.u_resolution, canvas.width, canvas.height);
-        gl.uniform1f(locations.u_time, elapsed);
-        gl.uniform4fv(locations.u_colors, PALETTE_COLORS);
-        gl.uniform4f(locations.u_scene, 0.45, 0.0, 5.0, 0.0);
-        gl.uniform4f(locations.u_shape, 4.0, 0.35, 0.0, 0.0);
-        gl.uniform4f(locations.u_surface, 1.3, 0.7, 0.22, 3.0);
-        gl.uniform4f(locations.u_finish, 0.1, 0.35, 0.72, 0.5);
-        gl.uniform4f(locations.u_transform, 0.0, 0.0, 1.0, 1.0);
-        gl.uniform4f(locations.u_space, 0.0, 0.0, 1.0, 0.12);
-        gl.uniform4f(locations.u_cursor, currentPointer.x, currentPointer.y, currentPointer.force, 0.0);
+        for (let i = 0; i < pathsData.length; i++) {
+            const p = pathsData[i];
+            const t = ((elapsed + p.delay) / p.duration) % 1;
+            // Framer Motion: pathOffset [0, 1, 0], opacity [0.3, 0.6, 0.3], pathLength 0.3 -> 1.0
+            const wave = t < 0.5 ? (t * 2) : (2 - t * 2);
+            const pLen = 0.3 + 0.7 * wave;
+            const pOff = wave;
+            const op = p.baseOpacity * (0.3 + 0.3 * wave);
 
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
+            p.el.setAttribute('stroke-dasharray', `${pLen.toFixed(3)} 1`);
+            p.el.setAttribute('stroke-dashoffset', `${(-pOff).toFixed(3)}`);
+            p.el.setAttribute('stroke-opacity', `${op.toFixed(3)}`);
+        }
 
-        animId = requestAnimationFrame(renderFrame);
+        animId = requestAnimationFrame(render);
     }
 
-    window.ShaderBg = {
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            if (animId) {
+                cancelAnimationFrame(animId);
+                animId = null;
+            }
+        } else {
+            if (isRunning && !animId) {
+                animId = requestAnimationFrame(render);
+            }
+        }
+    });
+
+    window.LinesBg = {
         init() {
             const curTheme = document.documentElement.getAttribute('data-theme') || (typeof state !== 'undefined' ? state.theme : 'dark');
-            if (curTheme === 'dotted') {
+            if (curTheme === 'lines') {
                 this.start();
             }
         },
         start() {
             if (isRunning) return;
-            if (!initGL()) return;
-            resize();
+            buildPaths();
+            if (!container) container = document.getElementById('lines-bg-container');
+            if (container) container.style.display = 'block';
             isRunning = true;
             startTime = performance.now();
-            if (canvas) canvas.style.display = 'block';
-            const overlay = document.getElementById('shader-dotted-overlay');
-            if (overlay) overlay.style.display = 'block';
-            animId = requestAnimationFrame(renderFrame);
+            animId = requestAnimationFrame(render);
         },
         stop() {
             if (!isRunning) return;
@@ -5618,9 +5472,8 @@ void main() {
                 cancelAnimationFrame(animId);
                 animId = null;
             }
-            if (canvas) canvas.style.display = 'none';
-            const overlay = document.getElementById('shader-dotted-overlay');
-            if (overlay) overlay.style.display = 'none';
+            if (!container) container = document.getElementById('lines-bg-container');
+            if (container) container.style.display = 'none';
         },
         toggle(active) {
             if (active) this.start();
@@ -8163,7 +8016,7 @@ function initDekanatGrades() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => { initAdminPanel(); loadAdminData(); initDekanatGrades(); if (window.ShaderBg) window.ShaderBg.init(); });
+document.addEventListener('DOMContentLoaded', () => { initAdminPanel(); loadAdminData(); initDekanatGrades(); if (window.LinesBg) window.LinesBg.init(); });
 document.addEventListener('DOMContentLoaded', init);
 document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGroupPicker(); });
 
