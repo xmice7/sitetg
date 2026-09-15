@@ -1017,6 +1017,8 @@ const memoryAcks = new Set();
 let memoryAllUsers = null;
 let memoryAllUsersTs = 0;
 const memoryPrefs = new Map();
+let memorySupportGroupId = null;
+const memorySupMessages = new Map();
 
 export default {
   async fetch(request, env, ctx) {
@@ -1490,36 +1492,52 @@ export default {
 
       try {
         const result = { total: 0, sent: 0, failed: 0 };
-        let cursor;
-        do {
-          const page = await kv.list({ prefix: "u:", cursor });
-          for (const key of page.keys) {
-            const uid = key.name.slice(2);
-            if (!uid) continue;
-
-            if (!isAll) {
-              try {
-                const rawPrefs = await kv.get(key.name);
-                if (rawPrefs) {
-                  const p = JSON.parse(rawPrefs);
-                  const userGroup = (p && p.group) || "";
-                  if (normGroup(userGroup) !== normGroup(targetGroup)) {
-                    continue;
-                  }
-                } else {
-                  continue;
-                }
-              } catch {
-                continue;
-              }
+        let users = [];
+        if (env.FIREBASE_API_KEY) {
+          try {
+            const fUrl = `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/users?pageSize=300&key=${env.FIREBASE_API_KEY}`;
+            const res = await fetch(fUrl);
+            if (res.ok) {
+              const data = await res.json();
+              users = (data.documents || []).map(doc => {
+                const f = doc.fields || {};
+                const id = f.id?.stringValue || doc.name.split("/").pop();
+                const grp = f.group?.stringValue || "";
+                return { id: String(id), group: grp };
+              });
             }
-
-            result.total++;
-            const ok = await sendTg(uid, fullMessage);
-            if (ok) result.sent++; else result.failed++;
+          } catch (e) {
+            console.error("Firestore broadcast fetch error:", e);
           }
-          cursor = page.list_complete ? undefined : page.cursor;
-        } while (cursor);
+        }
+
+        if (!users.length && kv) {
+          let cursor;
+          do {
+            const page = await kv.list({ prefix: "u:", cursor });
+            for (const key of page.keys) {
+              const uid = key.name.slice(2);
+              if (uid) users.push({ id: uid, group: "" });
+            }
+            cursor = page.list_complete ? undefined : page.cursor;
+          } while (cursor);
+        }
+
+        for (const u of users) {
+          if (!u.id) continue;
+
+          if (!isAll) {
+            const userGroup = (u.group || "").trim();
+            if (normGroup(userGroup) !== normGroup(targetGroup)) {
+              continue;
+            }
+          }
+
+          result.total++;
+          const ok = await sendTg(u.id, fullMessage);
+          if (ok) result.sent++; else result.failed++;
+          await new Promise(r => setTimeout(r, 40));
+        }
 
         return jsonRes({ ok: true, ...result });
       } catch (e) {
@@ -1605,10 +1623,34 @@ export default {
     const SUPPORT_GROUP_ID = String(env.SUPPORT_GROUP_ID || "-5380258098");
     const ADMIN_USER_ID    = String(env.ADMIN_USER_ID || "918235475");
 
+    const getActiveSupportGroupId = async () => {
+      if (memorySupportGroupId) return memorySupportGroupId;
+      if (KV) {
+        try {
+          const stored = await KV.get("active_support_group_id");
+          if (stored) {
+            memorySupportGroupId = stored;
+            return stored;
+          }
+        } catch {}
+      }
+      return SUPPORT_GROUP_ID;
+    };
+
     const isSupportGroup = (cId) => {
-      const s = String(cId || "");
-      const base = SUPPORT_GROUP_ID.replace(/^-100/, "").replace(/^-/, "");
-      return s === `-${base}` || s === `-100${base}` || s === SUPPORT_GROUP_ID;
+      if (!cId) return false;
+      const s = String(cId);
+      const activeId = memorySupportGroupId || SUPPORT_GROUP_ID;
+      const base = activeId.replace(/^-100/, "").replace(/^-/, "");
+      const origBase = SUPPORT_GROUP_ID.replace(/^-100/, "").replace(/^-/, "");
+      return (
+        s === activeId ||
+        s === `-${base}` ||
+        s === `-100${base}` ||
+        s === SUPPORT_GROUP_ID ||
+        s === `-${origBase}` ||
+        s === `-100${origBase}`
+      );
     };
 
     const safeKvPut = async (key, val, opt) => {
@@ -1852,18 +1894,19 @@ export default {
     
     const broadcastToAll = async (messageText) => {
       const result = { total: 0, sent: 0, failed: 0 };
-      if (!KV) return result;
-      let cursor;
-      do {
-        const page = await KV.list({ prefix: "u:", cursor });
-        for (const key of page.keys) {
-          const uid = key.name.slice(2);
-          result.total++;
-          const r = await api("sendMessage", { chat_id: uid, text: messageText });
-          if (r?.ok) result.sent++; else result.failed++;
-        }
-        cursor = page.list_complete ? undefined : page.cursor;
-      } while (cursor);
+      const users = await getAllUsers();
+      if (!users || !users.length) return result;
+
+      for (const u of users) {
+        if (!u.id) continue;
+        result.total++;
+        const r = await api("sendMessage", {
+          chat_id: u.id,
+          text: messageText,
+        });
+        if (r?.ok) result.sent++; else result.failed++;
+        await new Promise(r => setTimeout(r, 40));
+      }
       return result;
     };
 
@@ -2285,6 +2328,19 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       const firstToken = cleanText.split(/\s+/)[0] || "";
       const cmd = firstToken.toLowerCase().replace(/@\w+$/, "");
       const remainder = cleanText.slice(firstToken.length).trim();
+
+      // 0. /setsupport or /setgroup
+      if (cmd === "/setsupport" || cmd === "/setgroup" || cmd === "/connectgroup") {
+        memorySupportGroupId = String(activeChatId);
+        await safeKvPut("active_support_group_id", String(activeChatId));
+        await api("sendMessage", {
+          chat_id: activeChatId,
+          text: `✅ <b>Цю групу успішно встановлено як офіційну групу підтримки розкладу!</b>\n🆔 <b>Chat ID:</b> <code>${activeChatId}</code>\n\nТепер усі звернення від студентів будуть надходити сюди, а ваші відповіді (Reply) надсилатимуться студентам від імені бота.`,
+          parse_mode: "HTML",
+          reply_to_message_id: currentMsg?.message_id,
+        });
+        return true;
+      }
 
       // 1. Exit active direct chat session
       if (cmd === "/stop" || cmd === "/close" || cmd === "/exit") {
@@ -2717,69 +2773,62 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       return new Response("OK");
     }
 
-    if (isSupportGroup(chatId)) {
-      await safeKvPut("active_support_group_id", String(chatId));
+    const chatType = msg?.chat?.type || cb?.message?.chat?.type || "private";
+    const isPrivate = chatType === "private";
+    const isGroup = chatType === "group" || chatType === "supergroup";
 
-      if (msg?.migrate_to_chat_id) {
-        await safeKvPut("active_support_group_id", String(msg.migrate_to_chat_id));
-      }
-
+    if (isGroup) {
       const groupText = msg?.text ? msg.text.trim() : (msg?.caption ? msg.caption.trim() : "");
-      if (groupText === "/id" || groupText === "/status") {
+      const firstToken = (groupText.split(/\s+/)[0] || "").toLowerCase().replace(/@\w+$/, "");
+
+      // 1. /id or /status anywhere in any group
+      if (firstToken === "/id" || firstToken === "/status") {
         await api("sendMessage", {
           chat_id: chatId,
-          text: `ℹ️ <b>Статус бота:</b> активний\n🆔 <b>Chat ID:</b> <code>${chatId}</code>\n👤 <b>Ваш Telegram ID:</b> <code>${userId}</code>`,
+          text: `ℹ️ <b>Статус бота:</b> активний\n🆔 <b>Chat ID:</b> <code>${chatId}</code>\n👤 <b>Ваш Telegram ID:</b> <code>${userId}</code>\n⚙️ <b>Тип чату:</b> <code>${chatType}</code>`,
           parse_mode: "HTML",
           reply_to_message_id: msg?.message_id,
         });
         return new Response("OK");
       }
 
-      const handled = await handleAdminAction(groupText, msg, chatId);
-      if (handled) return new Response("OK");
-
-      // Check active direct chat session in the support group
-      const activeTargetId = await getActiveChat(chatId);
-      if (activeTargetId && msg) {
-        const sendRes = await api("copyMessage", {
-          chat_id: activeTargetId,
-          from_chat_id: chatId,
-          message_id: msg.message_id,
-        });
-
-        if (sendRes?.ok) {
-          await api("setMessageReaction", {
-            chat_id: chatId,
-            message_id: msg.message_id,
-            reaction: [{ type: "emoji", emoji: "👍" }],
-          }).catch(() => null);
-        } else {
+      // 2. /setsupport or /setgroup by admin to bind any group as the support group
+      if (firstToken === "/setsupport" || firstToken === "/setgroup" || firstToken === "/connectgroup") {
+        if (isXmice) {
+          memorySupportGroupId = String(chatId);
+          await safeKvPut("active_support_group_id", String(chatId));
           await api("sendMessage", {
             chat_id: chatId,
-            text: `⚠️ Не вдалося доставити повідомлення до <code>#id${activeTargetId}</code>: ${escapeHtml(sendRes?.description || "користувач заблокував бота або сталася помилка")}`,
+            text: `✅ <b>Цю групу успішно встановлено як офіційну групу підтримки розкладу!</b>\n🆔 <b>Chat ID:</b> <code>${chatId}</code>\n\nТепер усі звернення від студентів надходитимуть сюди.`,
             parse_mode: "HTML",
-            reply_to_message_id: msg.message_id,
+            reply_to_message_id: msg?.message_id,
           });
+          return new Response("OK");
         }
-        return new Response("OK");
       }
 
-      if (msg?.reply_to_message) {
-        let targetUserId = null;
-        const repMsgId = msg.reply_to_message.message_id;
+      // 3. Support group message handling
+      const activeSupGroup = await getActiveSupportGroupId();
+      const isSupport = isSupportGroup(chatId) || String(chatId) === String(activeSupGroup);
 
-        if (KV) {
-          targetUserId = await KV.get(`sup:${repMsgId}`);
+      if (isSupport) {
+        if (String(chatId) !== String(activeSupGroup)) {
+          memorySupportGroupId = String(chatId);
+          await safeKvPut("active_support_group_id", String(chatId));
         }
-        if (!targetUserId) {
-          const repText = msg.reply_to_message.text || msg.reply_to_message.caption || "";
-          const m = repText.match(/(?:#id|ID:\s*|id:)(\d+)/i);
-          if (m) targetUserId = m[1];
+        if (msg?.migrate_to_chat_id) {
+          memorySupportGroupId = String(msg.migrate_to_chat_id);
+          await safeKvPut("active_support_group_id", String(msg.migrate_to_chat_id));
         }
 
-        if (targetUserId) {
+        const handled = await handleAdminAction(groupText, msg, chatId);
+        if (handled) return new Response("OK");
+
+        // Check active direct chat session in the support group
+        const activeTargetId = await getActiveChat(chatId);
+        if (activeTargetId && msg) {
           const sendRes = await api("copyMessage", {
-            chat_id: targetUserId,
+            chat_id: activeTargetId,
             from_chat_id: chatId,
             message_id: msg.message_id,
           });
@@ -2793,15 +2842,57 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
           } else {
             await api("sendMessage", {
               chat_id: chatId,
-              text: `⚠️ Не вдалося надіслати відповідь користувачу <code>#id${targetUserId}</code>: ${escapeHtml(sendRes?.description || "користувач заблокував бота або сталася помилка")}`,
+              text: `⚠️ Не вдалося доставити повідомлення до <code>#id${activeTargetId}</code>: ${escapeHtml(sendRes?.description || "користувач заблокував бота або сталася помилка")}`,
               parse_mode: "HTML",
               reply_to_message_id: msg.message_id,
             });
           }
           return new Response("OK");
         }
+
+        if (msg?.reply_to_message) {
+          let targetUserId = null;
+          const repMsgId = String(msg.reply_to_message.message_id);
+
+          if (memorySupMessages.has(repMsgId)) {
+            targetUserId = memorySupMessages.get(repMsgId);
+          }
+          if (!targetUserId && KV) {
+            targetUserId = await KV.get(`sup:${repMsgId}`);
+          }
+          if (!targetUserId) {
+            const repText = msg.reply_to_message.text || msg.reply_to_message.caption || "";
+            const m = repText.match(/(?:#id|ID:\s*|id:)(\d+)/i);
+            if (m) targetUserId = m[1];
+          }
+
+          if (targetUserId) {
+            const sendRes = await api("copyMessage", {
+              chat_id: targetUserId,
+              from_chat_id: chatId,
+              message_id: msg.message_id,
+            });
+
+            if (sendRes?.ok) {
+              await api("setMessageReaction", {
+                chat_id: chatId,
+                message_id: msg.message_id,
+                reaction: [{ type: "emoji", emoji: "👍" }],
+              }).catch(() => null);
+            } else {
+              await api("sendMessage", {
+                chat_id: chatId,
+                text: `⚠️ Не вдалося надіслати відповідь користувачу <code>#id${targetUserId}</code>: ${escapeHtml(sendRes?.description || "користувач заблокував бота або сталася помилка")}`,
+                parse_mode: "HTML",
+                reply_to_message_id: msg.message_id,
+              });
+            }
+            return new Response("OK");
+          }
+        }
       }
 
+      // Any other group message: do nothing, NEVER forward to support!
       return new Response("OK");
     }
 
@@ -3083,13 +3174,7 @@ if (data === "link:site") {
     }
 
     const forwardToSupport = async (studentMsg, studentPrefs) => {
-      let activeGroup = SUPPORT_GROUP_ID;
-      if (KV) {
-        try {
-          const stored = await KV.get("active_support_group_id");
-          if (stored) activeGroup = stored;
-        } catch {}
-      }
+      let activeGroup = await getActiveSupportGroupId();
 
       const sUser = studentMsg?.from || fromUser;
       const sUserId = String(sUser?.id || userId);
@@ -3238,6 +3323,7 @@ if (data === "link:site") {
               reply_to_message_id: sentMsgId,
             });
             if (badgeRes?.result?.message_id) {
+              memorySupMessages.set(String(badgeRes.result.message_id), sUserId);
               await safeKvPut(`sup:${badgeRes.result.message_id}`, sUserId, { expirationTtl: 604800 });
             }
           }
@@ -3245,9 +3331,11 @@ if (data === "link:site") {
       }
 
       if (headerRes?.result?.message_id) {
+        memorySupMessages.set(String(headerRes.result.message_id), sUserId);
         await safeKvPut(`sup:${headerRes.result.message_id}`, sUserId, { expirationTtl: 604800 });
       }
       if (sentMsgId) {
+        memorySupMessages.set(String(sentMsgId), sUserId);
         await safeKvPut(`sup:${sentMsgId}`, sUserId, { expirationTtl: 604800 });
       }
 
@@ -3304,7 +3392,9 @@ if (data === "link:site") {
     }
 
     if (!msg?.text) {
-      await forwardToSupport(msg, prefs);
+      if (isPrivate) {
+        await forwardToSupport(msg, prefs);
+      }
       return new Response("OK");
     }
     const text = msg.text.trim();
@@ -3667,12 +3757,16 @@ if (text.startsWith("/start code_")) {
     }
 
     if (text.startsWith("/help ") || text.startsWith("/support ")) {
-      await forwardToSupport(msg, prefs);
+      if (isPrivate) {
+        await forwardToSupport(msg, prefs);
+      }
       return new Response("OK");
     }
 
+    if (isPrivate) {
       await forwardToSupport(msg, prefs);
-      return new Response("OK");
+    }
+    return new Response("OK");
     } catch (err) {
       console.error("FATAL ERROR in bot update:", err);
       return new Response("OK");

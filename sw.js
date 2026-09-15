@@ -12,13 +12,14 @@
       ╚═════════╝               
 */
 
-const CACHE_NAME = 'fep-schedule-v6';
+const CACHE_NAME = 'fep-schedule-v7';
 const OFFLINE_PAGE = './index.html';
 
 const PRECACHE_URLS = [
     './index.html',
     './manifest.json',
     './script.js',
+    './logo.png',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
     'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
 ];
