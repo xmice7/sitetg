@@ -409,6 +409,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             display: none;
             opacity: 0;
             transition: opacity 0.5s ease;
+            contain: strict;
+            transform: translate3d(0, 0, 0);
+            will-change: opacity;
         }
         [data-theme="lines"] .lines-bg-container {
             display: block;
@@ -418,10 +421,36 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             width: 100%;
             height: 100%;
             color: #ffffff;
+            transform: translate3d(0, 0, 0);
+            will-change: transform;
+        }
+        .floating-path-line {
+            stroke-dasharray: 40 60;
+            animation: floatPathFlow var(--line-dur, 24s) ease-in-out infinite alternate;
+            animation-delay: var(--line-delay, 0s);
+            will-change: stroke-dashoffset, stroke-opacity;
+        }
+        @keyframes floatPathFlow {
+            0% {
+                stroke-dashoffset: 0;
+                stroke-opacity: calc(var(--base-op, 0.4) * 0.25);
+            }
+            50% {
+                stroke-dashoffset: -50;
+                stroke-opacity: calc(var(--base-op, 0.4) * 0.85);
+            }
+            100% {
+                stroke-dashoffset: -100;
+                stroke-opacity: calc(var(--base-op, 0.4) * 0.3);
+            }
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--apple-font); -webkit-tap-highlight-color: transparent; }
+        html { scroll-behavior: smooth; }
         body { background-color: var(--bg-body); color: var(--text-main); line-height: 1.5; padding-bottom: calc(96px + env(safe-area-inset-bottom)); transition: background-color 0.3s ease,color 0.3s ease; overflow-x: hidden; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+        button, a, .day-btn, .theme-btn, .ios-theme-card, .ios-item-row, .ios-switch, .ios-profile-banner, .moodle-btn, .nav-item, .lesson-card {
+            touch-action: manipulation;
+        }
         .bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
         .bg-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: var(--orb-opacity); will-change: transform; }
         .bg-orb-1 { width: 420px; height: 420px; background: var(--primary,#3b82f6); top: -100px; left: -100px; animation: orbFloat1 22s linear infinite; }
@@ -547,15 +576,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .schedule-list { display: flex; flex-direction: column; gap: 14px; }
         .day-header { display: flex; justify-content: space-between; align-items: flex-end; margin: 10px 0 8px 0; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
         .day-header .day-title { font-size: var(--fs-day-title); font-weight: 700; color: var(--text-main); }
-        .day-header .week-badge { font-size: 12px; font-weight: 600; color: var(--text-muted); background: var(--bg-card); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border); }
-        .lesson-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 0; transition: transform 0.25s var(--spring-easing), box-shadow 0.25s var(--spring-easing), border-color 0.2s ease; box-shadow: var(--shadow); position: relative; overflow: hidden; animation: cardSlideIn 0.35s var(--spring-easing) both; contain: layout paint; }
-        .lesson-card:active { transform: scale(0.985); }
+        .lesson-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 0; transition: transform 0.25s var(--spring-easing), box-shadow 0.25s var(--spring-easing), border-color 0.2s ease; box-shadow: var(--shadow); position: relative; overflow: hidden; animation: cardSlideIn 0.35s var(--spring-easing) both; contain: layout paint; transform: translate3d(0, 0, 0); will-change: transform; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        .lesson-card:active { transform: scale(0.985) translate3d(0, 0, 0); }
         .lesson-card-inner { display: flex; gap: 16px; width: 100%; }
         .schedule-list .lesson-card:nth-child(1){animation-delay:0.03s} .schedule-list .lesson-card:nth-child(2){animation-delay:0.07s} .schedule-list .lesson-card:nth-child(3){animation-delay:0.11s} .schedule-list .lesson-card:nth-child(4){animation-delay:0.15s} .schedule-list .lesson-card:nth-child(5){animation-delay:0.19s} .schedule-list .lesson-card:nth-child(6){animation-delay:0.23s}
-        @keyframes cardSlideIn { from{opacity:0;transform:translateY(12px) scale(0.985)} to{opacity:1;transform:translateY(0) scale(1)} }
+        @keyframes cardSlideIn { from{opacity:0;transform:translate3d(0, 12px, 0) scale(0.985)} to{opacity:1;transform:translate3d(0, 0, 0) scale(1)} }
         .lesson-card::before { content:''; position:absolute; top:0; left:-100%; width:60%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.05),transparent); transform:skewX(-15deg); transition:left 0.5s ease; pointer-events:none; }
         .lesson-card:hover::before { left: 160%; }
-        .lesson-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+        .lesson-card:hover { transform: translate3d(0, -2px, 0); box-shadow: var(--shadow-hover); }
         .lesson-card.current-lesson { border-color: var(--accent-green); border-width: 2px; box-shadow: 0 10px 28px -4px rgba(16,185,129,0.22), 0 0 1px 1px var(--accent-green) inset; animation: cardSlideIn 0.35s var(--spring-easing) both, auraPulse 4s ease-in-out infinite alternate; }
         @keyframes auraPulse { 0% { box-shadow: 0 6px 20px -4px rgba(16,185,129,0.2), 0 0 1px 1px var(--accent-green) inset; } 100% { box-shadow: 0 14px 32px -2px rgba(16,185,129,0.32), 0 0 2px 1px var(--accent-green) inset; } }
         .skeleton-wrap { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
@@ -744,9 +772,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s var(--spring-easing); display: flex; align-items: flex-end; justify-content: center; overscroll-behavior-y: contain; }
         .modal-overlay.active { opacity: 1; pointer-events: all; }
-        .modal-content { background: var(--modal-bg); width: 100%; max-width: 600px; border-radius: 28px 28px 0 0; max-height: 88vh; max-height: 88dvh; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.38s var(--spring-easing); border-top: 1px solid rgba(255,255,255,0.16); box-shadow: 0 -12px 48px rgba(0,0,0,0.28); position: relative; will-change: transform; backface-visibility: hidden; overscroll-behavior-y: contain; }
+        .modal-content { background: var(--modal-bg); width: 100%; max-width: 600px; border-radius: 28px 28px 0 0; max-height: 88vh; max-height: 88dvh; display: flex; flex-direction: column; transform: translate3d(0, 100%, 0); transition: transform 0.38s var(--spring-easing); border-top: 1px solid rgba(255,255,255,0.16); box-shadow: 0 -12px 48px rgba(0,0,0,0.28); position: relative; will-change: transform; backface-visibility: hidden; -webkit-backface-visibility: hidden; overscroll-behavior-y: contain; }
         .modal-content::before { content: ''; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 38px; height: 4px; border-radius: 4px; background: var(--border); opacity: 0.8; }
-        .modal-overlay.active .modal-content { transform: translateY(0); }
+        .modal-overlay.active .modal-content { transform: translate3d(0, 0, 0); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 22px 24px 16px; position: sticky; top: 0; background: var(--modal-bg); border-radius: 28px 28px 0 0; border-bottom: 1px solid var(--border); z-index: 5; flex-shrink: 0; }
         .modal-header h2 { font-size:20px; font-weight:800; }
         .modal-body { overflow-y:auto; -webkit-overflow-scrolling:touch; padding:20px 24px 32px; flex:1; overscroll-behavior-y: contain; }
@@ -839,6 +867,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             overflow: hidden;
             padding: 0;
             overscroll-behavior-y: contain;
+            transform: translate3d(0, 100%, 0);
+            transition: transform 0.38s var(--spring-easing);
+            will-change: transform;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        #settings-modal.active .modal-content {
+            transform: translate3d(0, 0, 0);
         }
         @media (min-width: 680px) {
             #settings-modal {
@@ -849,11 +885,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                 border-radius: 26px;
                 max-height: 88vh;
                 box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--ios-card-border);
-                transform: translateY(20px) scale(0.97);
+                transform: translate3d(0, 20px, 0) scale(0.97);
                 transition: transform 0.36s var(--spring-easing), opacity 0.3s ease;
             }
             #settings-modal.active .modal-content {
-                transform: translateY(0) scale(1);
+                transform: translate3d(0, 0, 0) scale(1);
             }
         }
         #settings-modal .modal-content::before { display: none; }
@@ -5357,27 +5393,18 @@ function updateThemeUI() {
 
 /* =========================================================================
    FLOATING PATHS BACKGROUND (LINES THEME)
-   Dynamic 72-path curved waves manager for "lines" theme
-   Runs only when data-theme="lines" is active to preserve CPU and battery
+   Zero-lag GPU-accelerated CSS animation manager for "lines" theme
    ========================================================================= */
 (function() {
     const SVG_NS = 'http://www.w3.org/2000/svg';
-    let container = null;
-    let svg = null;
-    let isRunning = false;
-    let animId = null;
-    let startTime = performance.now();
-    let pathsData = [];
     let isInitialized = false;
 
     function buildPaths() {
         if (isInitialized) return;
-        svg = document.getElementById('lines-bg-svg');
-        container = document.getElementById('lines-bg-container');
+        const svg = document.getElementById('lines-bg-svg');
         if (!svg) return;
 
         svg.innerHTML = '<title>Background Paths</title>';
-        pathsData = [];
 
         // position 1 and -1 (each with 36 paths = 72 paths total)
         for (const pos of [1, -1]) {
@@ -5393,61 +5420,25 @@ function updateThemeUI() {
                 const delay = Math.random() * duration;
 
                 path.setAttribute('d', d);
-                path.setAttribute('pathLength', '1');
+                path.setAttribute('pathLength', '100');
+                path.setAttribute('class', 'floating-path-line');
                 path.setAttribute('stroke', 'currentColor');
                 path.setAttribute('stroke-width', width.toFixed(3));
                 path.setAttribute('stroke-linecap', 'round');
                 path.setAttribute('stroke-linejoin', 'round');
                 path.setAttribute('fill', 'none');
 
-                g.appendChild(path);
+                path.style.setProperty('--line-dur', `${duration.toFixed(2)}s`);
+                path.style.setProperty('--line-delay', `-${delay.toFixed(2)}s`);
+                path.style.setProperty('--base-op', `${baseOpacity.toFixed(2)}`);
 
-                pathsData.push({
-                    el: path,
-                    baseOpacity,
-                    duration,
-                    delay
-                });
+                g.appendChild(path);
             }
             svg.appendChild(g);
         }
 
         isInitialized = true;
     }
-
-    function render(now) {
-        if (!isRunning) return;
-        const elapsed = (now - startTime) * 0.001;
-
-        for (let i = 0; i < pathsData.length; i++) {
-            const p = pathsData[i];
-            const t = ((elapsed + p.delay) / p.duration) % 1;
-            // Framer Motion: pathOffset [0, 1, 0], opacity [0.3, 0.6, 0.3], pathLength 0.3 -> 1.0
-            const wave = t < 0.5 ? (t * 2) : (2 - t * 2);
-            const pLen = 0.3 + 0.7 * wave;
-            const pOff = wave;
-            const op = p.baseOpacity * (0.3 + 0.3 * wave);
-
-            p.el.setAttribute('stroke-dasharray', `${pLen.toFixed(3)} 1`);
-            p.el.setAttribute('stroke-dashoffset', `${(-pOff).toFixed(3)}`);
-            p.el.setAttribute('stroke-opacity', `${op.toFixed(3)}`);
-        }
-
-        animId = requestAnimationFrame(render);
-    }
-
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            if (animId) {
-                cancelAnimationFrame(animId);
-                animId = null;
-            }
-        } else {
-            if (isRunning && !animId) {
-                animId = requestAnimationFrame(render);
-            }
-        }
-    });
 
     window.LinesBg = {
         init() {
@@ -5457,22 +5448,12 @@ function updateThemeUI() {
             }
         },
         start() {
-            if (isRunning) return;
             buildPaths();
-            if (!container) container = document.getElementById('lines-bg-container');
+            const container = document.getElementById('lines-bg-container');
             if (container) container.style.display = 'block';
-            isRunning = true;
-            startTime = performance.now();
-            animId = requestAnimationFrame(render);
         },
         stop() {
-            if (!isRunning) return;
-            isRunning = false;
-            if (animId) {
-                cancelAnimationFrame(animId);
-                animId = null;
-            }
-            if (!container) container = document.getElementById('lines-bg-container');
+            const container = document.getElementById('lines-bg-container');
             if (container) container.style.display = 'none';
         },
         toggle(active) {
