@@ -2533,7 +2533,7 @@ export default {
       }
 
       const header = `⚡️ *Розклад у реальному часі*\n` +
-        `_Група: ${esc(prefs.group)} · Час: ${esc(nowTimeStr)} (Київ)_\n` +
+        `_Група: ${esc(prefs.group)} · Час: ${esc(nowTimeStr)} \\(Київ\\)_\n` +
         `─`.repeat(22) + `\n\n`;
 
       if (!uniqueLessons.length) {
@@ -2566,16 +2566,16 @@ export default {
         const leftMins = toMins(currentLesson.end) - nowMinutes;
         let out = header;
         out += `🟢 *ЗАРАЗ ТРИВАЄ ПАРА:*\n`;
-        out += `📖 *${esc(currentLesson.title)}*${currentLesson.typeLabel ? ` _(${esc(currentLesson.typeLabel)})_` : ""}\n`;
+        out += `📖 *${esc(currentLesson.title)}*${currentLesson.typeLabel ? ` _\\(${esc(currentLesson.typeLabel)}\\)_` : ""}\n`;
         out += `🕐 Час: *${esc(currentLesson.start)} — ${esc(currentLesson.end)}*\n`;
         if (currentLesson.room) out += `🏛 Аудиторія: *${esc(currentLesson.room)}*\n`;
         if (currentLesson.teacher) out += `👨‍🏫 Викладач: *${esc(currentLesson.teacher)}*\n`;
-        out += `⏳ Залишилось: *${leftMins} хв.*\n\n`;
+        out += `⏳ Залишилось: *${leftMins} хв\\.*\n\n`;
 
         if (nextLesson) {
-          out += `🔜 *Наступна пара (${esc(nextLesson.start)} — ${esc(nextLesson.end)}):*\n`;
-          out += `📖 *${esc(nextLesson.title)}*${nextLesson.typeLabel ? ` _(${esc(nextLesson.typeLabel)})_` : ""}\n`;
-          if (nextLesson.room) out += `🏛 Ауд.: *${esc(nextLesson.room)}* `;
+          out += `🔜 *Наступна пара \\(${esc(nextLesson.start)} — ${esc(nextLesson.end)}\\):*\n`;
+          out += `📖 *${esc(nextLesson.title)}*${nextLesson.typeLabel ? ` _\\(${esc(nextLesson.typeLabel)}\\)_` : ""}\n`;
+          if (nextLesson.room) out += `🏛 Ауд\\.: *${esc(nextLesson.room)}* `;
           if (nextLesson.teacher) out += `· 👤 ${esc(nextLesson.teacher)}`;
           out += `\n`;
         } else {
@@ -2589,13 +2589,13 @@ export default {
         let out = header;
         if (nowMinutes < toMins(uniqueLessons[0].start)) {
           out += `🌅 *Пари ще не почалися\\!*\n`;
-          out += `⏳ До початку першої пари: *${untilMins} хв.*\n\n`;
+          out += `⏳ До початку першої пари: *${untilMins} хв\\.*\n\n`;
         } else {
           out += `☕️ *Зараз перерва\\!*\n`;
-          out += `⏳ До наступної пари: *${untilMins} хв.*\n\n`;
+          out += `⏳ До наступної пари: *${untilMins} хв\\.*\n\n`;
         }
-        out += `🔜 *Найближча пара (${esc(nextLesson.start)} — ${esc(nextLesson.end)}):*\n`;
-        out += `📖 *${esc(nextLesson.title)}*${nextLesson.typeLabel ? ` _(${esc(nextLesson.typeLabel)})_` : ""}\n`;
+        out += `🔜 *Найближча пара \\(${esc(nextLesson.start)} — ${esc(nextLesson.end)}\\):*\n`;
+        out += `📖 *${esc(nextLesson.title)}*${nextLesson.typeLabel ? ` _\\(${esc(nextLesson.typeLabel)}\\)_` : ""}\n`;
         if (nextLesson.room) out += `🏛 Аудиторія: *${esc(nextLesson.room)}*\n`;
         if (nextLesson.teacher) out += `👨‍🏫 Викладач: *${esc(nextLesson.teacher)}*\n`;
         return out.trim();
@@ -2611,8 +2611,8 @@ export default {
 
       if (tomorrowLessons.length) {
         const first = tomorrowLessons[0];
-        out += `📅 *Перша пара завтра (${esc(first.start)}):*\n`;
-        out += `📖 *${esc(first.title)}*${first.room ? ` (ауд\\. ${esc(first.room)})` : ""}`;
+        out += `📅 *Перша пара завтра \\(${esc(first.start)}\\):*\n`;
+        out += `📖 *${esc(first.title)}*${first.room ? ` \\(ауд\\. ${esc(first.room)}\\)` : ""}`;
       }
       return out.trim();
     };
@@ -2623,7 +2623,7 @@ export default {
       const avg = gradesData?.average || "0";
       const subjects = gradesData?.subjects || [];
 
-      let out = `📊 *Журнал оцінок (Деканат ЛНУ)*\n\n`;
+      let out = `📊 *Журнал оцінок \\(Деканат ЛНУ\\)*\n\n`;
       out += `👤 *Студент:* *${esc(student)}*\n`;
       if (group) out += `🎓 *Група:* *${esc(group)}*\n`;
       out += `📈 *Середній бал:* *${esc(avg)} / 100*\n\n`;
@@ -2635,7 +2635,7 @@ export default {
       }
 
       for (const s of subjects) {
-        const ectsStr = s.ects ? ` (${esc(s.ects)})` : "";
+        const ectsStr = s.ects ? ` \\(${esc(s.ects)}\\)` : "";
         const balEmoji = s.total >= 90 ? "🟢" : s.total >= 71 ? "🟡" : s.total >= 51 ? "🟠" : s.total > 0 ? "🔴" : "⚪️";
         out += `${balEmoji} *${esc(s.subject)}*\n`;
         out += `   ┣ Бал: *${esc(String(s.total))}* / 100${ectsStr}\n`;
@@ -2650,6 +2650,109 @@ export default {
 
       out += `\n_💡 Нові оцінки надсилаються автоматично миттєвими сповіщеннями\\!_`;
       return out;
+    };
+
+    const loadUserGrades = async (userId, prefs, force = false) => {
+      let creds = null;
+      if (KV) {
+        try {
+          const raw = await KV.get(`dekanat_creds:${userId}`);
+          if (raw) creds = JSON.parse(raw);
+        } catch {}
+      }
+
+      const cacheKey = `dekanat_cache:${userId}`;
+      let gradesData = null;
+
+      if (creds && creds.user_name && creds.user_pwd) {
+        if (!force && KV) {
+          try {
+            const rawCache = await KV.get(cacheKey);
+            if (rawCache) {
+              const c = JSON.parse(rawCache);
+              if (c?.data && (Date.now() - (c.ts || 0) < 15 * 60 * 1000)) {
+                gradesData = c.data;
+              }
+            }
+          } catch {}
+        }
+
+        if (!gradesData) {
+          try {
+            gradesData = await fetchDekanatGrades(creds.user_name, creds.user_pwd);
+            if (KV && gradesData) {
+              await safeKvPut(cacheKey, JSON.stringify({ ts: Date.now(), data: gradesData }));
+            }
+          } catch (err) {
+            if (KV) {
+              try {
+                const rawCache = await KV.get(cacheKey);
+                if (rawCache) {
+                  const c = JSON.parse(rawCache);
+                  if (c?.data) gradesData = c.data;
+                }
+              } catch {}
+            }
+          }
+        }
+      }
+
+      if (!gradesData && KV) {
+        try {
+          const rawCache = await KV.get(cacheKey);
+          if (rawCache) {
+            const c = JSON.parse(rawCache);
+            if (c?.data) gradesData = c.data;
+          }
+        } catch {}
+      }
+
+      if (!gradesData && env.FIREBASE_API_KEY && userId) {
+        try {
+          const url = `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/users/${userId}?key=${env.FIREBASE_API_KEY}`;
+          const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+          if (res.ok) {
+            const doc = await res.json();
+            const df = doc.fields?.dekanat?.mapValue?.fields;
+            if (df) {
+              const dataMap = df.data?.mapValue?.fields;
+              if (dataMap) {
+                gradesData = {
+                  studentName: dataMap.studentName?.stringValue || df.userName?.stringValue || "Студент",
+                  group: dataMap.group?.stringValue || prefs?.group || "",
+                  average: dataMap.average?.stringValue || "0",
+                  subjects: []
+                };
+                const rawSubs = dataMap.subjects?.arrayValue?.values || [];
+                for (const sv of rawSubs) {
+                  const sf = sv.mapValue?.fields;
+                  if (!sf) continue;
+                  const subj = {
+                    subject: sf.subject?.stringValue || "",
+                    total: Number(sf.total?.integerValue || sf.total?.stringValue || 0),
+                    ects: sf.ects?.stringValue || "",
+                    teacher: sf.teacher?.stringValue || "",
+                    grades: []
+                  };
+                  const rawGrades = sf.grades?.arrayValue?.values || [];
+                  for (const gv of rawGrades) {
+                    const gf = gv.mapValue?.fields;
+                    if (gf) {
+                      subj.grades.push({
+                        category: gf.category?.stringValue || "",
+                        value: Number(gf.value?.integerValue || gf.value?.stringValue || 0)
+                      });
+                    }
+                  }
+                  gradesData.subjects.push(subj);
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+
+      return gradesData;
     };
 
     const NO_DEKANAT_CREDS_TEXT =
@@ -3808,7 +3911,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       }
 
       
-      if (prefs.step !== "done" || !prefs.group) {
+      if (!prefs || !prefs.group) {
         await askGroupSearch(prefs, ONBOARD.welcome(userName));
         return new Response("OK");
       }
@@ -3833,57 +3936,12 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       }
 
       if (data === "dekanat:menu" || data === "dekanat:refresh") {
-        let creds = null;
-        if (KV) {
-          try {
-            const raw = await KV.get(`dekanat_creds:${userId}`);
-            if (raw) creds = JSON.parse(raw);
-          } catch {}
-        }
-        if (!creds || !creds.user_name || !creds.user_pwd) {
+        const force = (data === "dekanat:refresh");
+        const gradesData = await loadUserGrades(userId, prefs, force);
+        if (!gradesData) {
           await show(NO_DEKANAT_CREDS_TEXT, kb.dekanatLoginPrompt());
           return new Response("OK");
         }
-
-        let gradesData = null;
-        const force = (data === "dekanat:refresh");
-        const cacheKey = `dekanat_cache:${userId}`;
-
-        if (!force && KV) {
-          try {
-            const rawCache = await KV.get(cacheKey);
-            if (rawCache) {
-              const c = JSON.parse(rawCache);
-              if (c && c.data && (Date.now() - (c.ts || 0) < 15 * 60 * 1000)) {
-                gradesData = c.data;
-              }
-            }
-          } catch {}
-        }
-
-        if (!gradesData) {
-          try {
-            gradesData = await fetchDekanatGrades(creds.user_name, creds.user_pwd);
-            if (KV) {
-              await safeKvPut(cacheKey, JSON.stringify({ ts: Date.now(), data: gradesData }));
-            }
-          } catch (err) {
-            if (KV) {
-              try {
-                const rawCache = await KV.get(cacheKey);
-                if (rawCache) {
-                  const c = JSON.parse(rawCache);
-                  if (c?.data) gradesData = c.data;
-                }
-              } catch {}
-            }
-            if (!gradesData) {
-              await show("😕 _Сервер Деканату ЛНУ тимчасово недоступний\\. Спробуйте трохи пізніше\\._", kb.main(prefs));
-              return new Response("OK");
-            }
-          }
-        }
-
         const text = formatGrades(gradesData, prefs);
         await show(text, kb.dekanat());
         return new Response("OK");
@@ -4508,53 +4566,10 @@ if (data === "link:site") {
     }
 
     if (text === "/grades" || text === "/bali" || /^(бали|мої бали|оцінки|успішність)$/i.test(text)) {
-      let creds = null;
-      if (KV) {
-        try {
-          const raw = await KV.get(`dekanat_creds:${userId}`);
-          if (raw) creds = JSON.parse(raw);
-        } catch {}
-      }
-      if (!creds || !creds.user_name || !creds.user_pwd) {
+      const gradesData = await loadUserGrades(userId, prefs, false);
+      if (!gradesData) {
         await send(chatId, NO_DEKANAT_CREDS_TEXT, kb.dekanatLoginPrompt());
         return new Response("OK");
-      }
-
-      let gradesData = null;
-      const cacheKey = `dekanat_cache:${userId}`;
-      if (KV) {
-        try {
-          const rawCache = await KV.get(cacheKey);
-          if (rawCache) {
-            const c = JSON.parse(rawCache);
-            if (c && c.data && (Date.now() - (c.ts || 0) < 15 * 60 * 1000)) {
-              gradesData = c.data;
-            }
-          }
-        } catch {}
-      }
-
-      if (!gradesData) {
-        try {
-          gradesData = await fetchDekanatGrades(creds.user_name, creds.user_pwd);
-          if (KV) {
-            await safeKvPut(cacheKey, JSON.stringify({ ts: Date.now(), data: gradesData }));
-          }
-        } catch (err) {
-          if (KV) {
-            try {
-              const rawCache = await KV.get(cacheKey);
-              if (rawCache) {
-                const c = JSON.parse(rawCache);
-                if (c?.data) gradesData = c.data;
-              }
-            } catch {}
-          }
-          if (!gradesData) {
-            await send(chatId, "😕 _Сервер Деканату ЛНУ тимчасово недоступний\\. Спробуйте трохи пізніше\\._", kb.main(prefs));
-            return new Response("OK");
-          }
-        }
       }
 
       await send(chatId, formatGrades(gradesData, prefs), kb.dekanat());

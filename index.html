@@ -595,6 +595,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .schedule-list { display: flex; flex-direction: column; gap: 14px; }
         .day-header { display: flex; justify-content: space-between; align-items: flex-end; margin: 10px 0 8px 0; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
         .day-header .day-title { font-size: var(--fs-day-title); font-weight: 700; color: var(--text-main); }
+        .day-header .week-badge, .week-badge { font-size: 11.5px; font-weight: 700; color: var(--text-muted); background: rgba(148, 163, 184, 0.12); border: 1px solid var(--border); padding: 3px 10px; border-radius: 9999px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; letter-spacing: 0.2px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
+        [data-theme="light"] .day-header .week-badge, [data-theme="light"] .week-badge { background: rgba(0, 0, 0, 0.05); border-color: rgba(0, 0, 0, 0.1); color: #64748b; }
         .lesson-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 0; transition: transform 0.25s var(--spring-easing), box-shadow 0.25s var(--spring-easing), border-color 0.2s ease; box-shadow: var(--shadow); position: relative; overflow: hidden; animation: cardSlideIn 0.35s var(--spring-easing) both; contain: layout paint; transform: translate3d(0, 0, 0); will-change: transform; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
         .lesson-card:active { transform: scale(0.985) translate3d(0, 0, 0); }
         .lesson-card-inner { display: flex; gap: 16px; width: 100%; }
@@ -4260,13 +4262,17 @@ function haptic(type = 'light') {
         if (storage.get('toggle-haptic_v', 'true') === 'false') return;
         const tg = window.Telegram && window.Telegram.WebApp;
         if (tg && tg.HapticFeedback) {
-            if (type === 'selection') tg.HapticFeedback.selectionChanged();
-            else if (type === 'success' || type === 'warning' || type === 'error') tg.HapticFeedback.notificationOccurred(type);
-            else tg.HapticFeedback.impactOccurred(type || 'light');
-            return;
+            if (type === 'selection') {
+                try { tg.HapticFeedback.selectionChanged(); } catch(e) {}
+                try { tg.HapticFeedback.impactOccurred('light'); } catch(e) {}
+            } else if (type === 'success' || type === 'warning' || type === 'error') {
+                try { tg.HapticFeedback.notificationOccurred(type); } catch(e) {}
+            } else {
+                try { tg.HapticFeedback.impactOccurred(type || 'light'); } catch(e) {}
+            }
         }
         if (navigator.vibrate) {
-            navigator.vibrate(type === 'selection' ? 6 : (type === 'medium' ? 12 : 8));
+            navigator.vibrate(type === 'selection' ? 8 : (type === 'medium' ? 14 : (type === 'heavy' ? 22 : 10)));
         }
     } catch(e) {}
 }
@@ -8522,12 +8528,13 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             btn.addEventListener('click', () => storage.set('last_active_tab', btn.dataset.tab));
         });
 
-        // Tactile Haptic Feedback across the interface
-        document.querySelectorAll('.day-btn, .nav-item, .subgroup-pill, .group-pill, .modal-close, .go-tomorrow-btn, .refresh-btn, .quick-filter-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                haptic('selection');
-            });
-        });
+        // Tactile Haptic Feedback across the entire interface (delegated for dynamic elements)
+        document.addEventListener('pointerdown', (e) => {
+            const target = e.target.closest('button, .day-btn, .nav-item, .subgroup-pill, .group-pill, .modal-close, .go-tomorrow-btn, .refresh-btn, .quick-filter-btn, .custom-lesson-btn, .grades-filter-chip, .grades-refresh-pill, .grades-login-btn, .theme-toggle, .bottom-nav-item, [role="button"]');
+            if (target) {
+                haptic('light');
+            }
+        }, { passive: true });
 
         
         document.getElementById('reset-all-settings-btn')?.addEventListener('click', () => {
