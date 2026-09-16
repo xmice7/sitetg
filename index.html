@@ -377,92 +377,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         [data-theme="aurora"] .bg-orb-3 { background: #a855f7; }
         [data-theme="aurora"] .bg-orb-4 { background: #38bdf8; }
 
-        /* --- Floating Paths (Lines) Theme --- */
-        [data-theme="lines"] {
-            --bg-body: #07080c;
-            --bg-card: rgba(16, 19, 28, 0.76);
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --border: rgba(255, 255, 255, 0.1);
-            --accent-green: #34d399;
-            --bg-green: rgba(52, 211, 153, 0.15);
-            --accent-purple: #a78bfa;
-            --bg-purple: rgba(167, 139, 250, 0.15);
-            --bg-blue: rgba(96, 165, 250, 0.15);
-            --primary: #60a5fa;
-            --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-            --shadow-hover: 0 12px 40px rgba(96, 165, 250, 0.25);
-            --modal-bg: rgba(13, 15, 23, 0.92);
-            --orb-opacity: 0;
-        }
-        [data-theme="lines"] .lesson-card {
-            background: rgba(16, 19, 28, 0.72) !important;
-            backdrop-filter: blur(24px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45) !important;
-        }
-        [data-theme="lines"] .lesson-card:hover {
-            border-color: rgba(96, 165, 250, 0.45) !important;
-            box-shadow: 0 14px 38px rgba(96, 165, 250, 0.18) !important;
-        }
-        [data-theme="lines"] .bottom-nav {
-            background: rgba(13, 15, 23, 0.8) !important;
-            backdrop-filter: blur(25px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
-            border-color: rgba(255, 255, 255, 0.1) !important;
-        }
-        [data-theme="lines"] .bg-canvas {
-            display: none !important;
-        }
-
-        .lines-bg-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            pointer-events: none;
-            z-index: 0;
-            overflow: hidden;
-            display: none;
-            opacity: 0;
-            transition: opacity 0.5s ease;
-            contain: strict;
-            transform: translate3d(0, 0, 0);
-            will-change: opacity;
-        }
-        [data-theme="lines"] .lines-bg-container {
-            display: block;
-            opacity: 1;
-        }
-        .lines-bg-svg {
-            width: 100%;
-            height: 100%;
-            color: #ffffff;
-            transform: translate3d(0, 0, 0);
-            will-change: transform;
-        }
-        .floating-path-line {
-            stroke-dasharray: 40 60;
-            animation: floatPathFlow var(--line-dur, 24s) ease-in-out infinite alternate;
-            animation-delay: var(--line-delay, 0s);
-            will-change: stroke-dashoffset, stroke-opacity;
-        }
-        @keyframes floatPathFlow {
-            0% {
-                stroke-dashoffset: 0;
-                stroke-opacity: calc(var(--base-op, 0.4) * 0.25);
-            }
-            50% {
-                stroke-dashoffset: -50;
-                stroke-opacity: calc(var(--base-op, 0.4) * 0.85);
-            }
-            100% {
-                stroke-dashoffset: -100;
-                stroke-opacity: calc(var(--base-op, 0.4) * 0.3);
-            }
-        }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--apple-font); -webkit-tap-highlight-color: transparent; }
         html { scroll-behavior: smooth; }
@@ -855,8 +769,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         [data-theme="dark"],
         [data-theme="black"],
         [data-theme="cyber"],
-        [data-theme="aurora"],
-        [data-theme="lines"] {
+        [data-theme="aurora"] {
             --ios-bg: #000000;
             --ios-card-bg: #1c1c1e;
             --ios-card-border: rgba(255, 255, 255, 0.08);
@@ -865,14 +778,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             --ios-subtext: #8e8e93;
             --ios-switch-off: #39393d;
             --ios-search-bg: rgba(120, 120, 128, 0.22);
-        }
-        [data-theme="lines"] {
-            --ios-bg: #07080c;
-            --ios-card-bg: rgba(18, 21, 32, 0.9);
-            --ios-card-border: rgba(255, 255, 255, 0.1);
-            --ios-separator: rgba(255, 255, 255, 0.08);
-            --ios-row-hover: rgba(255, 255, 255, 0.08);
-            --ios-search-bg: rgba(255, 255, 255, 0.08);
         }
 
         #settings-modal .modal-content {
@@ -1368,19 +1273,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .preview-theme-aurora { background: #06141d; }
         .preview-theme-aurora .preview-bar { background: #10e7aa; opacity: 0.5; }
         .preview-theme-aurora .preview-tile { background: rgba(16, 231, 170, 0.15); border-color: #10e7aa; }
-
-        .preview-theme-lines { background: #07080c; position: relative; }
-        .preview-theme-lines .preview-bar { background: #60a5fa; opacity: 0.75; }
-        .preview-theme-lines .preview-tile { background: rgba(96, 165, 250, 0.16); border-color: rgba(96, 165, 250, 0.4); }
-        .preview-theme-lines::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background-image: 
-                radial-gradient(circle at 20% 20%, rgba(96, 165, 250, 0.18) 0%, transparent 60%),
-                radial-gradient(circle at 80% 80%, rgba(167, 139, 250, 0.15) 0%, transparent 60%);
-            pointer-events: none;
-        }
 
         .ios-theme-label {
             font-size: 13px;
@@ -2827,12 +2719,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
     <div class="bg-orb bg-orb-4"></div>
 </div>
 
-<div id="lines-bg-container" class="lines-bg-container" aria-hidden="true">
-    <svg id="lines-bg-svg" class="lines-bg-svg" viewBox="0 0 696 316" fill="none" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <title>Background Paths</title>
-    </svg>
-</div>
-
 <div class="app-wrapper">
     <div id="page-schedule" class="page active">
         <div class="container">
@@ -3778,10 +3664,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             </div>
 
             <!-- SECTION 2: ОФОРМЛЕННЯ -->
-            <div class="ios-section" data-search-section="оформлення тема колір шрифт вигляд темна світла black чорна аврора lines лінії paths хвилі сайбер">
+            <div class="ios-section" data-search-section="оформлення тема колір шрифт вигляд темна світла black чорна аврора сайбер">
                 <div class="ios-section-header">Оформлення</div>
                 <div class="ios-card-container">
-                    <!-- 6 Theme Previews -->
+                    <!-- Theme Previews -->
                     <div class="ios-themes-container">
                         <button type="button" class="theme-btn ios-theme-card" data-theme-val="light" title="Світла тема">
                             <div class="ios-screen-preview preview-theme-light">
@@ -3799,15 +3685,15 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                             <span class="ios-theme-label">Темна</span>
                             <span class="ios-radio-dot"></span>
                         </button>
-                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="black" title="Black">
+                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="black" title="OLED Чорна тема">
                             <div class="ios-screen-preview preview-theme-black">
                                 <div class="preview-bar"></div>
                                 <div class="preview-tile"></div>
                             </div>
-                            <span class="ios-theme-label">Black</span>
+                            <span class="ios-theme-label">OLED</span>
                             <span class="ios-radio-dot"></span>
                         </button>
-                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="cyber" title="Cyberpunk">
+                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="cyber" title="Cyberpunk Неон">
                             <div class="ios-screen-preview preview-theme-cyber">
                                 <div class="preview-bar"></div>
                                 <div class="preview-tile"></div>
@@ -3815,25 +3701,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                             <span class="ios-theme-label">Cyber</span>
                             <span class="ios-radio-dot"></span>
                         </button>
-                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="aurora" title="Aurora">
+                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="aurora" title="Північне сяйво (Aurora)">
                             <div class="ios-screen-preview preview-theme-aurora">
                                 <div class="preview-bar"></div>
                                 <div class="preview-tile"></div>
                             </div>
                             <span class="ios-theme-label">Aurora</span>
-                            <span class="ios-radio-dot"></span>
-                        </button>
-                        <button type="button" class="theme-btn ios-theme-card" data-theme-val="lines" title="Плаваючи лінії (Floating Paths)">
-                            <div class="ios-screen-preview preview-theme-lines">
-                                <svg viewBox="0 0 100 46" fill="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0.75;">
-                                    <path d="M-10 12 C 20 4, 45 40, 75 22 C 90 14, 105 28, 115 36" stroke="rgba(96,165,250,0.85)" stroke-width="1.2"/>
-                                    <path d="M-10 24 C 25 18, 55 42, 85 14 C 98 6, 108 22, 115 28" stroke="rgba(255,255,255,0.75)" stroke-width="0.9"/>
-                                    <path d="M-10 36 C 20 30, 48 12, 78 28 C 96 36, 108 14, 115 20" stroke="rgba(167,139,250,0.7)" stroke-width="0.8"/>
-                                </svg>
-                                <div class="preview-bar"></div>
-                                <div class="preview-tile"></div>
-                            </div>
-                            <span class="ios-theme-label">〰️ Lines</span>
                             <span class="ios-radio-dot"></span>
                         </button>
                     </div>
@@ -4408,7 +4281,7 @@ const CloudSync = {
             }
             if (cloud.theme) {
                 let syncTheme = cloud.theme === 'oled' ? 'black' : cloud.theme;
-                if (syncTheme === 'dotted') syncTheme = 'lines';
+                if (syncTheme === 'dotted' || syncTheme === 'lines') syncTheme = 'dark';
                 if (syncTheme !== document.documentElement.getAttribute('data-theme')) {
                     document.documentElement.setAttribute('data-theme', syncTheme);
                     storage.set('theme', syncTheme);
@@ -4748,7 +4621,7 @@ const colors = {
 };
 let rawTheme = gget(ACTIVE_GROUP,'theme','dark');
 if (rawTheme === 'oled') rawTheme = 'black';
-if (rawTheme === 'dotted') rawTheme = 'lines';
+if (rawTheme === 'dotted' || rawTheme === 'lines') rawTheme = 'dark';
 let state = {
     scheduleGroup: ACTIVE_GROUP,       
     groupName: ACTIVE_GROUP_NAME,      
@@ -5388,7 +5261,7 @@ function initNewSettings() {
 
                 const themeContainer = sec.querySelector('.ios-themes-container');
                 if (themeContainer) {
-                    const themeMatch = secMatch || 'тема оформлення колір light dark black oled cyber aurora lines лінії paths хвилі'.includes(query);
+                    const themeMatch = secMatch || 'тема оформлення колір light dark black oled cyber aurora'.includes(query);
                     themeContainer.style.display = themeMatch ? '' : 'none';
                     if (themeMatch) hasVisibleItem = true;
                 }
@@ -5411,82 +5284,7 @@ function updateThemeUI() {
     if (els.themeBtns) {
         els.themeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.themeVal === state.theme));
     }
-    if (window.LinesBg) {
-        window.LinesBg.toggle(state.theme === 'lines');
-    }
 }
-
-/* =========================================================================
-   FLOATING PATHS BACKGROUND (LINES THEME)
-   Zero-lag GPU-accelerated CSS animation manager for "lines" theme
-   ========================================================================= */
-(function() {
-    const SVG_NS = 'http://www.w3.org/2000/svg';
-    let isInitialized = false;
-
-    function buildPaths() {
-        if (isInitialized) return;
-        const svg = document.getElementById('lines-bg-svg');
-        if (!svg) return;
-
-        svg.innerHTML = '<title>Background Paths</title>';
-
-        // position 1 and -1 (each with 36 paths = 72 paths total)
-        for (const pos of [1, -1]) {
-            const g = document.createElementNS(SVG_NS, 'g');
-            g.setAttribute('class', pos === 1 ? 'floating-paths-1' : 'floating-paths-2');
-
-            for (let i = 0; i < 36; i++) {
-                const path = document.createElementNS(SVG_NS, 'path');
-                const d = `M-${380 - i * 5 * pos} -${189 + i * 6}C-${380 - i * 5 * pos} -${189 + i * 6} -${312 - i * 5 * pos} ${216 - i * 6} ${152 - i * 5 * pos} ${343 - i * 6}C${616 - i * 5 * pos} ${470 - i * 6} ${684 - i * 5 * pos} ${875 - i * 6} ${684 - i * 5 * pos} ${875 - i * 6}`;
-                const width = 0.5 + i * 0.03;
-                const baseOpacity = 0.1 + i * 0.03;
-                const duration = 20 + Math.random() * 10;
-                const delay = Math.random() * duration;
-
-                path.setAttribute('d', d);
-                path.setAttribute('pathLength', '100');
-                path.setAttribute('class', 'floating-path-line');
-                path.setAttribute('stroke', 'currentColor');
-                path.setAttribute('stroke-width', width.toFixed(3));
-                path.setAttribute('stroke-linecap', 'round');
-                path.setAttribute('stroke-linejoin', 'round');
-                path.setAttribute('fill', 'none');
-
-                path.style.setProperty('--line-dur', `${duration.toFixed(2)}s`);
-                path.style.setProperty('--line-delay', `-${delay.toFixed(2)}s`);
-                path.style.setProperty('--base-op', `${baseOpacity.toFixed(2)}`);
-
-                g.appendChild(path);
-            }
-            svg.appendChild(g);
-        }
-
-        isInitialized = true;
-    }
-
-    window.LinesBg = {
-        init() {
-            const curTheme = document.documentElement.getAttribute('data-theme') || (typeof state !== 'undefined' ? state.theme : 'dark');
-            if (curTheme === 'lines') {
-                this.start();
-            }
-        },
-        start() {
-            buildPaths();
-            const container = document.getElementById('lines-bg-container');
-            if (container) container.style.display = 'block';
-        },
-        stop() {
-            const container = document.getElementById('lines-bg-container');
-            if (container) container.style.display = 'none';
-        },
-        toggle(active) {
-            if (active) this.start();
-            else this.stop();
-        }
-    };
-})();
 
 function getLocalMonday(d) { const di=new Date(d); const day=di.getDay()===0?7:di.getDay(); di.setDate(di.getDate()-day+1); di.setHours(0,0,0,0); return di; }
 
@@ -9174,11 +8972,20 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             if (displayEl) {
                 const formatted = code.slice(0,2) + ' ' + code.slice(2,4) + ' ' + code.slice(4,6);
                 displayEl.textContent = formatted;
+                displayEl.onclick = () => {
+                    navigator.clipboard?.writeText(code).then(() => {
+                        haptic('success');
+                        const prev = displayEl.textContent;
+                        displayEl.textContent = 'Скопійовано!';
+                        setTimeout(() => { displayEl.textContent = prev; }, 1200);
+                    });
+                };
             }
+            const botUrl = 'https://t.me/schedapp_bot?start=code_' + code;
             const openLink = document.getElementById('tg-open-bot-link');
-            if (openLink) {
-                openLink.href = 'https://t.me/schedapp_bot?start=code_' + code;
-            }
+            if (openLink) openLink.href = botUrl;
+            const openBtn = document.getElementById('tg-open-bot-btn');
+            if (openBtn) openBtn.href = botUrl;
             if (timerEl) { timerEl.style.color = ''; }
             if (status) { status.style.color = 'var(--text-muted)'; status.textContent = 'Очікуємо підтвердження від бота…'; }
 
@@ -9322,20 +9129,23 @@ if ('serviceWorker' in navigator) {
             <div id="tg-step-code" style="display:none;">
                 
                 <div style="background:linear-gradient(135deg,rgba(42,171,238,0.1),rgba(42,171,238,0.05));border:1.5px solid rgba(42,171,238,0.3);border-radius:18px;padding:20px;text-align:center;margin-bottom:16px;">
-                    <div style="font-size:12px;font-weight:700;color:#2AABEE;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Твій код</div>
-                    <div id="tg-display-code" style="font-size:42px;font-weight:900;letter-spacing:10px;color:var(--text-main);font-variant-numeric:tabular-nums;line-height:1;">——————</div>
+                    <div style="font-size:12px;font-weight:700;color:#2AABEE;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Твій код (натисни, щоб скопіювати)</div>
+                    <div id="tg-display-code" style="font-size:42px;font-weight:900;letter-spacing:10px;color:var(--text-main);font-variant-numeric:tabular-nums;line-height:1;cursor:pointer;user-select:all;">——————</div>
                     <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Діє <span id="tg-code-timer" style="font-weight:700;color:var(--text-main);">10:00</span></div>
                 </div>
 
+                <a id="tg-open-bot-btn" href="https://t.me/schedapp_bot" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;background:linear-gradient(135deg,#2AABEE,#229ED9);color:#fff;border-radius:16px;font-weight:800;font-size:15px;text-decoration:none;box-shadow:0 4px 16px rgba(42,171,238,0.35);margin-bottom:14px;box-sizing:border-box;">
+                    <span>🚀 Підтвердити в 1 клік у Telegram</span>
+                </a>
                 
                 <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
                     <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;">
                         <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;">1</div>
-                        <div style="font-size:13px;color:var(--text-main);">Відкрий бота <a id="tg-open-bot-link" href="https://t.me/schedapp_bot" target="_blank" style="color:#2AABEE;font-weight:700;">@schedapp_bot ↗</a></div>
+                        <div style="font-size:13px;color:var(--text-main);">Натисни синю кнопку вище або відкрий бота <a id="tg-open-bot-link" href="https://t.me/schedapp_bot" target="_blank" style="color:#2AABEE;font-weight:700;">@schedapp_bot ↗</a></div>
                     </div>
                     <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;">
                         <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;">2</div>
-                        <div style="font-size:13px;color:var(--text-main);">Надішли боту цей <strong>6-значний код</strong></div>
+                        <div style="font-size:13px;color:var(--text-main);">Натисни <strong>«Розпочати»</strong> або надішли цей <strong>6-значний код</strong></div>
                     </div>
                     <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-body);border:1px solid var(--border);border-radius:12px;">
                         <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;">3</div>

@@ -1144,35 +1144,36 @@ async function storeAuthCode(code, statusOrData, ttlSeconds = 600, env = null) {
 async function getAuthCode(code, env = null) {
   const now = Date.now();
 
-  // 1. Check RAM
+  // 1. Check RAM — only return immediately if already confirmed
   if (memoryCodeTokens.has(code)) {
     const item = memoryCodeTokens.get(code);
-    if (item.expiresAt > now) {
-      return item;
+    if (item && item.expiresAt > now) {
+      if (item.status === "confirmed") {
+        return item;
+      }
     } else {
       memoryCodeTokens.delete(code);
     }
   }
 
-  // 2. Check KV
+  // 2. Check KV for confirmed state
   if (env?.PREFS_KV) {
     try {
       const raw = await env.PREFS_KV.get(`code_token:${code}`);
-      if (raw) {
-        if (raw === "__pending__") {
-          return { status: "__pending__", userData: "", expiresAt: now + 600000 };
-        } else {
-          return { status: "confirmed", userData: raw, expiresAt: now + 600000 };
-        }
+      if (raw && raw !== "__pending__") {
+        const item = { status: "confirmed", userData: raw, expiresAt: now + 600000 };
+        memoryCodeTokens.set(code, item);
+        return item;
       }
     } catch {}
   }
 
-  // 3. Check Firestore
+  // 3. Check Firestore (authoritative cross-isolate state)
   const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
   try {
     const res = await fetch(
-      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/auth_codes/${code}?key=${apiKey}`
+      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/auth_codes/${code}?key=${apiKey}`,
+      { signal: AbortSignal.timeout(3000) }
     );
     if (res.ok) {
       const data = await res.json();
@@ -1181,12 +1182,29 @@ async function getAuthCode(code, env = null) {
         const status = data?.fields?.status?.stringValue || "";
         const userData = data?.fields?.userData?.stringValue || "";
         const item = { status, userData, expiresAt: exp || (now + 600000) };
-        memoryCodeTokens.set(code, item);
+        if (status === "confirmed") {
+          memoryCodeTokens.set(code, item);
+        }
         return item;
       }
     }
   } catch (e) {
     console.warn("getAuthCode Firestore read error:", e);
+  }
+
+  // 4. If neither KV nor Firestore has confirmed, fallback to pending from RAM or KV
+  if (memoryCodeTokens.has(code)) {
+    const item = memoryCodeTokens.get(code);
+    if (item && item.expiresAt > now) return item;
+  }
+
+  if (env?.PREFS_KV) {
+    try {
+      const raw = await env.PREFS_KV.get(`code_token:${code}`);
+      if (raw === "__pending__") {
+        return { status: "__pending__", userData: "", expiresAt: now + 600000 };
+      }
+    } catch {}
   }
 
   return null;
@@ -1460,9 +1478,7 @@ export default {
           });
         }
 
-        // Successfully confirmed! Clean up
-        await deleteAuthCode(cleanCode, env);
-
+        // Successfully confirmed! Return user profile.
         return new Response(item.userData, {
           headers: {
             "Content-Type": "application/json",
@@ -2004,6 +2020,44 @@ export default {
           const chatType = msg.chat?.type || "private";
           if (chatType !== "private") {
             return new Response("OK");
+          }
+
+          const rawText = (msg.text || "").trim();
+          const startMatch = rawText.match(/^\/start\s+(?:code_)?(\d{6})$/i);
+          const prefixMatch = rawText.match(/^(?:code_?|код[:\s]?)\s*(\d{6})$/i);
+          const cleaned = rawText.replace(/[\s\-_]/g, "");
+          const candidateCode = startMatch ? startMatch[1] : (prefixMatch ? prefixMatch[1] : (/^\d{6}$/.test(cleaned) ? cleaned : null));
+
+          if (candidateCode) {
+            const item = await getAuthCode(candidateCode, env);
+            if (item && item.status === "__pending__") {
+              const userData = {
+                id:         String(msg.from.id),
+                first_name: msg.from.first_name ?? "",
+                last_name:  msg.from.last_name  ?? "",
+                username:   msg.from.username   ?? "",
+                photo_url:  WORKER_URL ? `${WORKER_URL}/avatar/${msg.from.id}` : "",
+              };
+              await storeAuthCode(candidateCode, userData, 600, env);
+              if (ctx?.waitUntil) ctx.waitUntil(saveUserToFirebase(msg.from));
+              else saveUserToFirebase(msg.from).catch(() => {});
+
+              await fetch(`https://api.telegram.org/bot${oldToken}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  chat_id: msg.chat.id,
+                  text: `✅ <b>Готово! Акаунт прив'язано до сайту розкладу.</b>\nПоверніться у браузер — ви вже увійшли!\n\n⚠️ <i>Також переходьте у нашого нового бота @schedapp_bot, щоб отримувати розклад пар!</i>`,
+                  parse_mode: "HTML",
+                  reply_markup: {
+                    inline_keyboard: [
+                      [{ text: "🚀 Перейти в @schedapp_bot", url: "https://t.me/schedapp_bot" }]
+                    ]
+                  }
+                })
+              }).catch(() => null);
+              return new Response("OK");
+            }
           }
 
           const migText =
@@ -4422,38 +4476,39 @@ if (data === "link:site") {
       );
     };
 
-    // 1. Direct deep link: /start code_123456
-    if (text.startsWith("/start code_")) {
-      const linkCode = text.replace("/start code_", "").trim();
-      if (/^[0-9]{6}$/.test(linkCode)) {
-        const item = await getAuthCode(linkCode, env);
-        if (!item) {
-          await sendPlain(chatId, "⚠️ Код не знайдено або він застарів. Будь ласка, згенеруй новий код на сайті.");
-          return new Response("OK");
-        }
-        if (item.status === "confirmed") {
-          await sendPlain(chatId, "⚠️ Цей код вже використано. Будь ласка, згенеруй новий код на сайті.");
-          return new Response("OK");
-        }
+    // Universal 6-digit auth code parser:
+    // Handles: /start code_123456, /start 123456, code_123456, код 123456, код: 123456, 12 34 56, 123-456, 123456
+    const extractCandidateCode = (rawText) => {
+      if (!rawText) return null;
+      const t = rawText.trim();
+      const startMatch = t.match(/^\/start\s+(?:code_)?(\d{6})$/i);
+      if (startMatch) return startMatch[1];
+      const prefixMatch = t.match(/^(?:code_?|код[:\s]?)\s*(\d{6})$/i);
+      if (prefixMatch) return prefixMatch[1];
+      const cleaned = t.replace(/[\s\-_]/g, "");
+      if (/^\d{6}$/.test(cleaned)) return cleaned;
+      return null;
+    };
 
-        await confirmAccountLinking(linkCode);
+    const candidateCode = extractCandidateCode(text);
+    if (candidateCode) {
+      const item = await getAuthCode(candidateCode, env);
+      if (!item) {
+        await sendPlain(
+          chatId,
+          "⚠️ Код не знайдено або термін його дії закінчився (10 хв).\nБудь ласка, натисніть «🔄 Новий код» на сайті та надішліть новий код сюди."
+        );
         return new Response("OK");
       }
-    }
-
-    // 2. Direct 6-digit code sent by user or via await_link_code
-    const candidateCode = text.replace(/\s+/g, "");
-    if (/^[0-9]{6}$/.test(candidateCode)) {
-      const item = await getAuthCode(candidateCode, env);
-      if (item && item.status === "__pending__") {
-        await confirmAccountLinking(candidateCode);
+      if (item.status === "confirmed") {
+        await sendPlain(
+          chatId,
+          "✅ Цей код уже успішно підтверджено!\nПоверніться у браузер — ви вже увійшли на сайті."
+        );
         return new Response("OK");
-      } else if (prefs?.await_link_code) {
-        if (!item) {
-          await sendPlain(chatId, "⚠️ Код не знайдено або термін його дії закінчився. Згенеруй новий код на сайті.");
-        } else {
-          await sendPlain(chatId, "⚠️ Цей код вже використано. Згенеруй новий код на сайті.");
-        }
+      }
+      if (item.status === "__pending__") {
+        await confirmAccountLinking(candidateCode);
         return new Response("OK");
       }
     }
