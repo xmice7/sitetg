@@ -8522,8 +8522,8 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             btn.addEventListener('click', () => storage.set('last_active_tab', btn.dataset.tab));
         });
 
-        
-        document.querySelectorAll('.day-btn, .nav-item').forEach(btn => {
+        // Tactile Haptic Feedback across the interface
+        document.querySelectorAll('.day-btn, .nav-item, .subgroup-pill, .group-pill, .modal-close, .go-tomorrow-btn, .refresh-btn, .quick-filter-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 haptic('selection');
             });

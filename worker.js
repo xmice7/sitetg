@@ -171,6 +171,30 @@ function json(data, status = 200, extraHeaders = {}) {
   });
 }
 
+// Global Safe KV Helpers (survive KV free tier quota limit errors)
+async function globalSafeKvPut(kv, key, val, opt) {
+  if (!kv) return;
+  try {
+    await kv.put(key, val, opt);
+  } catch (e) {
+    console.warn(`globalSafeKvPut failed for ${key}:`, e?.message || e);
+  }
+}
+
+async function globalSafeKvDelete(kv, key) {
+  if (!kv) return;
+  try {
+    await kv.delete(key);
+  } catch (e) {
+    console.warn(`globalSafeKvDelete failed for ${key}:`, e?.message || e);
+  }
+}
+
+// Global In-Memory Caches for worker isolate
+const memoryScheduleCache = new Map(); // cacheKey -> { ts, schedule, normalized }
+const memoryAvatarCache = new Map();   // userId -> { buffer, contentType, ts }
+const memoryUserLastSaved = new Map(); // userId -> ts
+
 const DATE_RE = /^\d{2}\.\d{2}\.\d{4}$/;
 
 async function handleScheduleRoutes(request, env, ctx) {
@@ -203,6 +227,18 @@ async function handleScheduleRoutes(request, env, ctx) {
       const cacheKey = `sched_cache:${cleanGroup}:${range.sdate}_${range.edate}`;
       const fallbackKey = `sched_fallback:${cleanGroup}`;
 
+      // 1. Instant RAM Cache (0ms latency)
+      const FRESH_TTL_MS = 900000;
+      if (memoryScheduleCache.has(cacheKey)) {
+        const mem = memoryScheduleCache.get(cacheKey);
+        if (mem && mem.schedule && (Date.now() - (mem.ts || 0) < FRESH_TTL_MS)) {
+          return json(mem.schedule, 200, {
+            'Cache-Control': 'public, max-age=600',
+            'X-Cache-Status': 'RAM-HIT'
+          });
+        }
+      }
+
       let cachedEntry = null;
       if (kv) {
         try {
@@ -211,8 +247,8 @@ async function handleScheduleRoutes(request, env, ctx) {
         } catch {}
       }
 
-      const FRESH_TTL_MS = 900000;
       if (cachedEntry && cachedEntry.schedule && (Date.now() - (cachedEntry.ts || 0) < FRESH_TTL_MS)) {
+        memoryScheduleCache.set(cacheKey, cachedEntry);
         return json(cachedEntry.schedule, 200, {
           'Cache-Control': 'public, max-age=600',
           'X-Cache-Status': 'HIT'
@@ -226,11 +262,13 @@ async function handleScheduleRoutes(request, env, ctx) {
         fresh = await getSchedule(cleanGroup, range);
         dekanatReachable = true;
         if (fresh && Array.isArray(fresh.days) && fresh.days.length > 0) {
+          const entryObj = { ts: Date.now(), schedule: fresh };
+          memoryScheduleCache.set(cacheKey, entryObj);
           if (kv) {
-            const entry = JSON.stringify({ ts: Date.now(), schedule: fresh });
+            const entry = JSON.stringify(entryObj);
             const saveTask = Promise.all([
-              kv.put(cacheKey, entry, { expirationTtl: 1209600 }),
-              kv.put(fallbackKey, entry, { expirationTtl: 1209600 })
+              globalSafeKvPut(kv, cacheKey, entry, { expirationTtl: 1209600 }),
+              globalSafeKvPut(kv, fallbackKey, entry, { expirationTtl: 1209600 })
             ]);
             if (ctx?.waitUntil) ctx.waitUntil(saveTask); else await saveTask.catch(() => {});
           }
@@ -738,7 +776,8 @@ async function fetchDekanatGrades(user_name, user_pwd) {
   const initRes = await fetch(`${DEKANAT_CLASSMAN_URL}?n=999`, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
-    }
+    },
+    signal: AbortSignal.timeout(6000)
   });
   if (!initRes.ok) throw new Error("DEKANAT_UNAVAILABLE");
 
@@ -768,7 +807,8 @@ async function fetchDekanatGrades(user_name, user_pwd) {
       "Referer": `${DEKANAT_CLASSMAN_URL}?n=999`,
       "User-Agent": 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
     },
-    body: formBody
+    body: formBody,
+    signal: AbortSignal.timeout(6000)
   });
 
   const postBuf = await postRes.arrayBuffer();
@@ -791,7 +831,8 @@ async function fetchDekanatGrades(user_name, user_pwd) {
           "Cookie": cookieHeader,
           "Referer": actionUrl,
           "User-Agent": 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
-        }
+        },
+        signal: AbortSignal.timeout(6000)
       });
       if (homeRes.ok) {
         const homeBuf = await homeRes.arrayBuffer();
@@ -911,8 +952,8 @@ async function handleDekanatRoutes(request, env, ctx) {
       const parsedData = await fetchDekanatGrades(user_name, user_pwd);
 
       if (kv && userId) {
-        await kv.put(`dekanat_creds:${userId}`, JSON.stringify({ user_name, user_pwd }));
-        await kv.put(`dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: parsedData }));
+        await globalSafeKvPut(kv, `dekanat_creds:${userId}`, JSON.stringify({ user_name, user_pwd }));
+        await globalSafeKvPut(kv, `dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: parsedData }));
       }
 
       return json({
@@ -984,7 +1025,7 @@ async function handleDekanatRoutes(request, env, ctx) {
       }
 
       if (kv && userId) {
-        await kv.put(`dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: freshData }));
+        await globalSafeKvPut(kv, `dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: freshData }));
       }
 
       return json({
@@ -1016,8 +1057,8 @@ async function handleDekanatRoutes(request, env, ctx) {
     try { body = await request.json(); } catch { body = {}; }
     const { userId } = body || {};
     if (kv && userId) {
-      await kv.delete(`dekanat_creds:${userId}`);
-      await kv.delete(`dekanat_cache:${userId}`);
+      await globalSafeKvDelete(kv, `dekanat_creds:${userId}`);
+      await globalSafeKvDelete(kv, `dekanat_cache:${userId}`);
     }
     return json({ ok: true });
   }
@@ -1058,24 +1099,6 @@ function isDuplicateEvent(key, ttlMs = 120000) {
 // In-memory stores for auth linking
 const memoryCodeTokens = new Map(); // code -> { status, userData, expiresAt }
 const memoryLinkTokens = new Map(); // token -> { userData, expiresAt }
-
-async function globalSafeKvPut(kv, key, val, opt) {
-  if (!kv) return;
-  try {
-    await kv.put(key, val, opt);
-  } catch (e) {
-    console.warn(`globalSafeKvPut failed for ${key}:`, e?.message || e);
-  }
-}
-
-async function globalSafeKvDelete(kv, key) {
-  if (!kv) return;
-  try {
-    await kv.delete(key);
-  } catch (e) {
-    console.warn(`globalSafeKvDelete failed for ${key}:`, e?.message || e);
-  }
-}
 
 async function storeAuthCode(code, statusOrData, ttlSeconds = 600, env = null) {
   const expiresAt = Date.now() + ttlSeconds * 1000;
@@ -1460,31 +1483,55 @@ export default {
       const token = env.BOT_TOKEN;
       if (!userId || !token) return new Response("Not found", { status: 404 });
 
+      // 1. Instant RAM Cache for avatar (0ms)
+      if (memoryAvatarCache.has(userId)) {
+        const cached = memoryAvatarCache.get(userId);
+        if (cached && (Date.now() - (cached.ts || 0) < 3600000)) {
+          return new Response(cached.buffer, {
+            headers: {
+              "Content-Type": cached.contentType || "image/jpeg",
+              "Cache-Control": "public, max-age=3600, s-maxage=21600",
+              ...CORS_HEADERS,
+            },
+          });
+        }
+      }
+
       try {
         const photoRes = await fetch(
-          `https://api.telegram.org/bot${token}/getUserProfilePhotos?user_id=${userId}&limit=1`
+          `https://api.telegram.org/bot${token}/getUserProfilePhotos?user_id=${userId}&limit=1`,
+          { signal: AbortSignal.timeout(4000) }
         );
         const photoData = await photoRes.json();
         const fileId = photoData?.result?.photos?.[0]?.[0]?.file_id;
         if (!fileId) return new Response("No photo", { status: 404 });
 
         const fileRes = await fetch(
-          `https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`
+          `https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`,
+          { signal: AbortSignal.timeout(4000) }
         );
         const fileData = await fileRes.json();
         const filePath = fileData?.result?.file_path;
         if (!filePath) return new Response("No file path", { status: 404 });
 
-        
         const imgRes = await fetch(
-          `https://api.telegram.org/file/bot${token}/${filePath}`
+          `https://api.telegram.org/file/bot${token}/${filePath}`,
+          { signal: AbortSignal.timeout(5000) }
         );
         if (!imgRes.ok) return new Response("Fetch error", { status: 502 });
 
         const imgBuffer = await imgRes.arrayBuffer();
+        const contentType = imgRes.headers.get("Content-Type") || "image/jpeg";
+
+        if (memoryAvatarCache.size > 200) {
+          const firstKey = memoryAvatarCache.keys().next().value;
+          memoryAvatarCache.delete(firstKey);
+        }
+        memoryAvatarCache.set(userId, { buffer: imgBuffer, contentType, ts: Date.now() });
+
         return new Response(imgBuffer, {
           headers: {
-            "Content-Type": imgRes.headers.get("Content-Type") || "image/jpeg",
+            "Content-Type": contentType,
             "Cache-Control": "public, max-age=3600, s-maxage=21600",
             ...CORS_HEADERS,
           },
@@ -2226,28 +2273,59 @@ export default {
     const loadGroupSchedule = async (group) => {
       const key = `sched:${group}`;
       const fallbackKey = `sched_fallback:${group}`;
-      if (KV) { try { const c = await KV.get(key); if (c) return JSON.parse(c); } catch {} }
+      const range = getTwoWeekRange();
+      const memKey = `sched_cache:${group}:${range.sdate}_${range.edate}`;
+
+      // 1. Instant RAM Cache check (0ms)
+      if (memoryScheduleCache.has(memKey)) {
+        const mem = memoryScheduleCache.get(memKey);
+        if (mem && (Date.now() - (mem.ts || 0) < 900000)) {
+          if (!mem.normalized && mem.schedule) {
+            mem.normalized = normalizeSchedule(mem.schedule);
+          }
+          if (mem.normalized) return mem.normalized;
+        }
+      }
+
+      if (KV) {
+        try {
+          const c = await KV.get(key);
+          if (c) {
+            const parsed = JSON.parse(c);
+            memoryScheduleCache.set(memKey, { ts: Date.now(), normalized: parsed });
+            return parsed;
+          }
+        } catch {}
+      }
+
       try {
-        const raw = await getSchedule(group, getTwoWeekRange());
+        const raw = await getSchedule(group, range);
         if (raw && Array.isArray(raw.days) && raw.days.length > 0) {
           const info = normalizeSchedule(raw);
+          memoryScheduleCache.set(memKey, { ts: Date.now(), schedule: raw, normalized: info });
           if (KV) {
-            try {
-              await safeKvPut(key, JSON.stringify(info), { expirationTtl: 1800 });
-              await safeKvPut(fallbackKey, JSON.stringify({ ts: Date.now(), schedule: raw }), { expirationTtl: 1209600 });
-            } catch {}
+            const saveTask = Promise.all([
+              safeKvPut(key, JSON.stringify(info), { expirationTtl: 1800 }),
+              safeKvPut(fallbackKey, JSON.stringify({ ts: Date.now(), schedule: raw }), { expirationTtl: 1209600 })
+            ]);
+            if (ctx?.waitUntil) ctx.waitUntil(saveTask); else await saveTask.catch(() => {});
           }
           return info;
         }
       } catch (e) {
         console.warn('Bot dekanat fetch failed, checking fallback:', e.message);
       }
+
       if (KV) {
         try {
           const fb = await KV.get(fallbackKey);
           if (fb) {
             const parsed = JSON.parse(fb);
-            if (parsed?.schedule) return normalizeSchedule(parsed.schedule);
+            if (parsed?.schedule) {
+              const info = normalizeSchedule(parsed.schedule);
+              memoryScheduleCache.set(memKey, { ts: Date.now(), schedule: parsed.schedule, normalized: info });
+              return info;
+            }
           }
         } catch {}
       }
@@ -2264,7 +2342,10 @@ export default {
       if (!uid) return null;
       const sUid = String(uid);
       if (memoryPrefs.has(sUid)) {
-        return memoryPrefs.get(sUid);
+        const mem = memoryPrefs.get(sUid);
+        if (mem && (Date.now() - (mem.ts || 0) < 600000)) {
+          return mem.p;
+        }
       }
       let p = null;
       if (KV) {
@@ -2276,7 +2357,7 @@ export default {
       if (!p && env.FIREBASE_API_KEY && uid) {
         try {
           const url = `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/users/${uid}?key=${env.FIREBASE_API_KEY}`;
-          const res = await fetch(url);
+          const res = await fetch(url, { signal: AbortSignal.timeout(2500) });
           if (res.ok) {
             const data = await res.json();
             const f = data.fields || {};
@@ -2287,15 +2368,15 @@ export default {
           }
         } catch {}
       }
-      if (p && LEGACY_GROUP_NAMES[p.group]) p.group = LEGACY_GROUP_NAMES[p.group]; 
-      if (p) memoryPrefs.set(sUid, p);
+      if (p && LEGACY_GROUP_NAMES[p.group]) p.group = LEGACY_GROUP_NAMES[p.group];
+      memoryPrefs.set(sUid, { ts: Date.now(), p });
       return p;
     };
 
     const setPrefs = async (uid, data) => {
       if (!uid) return;
       const sUid = String(uid);
-      memoryPrefs.set(sUid, data);
+      memoryPrefs.set(sUid, { ts: Date.now(), p: data });
       await safeKvPut(kvKey(uid), JSON.stringify(data));
     };
 
@@ -2425,6 +2506,158 @@ export default {
       return out.length > 3900 ? out.slice(0, 3900) + "\n\n_…розклад задовгий, решту дивись на сайті_" : out;
     };
 
+    const formatNow = (todayDate, info, prefs) => {
+      const kyivStr = new Date().toLocaleString("en-US", { timeZone: "Europe/Kyiv" });
+      const nowKyivDt = new Date(kyivStr);
+      const nowMinutes = nowKyivDt.getHours() * 60 + nowKyivDt.getMinutes();
+      const nowTimeStr = `${String(nowKyivDt.getHours()).padStart(2, "0")}:${String(nowKyivDt.getMinutes()).padStart(2, "0")}`;
+
+      const toMins = (timeStr) => {
+        if (!timeStr) return 0;
+        const [h, m] = timeStr.split(":").map(Number);
+        return h * 60 + m;
+      };
+
+      const todayIso = isoOf(todayDate);
+      const allLessons = filterLessons(info.byDate[todayIso] || [], prefs);
+      allLessons.sort((a, b) => toMins(a.start) - toMins(b.start));
+
+      const uniqueLessons = [];
+      const seen = new Set();
+      for (const l of allLessons) {
+        const k = `${l.start}-${l.title}`;
+        if (!seen.has(k)) {
+          seen.add(k);
+          uniqueLessons.push(l);
+        }
+      }
+
+      const header = `⚡️ *Розклад у реальному часі*\n` +
+        `_Група: ${esc(prefs.group)} · Час: ${esc(nowTimeStr)} (Київ)_\n` +
+        `─`.repeat(22) + `\n\n`;
+
+      if (!uniqueLessons.length) {
+        const dow = todayDate.getUTCDay();
+        if (dow === 0 || dow === 6) {
+          return header + `🏖 *Сьогодні вихідний\\!*\nЗанять немає, насолоджуйтесь відпочинком 🎉`;
+        }
+        return header + `🎉 *Сьогодні занять немає\\!*\nВільний день, можна відпочити або зайнятися своїми справами 😊`;
+      }
+
+      let currentLesson = null;
+      let nextLesson = null;
+
+      for (let i = 0; i < uniqueLessons.length; i++) {
+        const l = uniqueLessons[i];
+        const s = toMins(l.start);
+        const e = toMins(l.end);
+
+        if (nowMinutes >= s && nowMinutes <= e) {
+          currentLesson = l;
+          nextLesson = uniqueLessons[i + 1] || null;
+          break;
+        } else if (nowMinutes < s) {
+          nextLesson = l;
+          break;
+        }
+      }
+
+      if (currentLesson) {
+        const leftMins = toMins(currentLesson.end) - nowMinutes;
+        let out = header;
+        out += `🟢 *ЗАРАЗ ТРИВАЄ ПАРА:*\n`;
+        out += `📖 *${esc(currentLesson.title)}*${currentLesson.typeLabel ? ` _(${esc(currentLesson.typeLabel)})_` : ""}\n`;
+        out += `🕐 Час: *${esc(currentLesson.start)} — ${esc(currentLesson.end)}*\n`;
+        if (currentLesson.room) out += `🏛 Аудиторія: *${esc(currentLesson.room)}*\n`;
+        if (currentLesson.teacher) out += `👨‍🏫 Викладач: *${esc(currentLesson.teacher)}*\n`;
+        out += `⏳ Залишилось: *${leftMins} хв.*\n\n`;
+
+        if (nextLesson) {
+          out += `🔜 *Наступна пара (${esc(nextLesson.start)} — ${esc(nextLesson.end)}):*\n`;
+          out += `📖 *${esc(nextLesson.title)}*${nextLesson.typeLabel ? ` _(${esc(nextLesson.typeLabel)})_` : ""}\n`;
+          if (nextLesson.room) out += `🏛 Ауд.: *${esc(nextLesson.room)}* `;
+          if (nextLesson.teacher) out += `· 👤 ${esc(nextLesson.teacher)}`;
+          out += `\n`;
+        } else {
+          out += `🎉 *Це остання пара на сьогодні\\!*`;
+        }
+        return out.trim();
+      }
+
+      if (nextLesson) {
+        const untilMins = toMins(nextLesson.start) - nowMinutes;
+        let out = header;
+        if (nowMinutes < toMins(uniqueLessons[0].start)) {
+          out += `🌅 *Пари ще не почалися\\!*\n`;
+          out += `⏳ До початку першої пари: *${untilMins} хв.*\n\n`;
+        } else {
+          out += `☕️ *Зараз перерва\\!*\n`;
+          out += `⏳ До наступної пари: *${untilMins} хв.*\n\n`;
+        }
+        out += `🔜 *Найближча пара (${esc(nextLesson.start)} — ${esc(nextLesson.end)}):*\n`;
+        out += `📖 *${esc(nextLesson.title)}*${nextLesson.typeLabel ? ` _(${esc(nextLesson.typeLabel)})_` : ""}\n`;
+        if (nextLesson.room) out += `🏛 Аудиторія: *${esc(nextLesson.room)}*\n`;
+        if (nextLesson.teacher) out += `👨‍🏫 Викладач: *${esc(nextLesson.teacher)}*\n`;
+        return out.trim();
+      }
+
+      const tomorrowIso = isoOf(addDays(todayDate, 1));
+      const tomorrowLessons = filterLessons(info.byDate[tomorrowIso] || [], prefs);
+      tomorrowLessons.sort((a, b) => toMins(a.start) - toMins(b.start));
+
+      let out = header;
+      out += `🎉 *На сьогодні всі пари закінчилися\\!*\n`;
+      out += `Можна відпочивати та набиратися сил 🛋\n\n`;
+
+      if (tomorrowLessons.length) {
+        const first = tomorrowLessons[0];
+        out += `📅 *Перша пара завтра (${esc(first.start)}):*\n`;
+        out += `📖 *${esc(first.title)}*${first.room ? ` (ауд\\. ${esc(first.room)})` : ""}`;
+      }
+      return out.trim();
+    };
+
+    const formatGrades = (gradesData, prefs) => {
+      const student = gradesData?.studentName || "Студент";
+      const group = gradesData?.group || prefs?.group || "";
+      const avg = gradesData?.average || "0";
+      const subjects = gradesData?.subjects || [];
+
+      let out = `📊 *Журнал оцінок (Деканат ЛНУ)*\n\n`;
+      out += `👤 *Студент:* *${esc(student)}*\n`;
+      if (group) out += `🎓 *Група:* *${esc(group)}*\n`;
+      out += `📈 *Середній бал:* *${esc(avg)} / 100*\n\n`;
+      out += `─`.repeat(22) + `\n\n`;
+
+      if (!subjects.length) {
+        out += `📭 _Оцінок у поточному семестрі ще немає або журнал порожній\\._`;
+        return out;
+      }
+
+      for (const s of subjects) {
+        const ectsStr = s.ects ? ` (${esc(s.ects)})` : "";
+        const balEmoji = s.total >= 90 ? "🟢" : s.total >= 71 ? "🟡" : s.total >= 51 ? "🟠" : s.total > 0 ? "🔴" : "⚪️";
+        out += `${balEmoji} *${esc(s.subject)}*\n`;
+        out += `   ┣ Бал: *${esc(String(s.total))}* / 100${ectsStr}\n`;
+        if (s.teacher) out += `   ┣ 👨‍🏫 _${esc(shortTeacher(s.teacher))}_\n`;
+        if (s.grades && s.grades.length > 0) {
+          const recentGrades = s.grades.slice(-3).map(g => `${esc(g.category)}: ${esc(String(g.value))}`).join(", ");
+          out += `   ┗ Останні: _${recentGrades}_\n`;
+        } else {
+          out += `   ┗ Оцінок ще немає\n`;
+        }
+      }
+
+      out += `\n_💡 Нові оцінки надсилаються автоматично миттєвими сповіщеннями\\!_`;
+      return out;
+    };
+
+    const NO_DEKANAT_CREDS_TEXT =
+      `📊 *Мої бали з Деканату ЛНУ*\n\n` +
+      `Ви можете переглядати свої поточні бали прямо в боті та отримувати *миттєві сповіщення*, щойно викладач ставить нову оцінку\\!\n\n` +
+      `🔑 Для цього увійдіть зі своїм студентським логіном \\(прізвище та № залікової книжки\\) у нашому додатку:\n` +
+      `Розділ *«Корисне»* ➡️ *«Мої бали»* 👇`;
+
     const SCHEDULE_ERROR = "😕 Не вдалося завантажити розклад з деканату\\. Спробуй трохи пізніше\\.";
 
     
@@ -2489,8 +2722,17 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
 
     const saveUserToFirebase = async (from, explicitGroup = null) => {
       if (!from?.id || !env.FIREBASE_API_KEY) return;
+      const uidStr = String(from.id);
+
+      // Throttling: only send HTTP PATCH to Firebase at most once every 15 mins per user, unless group explicitly changed
+      const lastSaved = memoryUserLastSaved.get(uidStr) || 0;
+      if (!explicitGroup && (Date.now() - lastSaved < 15 * 60 * 1000)) {
+        return;
+      }
+      memoryUserLastSaved.set(uidStr, Date.now());
+
       try {
-        const photo_url = getStableAvatarUrl(String(from.id));
+        const photo_url = getStableAvatarUrl(uidStr);
         let userGroup = explicitGroup;
         if (!userGroup) {
           const p = await getPrefs(from.id);
@@ -2502,7 +2744,7 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
 
         const now = String(Date.now());
         const fields = {
-          id:            { stringValue: String(from.id) },
+          id:            { stringValue: uidStr },
           first_name:    { stringValue: from.first_name ?? "" },
           last_name:     { stringValue: from.last_name  ?? "" },
           username:      { stringValue: from.username   ?? "" },
@@ -2520,13 +2762,14 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
 
         const maskParams = updateMaskFields.map(f => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join("&");
         const firestoreUrl =
-          `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/users/${from.id}` +
+          `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/users/${uidStr}` +
           `?key=${env.FIREBASE_API_KEY}&${maskParams}`;
 
         const res = await fetch(firestoreUrl, {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ fields }),
+          signal: AbortSignal.timeout(5000)
         });
 
         if (!res.ok) {
@@ -2536,7 +2779,6 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
 
         if (KV) {
           try {
-            const uidStr = String(from.id);
             const uName = [from.first_name, from.last_name].filter(Boolean).join(" ") || "Студент";
             const uUser = from.username || "";
             const uGroup = userGroup || "";
@@ -3030,6 +3272,9 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       main: (prefs) => ({
         inline_keyboard: [
           [
+            { text: "⚡️ Зараз / Наступна", callback_data: "sched:now" },
+          ],
+          [
             { text: "📌 Сьогодні",  callback_data: "sched:today"    },
             { text: "📍 Завтра",    callback_data: "sched:tomorrow"  },
           ],
@@ -3038,7 +3283,8 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
             { text: "📆 Наст. тиждень", callback_data: "sched:nextweek" },
           ],
           [
-            { text: "🔗 Прив'язати до сайту", callback_data: "link:site" },
+            { text: "📊 Мої бали", callback_data: "dekanat:menu" },
+            { text: "🔗 Прив'язати сайт", callback_data: "link:site" },
           ],
           [
             { text: `⚙️ ${prefs?.group ?? "Налаштування"} · ${subLabel(prefs?.subgroup ?? "all")}`, callback_data: "settings:menu" },
@@ -3046,6 +3292,35 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
           [
             { text: "📱 Відкрити додаток", web_app: { url: SITE_URL } },
           ],
+        ],
+      }),
+
+      nowKb: () => ({
+        inline_keyboard: [
+          [
+            { text: "🔄 Оновити", callback_data: "sched:now" },
+            { text: "📌 Сьогодні", callback_data: "sched:today" },
+          ],
+          backRow("settings:back"),
+        ],
+      }),
+
+      dekanat: () => ({
+        inline_keyboard: [
+          [
+            { text: "🔄 Оновити бали", callback_data: "dekanat:refresh" },
+            { text: "📱 Відкрити в додатку", web_app: { url: SITE_URL } },
+          ],
+          backRow("settings:back"),
+        ],
+      }),
+
+      dekanatLoginPrompt: () => ({
+        inline_keyboard: [
+          [
+            { text: "🔐 Увійти в додатку", web_app: { url: SITE_URL } },
+          ],
+          backRow("settings:back"),
         ],
       }),
 
@@ -3117,7 +3392,10 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
     const msgId    = cb?.message?.message_id ?? null;
 
     const fromUser = msg?.from ?? cb?.from;
-    if (fromUser) await saveUserToFirebase(fromUser);
+    if (fromUser) {
+      if (ctx?.waitUntil) ctx.waitUntil(saveUserToFirebase(fromUser));
+      else saveUserToFirebase(fromUser).catch(() => {});
+    }
 
     // Admin interactive callbacks (works in both support group and private messages)
     if (cb && cb.data && cb.data.startsWith("adm:")) {
@@ -3482,7 +3760,10 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       if (info.totalLessons === 0) {
         await send(chatId, `📭 _Деканат ще не опублікував розклад групи ${esc(group)} на ці два тижні\\. Я все одно її запам'ятаю\\._`, null);
       }
-      if (fromUser) await saveUserToFirebase(fromUser, group);
+      if (fromUser) {
+        if (ctx?.waitUntil) ctx.waitUntil(saveUserToFirebase(fromUser, group));
+        else saveUserToFirebase(fromUser, group).catch(() => {});
+      }
       await continueAfterGroup(next, info);
     };
 
@@ -3538,12 +3819,73 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
         try { info = await getInfoFor(userId, prefs); }
         catch { await show(SCHEDULE_ERROR, kb.main(prefs)); return new Response("OK"); }
         let text;
-        if (data === "sched:today")         text = formatDay(today, info, prefs);
+        if (data === "sched:now") {
+          text = formatNow(today, info, prefs);
+          await show(text, kb.nowKb());
+          return new Response("OK");
+        } else if (data === "sched:today")    text = formatDay(today, info, prefs);
         else if (data === "sched:tomorrow") text = formatDay(tomorrow, info, prefs);
         else if (data === "sched:week")     text = formatWeek(mondayOf(today), info, prefs);
         else if (data === "sched:nextweek") text = formatWeek(addDays(mondayOf(today), 7), info, prefs);
         else                                text = menuText(prefs);
         await show(text, kb.main(prefs));
+        return new Response("OK");
+      }
+
+      if (data === "dekanat:menu" || data === "dekanat:refresh") {
+        let creds = null;
+        if (KV) {
+          try {
+            const raw = await KV.get(`dekanat_creds:${userId}`);
+            if (raw) creds = JSON.parse(raw);
+          } catch {}
+        }
+        if (!creds || !creds.user_name || !creds.user_pwd) {
+          await show(NO_DEKANAT_CREDS_TEXT, kb.dekanatLoginPrompt());
+          return new Response("OK");
+        }
+
+        let gradesData = null;
+        const force = (data === "dekanat:refresh");
+        const cacheKey = `dekanat_cache:${userId}`;
+
+        if (!force && KV) {
+          try {
+            const rawCache = await KV.get(cacheKey);
+            if (rawCache) {
+              const c = JSON.parse(rawCache);
+              if (c && c.data && (Date.now() - (c.ts || 0) < 15 * 60 * 1000)) {
+                gradesData = c.data;
+              }
+            }
+          } catch {}
+        }
+
+        if (!gradesData) {
+          try {
+            gradesData = await fetchDekanatGrades(creds.user_name, creds.user_pwd);
+            if (KV) {
+              await safeKvPut(cacheKey, JSON.stringify({ ts: Date.now(), data: gradesData }));
+            }
+          } catch (err) {
+            if (KV) {
+              try {
+                const rawCache = await KV.get(cacheKey);
+                if (rawCache) {
+                  const c = JSON.parse(rawCache);
+                  if (c?.data) gradesData = c.data;
+                }
+              } catch {}
+            }
+            if (!gradesData) {
+              await show("😕 _Сервер Деканату ЛНУ тимчасово недоступний\\. Спробуйте трохи пізніше\\._", kb.main(prefs));
+              return new Response("OK");
+            }
+          }
+        }
+
+        const text = formatGrades(gradesData, prefs);
+        await show(text, kb.dekanat());
         return new Response("OK");
       }
 
@@ -4008,7 +4350,8 @@ if (data === "link:site") {
       };
 
       await storeAuthCode(linkCode, userData, 600, env);
-      await saveUserToFirebase(msg.from);
+      if (ctx?.waitUntil) ctx.waitUntil(saveUserToFirebase(msg.from));
+      else saveUserToFirebase(msg.from).catch(() => {});
 
       const updated = { ...(prefs ?? {}) };
       delete updated.await_link_code;
@@ -4070,7 +4413,8 @@ if (data === "link:site") {
         };
 
         await storeLinkToken(linkToken, userData, 600, env);
-        await saveUserToFirebase(msg.from);
+        if (ctx?.waitUntil) ctx.waitUntil(saveUserToFirebase(msg.from));
+        else saveUserToFirebase(msg.from).catch(() => {});
 
         const returnUrl = SITE_URL
           ? `${SITE_URL.replace(/\/$/, "")}?tg_token=${linkToken}`
@@ -4152,6 +4496,68 @@ if (data === "link:site") {
       else if (text.startsWith("/nextweek")) out = formatWeek(addDays(mondayOf(today), 7), info, prefs);
       else                                   out = formatWeek(mondayOf(today), info, prefs);
       await send(chatId, out, kb.main(prefs));
+      return new Response("OK");
+    }
+
+    if (text === "/now" || /^(зараз|яка пара|яка зараз пара|наступна|наступна пара|зараз пара)$/i.test(text)) {
+      let info;
+      try { info = await getInfoFor(userId, prefs); }
+      catch { await send(chatId, SCHEDULE_ERROR, kb.main(prefs)); return new Response("OK"); }
+      await send(chatId, formatNow(today, info, prefs), kb.nowKb());
+      return new Response("OK");
+    }
+
+    if (text === "/grades" || text === "/bali" || /^(бали|мої бали|оцінки|успішність)$/i.test(text)) {
+      let creds = null;
+      if (KV) {
+        try {
+          const raw = await KV.get(`dekanat_creds:${userId}`);
+          if (raw) creds = JSON.parse(raw);
+        } catch {}
+      }
+      if (!creds || !creds.user_name || !creds.user_pwd) {
+        await send(chatId, NO_DEKANAT_CREDS_TEXT, kb.dekanatLoginPrompt());
+        return new Response("OK");
+      }
+
+      let gradesData = null;
+      const cacheKey = `dekanat_cache:${userId}`;
+      if (KV) {
+        try {
+          const rawCache = await KV.get(cacheKey);
+          if (rawCache) {
+            const c = JSON.parse(rawCache);
+            if (c && c.data && (Date.now() - (c.ts || 0) < 15 * 60 * 1000)) {
+              gradesData = c.data;
+            }
+          }
+        } catch {}
+      }
+
+      if (!gradesData) {
+        try {
+          gradesData = await fetchDekanatGrades(creds.user_name, creds.user_pwd);
+          if (KV) {
+            await safeKvPut(cacheKey, JSON.stringify({ ts: Date.now(), data: gradesData }));
+          }
+        } catch (err) {
+          if (KV) {
+            try {
+              const rawCache = await KV.get(cacheKey);
+              if (rawCache) {
+                const c = JSON.parse(rawCache);
+                if (c?.data) gradesData = c.data;
+              }
+            } catch {}
+          }
+          if (!gradesData) {
+            await send(chatId, "😕 _Сервер Деканату ЛНУ тимчасово недоступний\\. Спробуйте трохи пізніше\\._", kb.main(prefs));
+            return new Response("OK");
+          }
+        }
+      }
+
+      await send(chatId, formatGrades(gradesData, prefs), kb.dekanat());
       return new Response("OK");
     }
 
@@ -4266,7 +4672,7 @@ if (data === "link:site") {
           }
 
           // Save fresh cache
-          await kv.put(`dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: freshData }));
+          await globalSafeKvPut(kv, `dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: freshData }));
 
         } catch (userErr) {
           console.error(`[cron:dekanat] userId=${userId} error:`, userErr.message);
