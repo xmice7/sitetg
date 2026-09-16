@@ -171,22 +171,49 @@ function json(data, status = 200, extraHeaders = {}) {
   });
 }
 
-// Global Safe KV Helpers (survive KV free tier quota limit errors)
+// Global Safe KV Helpers & Circuit Breaker (survives KV free tier quota limit errors)
+let kvBlockedUntil = 0;
+
+function checkKvBlocked() {
+  return Date.now() < kvBlockedUntil;
+}
+
+function handleKvError(err, op, key) {
+  const msg = err?.message || String(err || '');
+  if (msg.includes('limit exceeded') || msg.includes('daily operation limit') || msg.includes('quota') || msg.includes('exceeded for account')) {
+    // Disable further KV calls for 1 hour to prevent flooding Cloudflare and spamming user alerts
+    kvBlockedUntil = Date.now() + 3600000;
+    console.warn(`[KV CircuitBreaker] Limit exceeded! Pausing KV operations. Failed ${op} for ${key}`);
+  } else {
+    console.warn(`[KV] ${op} failed for ${key}:`, msg);
+  }
+}
+
 async function globalSafeKvPut(kv, key, val, opt) {
-  if (!kv) return;
+  if (!kv || checkKvBlocked()) return;
   try {
     await kv.put(key, val, opt);
   } catch (e) {
-    console.warn(`globalSafeKvPut failed for ${key}:`, e?.message || e);
+    handleKvError(e, 'put', key);
   }
 }
 
 async function globalSafeKvDelete(kv, key) {
-  if (!kv) return;
+  if (!kv || checkKvBlocked()) return;
   try {
     await kv.delete(key);
   } catch (e) {
-    console.warn(`globalSafeKvDelete failed for ${key}:`, e?.message || e);
+    handleKvError(e, 'delete', key);
+  }
+}
+
+async function globalSafeKvGet(kv, key) {
+  if (!kv || checkKvBlocked()) return null;
+  try {
+    return await kv.get(key);
+  } catch (e) {
+    handleKvError(e, 'get', key);
+    return null;
   }
 }
 
@@ -194,6 +221,11 @@ async function globalSafeKvDelete(kv, key) {
 const memoryScheduleCache = new Map(); // cacheKey -> { ts, schedule, normalized }
 const memoryAvatarCache = new Map();   // userId -> { buffer, contentType, ts }
 const memoryUserLastSaved = new Map(); // userId -> ts
+const memoryDekanatCache = new Map();  // userId -> { ts, data }
+const memoryDekanatCreds = new Map();  // userId -> { user_name, user_pwd }
+const memoryUserSyncCache = new Map(); // uid -> syncData
+const memoryUserCards = new Map();     // uid -> { id, name, username, group, ts }
+const memoryUsernameToUid = new Map(); // username -> uid
 
 const DATE_RE = /^\d{2}\.\d{2}\.\d{4}$/;
 
@@ -240,9 +272,9 @@ async function handleScheduleRoutes(request, env, ctx) {
       }
 
       let cachedEntry = null;
-      if (kv) {
+      if (kv && !checkKvBlocked()) {
         try {
-          const raw = await kv.get(cacheKey);
+          const raw = await globalSafeKvGet(kv, cacheKey);
           if (raw) cachedEntry = JSON.parse(raw);
         } catch {}
       }
@@ -264,12 +296,10 @@ async function handleScheduleRoutes(request, env, ctx) {
         if (fresh && Array.isArray(fresh.days) && fresh.days.length > 0) {
           const entryObj = { ts: Date.now(), schedule: fresh };
           memoryScheduleCache.set(cacheKey, entryObj);
-          if (kv) {
+          memoryScheduleCache.set(fallbackKey, entryObj);
+          if (kv && !checkKvBlocked()) {
             const entry = JSON.stringify(entryObj);
-            const saveTask = Promise.all([
-              globalSafeKvPut(kv, cacheKey, entry, { expirationTtl: 1209600 }),
-              globalSafeKvPut(kv, fallbackKey, entry, { expirationTtl: 1209600 })
-            ]);
+            const saveTask = globalSafeKvPut(kv, cacheKey, entry, { expirationTtl: 1209600 });
             if (ctx?.waitUntil) ctx.waitUntil(saveTask); else await saveTask.catch(() => {});
           }
           return json(fresh, 200, {
@@ -294,9 +324,23 @@ async function handleScheduleRoutes(request, env, ctx) {
         });
       }
 
-      if (kv) {
+      if (memoryScheduleCache.has(fallbackKey)) {
+        const fb = memoryScheduleCache.get(fallbackKey);
+        if (fb && fb.schedule && fb.schedule.days?.length > 0) {
+          return json({
+            ...fb.schedule,
+            _isStaleFallback: true,
+            _cachedAt: fb.ts || null
+          }, 200, {
+            'Cache-Control': 'public, max-age=60',
+            'X-Cache-Status': 'RAM-FALLBACK'
+          });
+        }
+      }
+
+      if (kv && !checkKvBlocked()) {
         try {
-          const rawFb = await kv.get(fallbackKey);
+          const rawFb = await globalSafeKvGet(kv, fallbackKey);
           if (rawFb) {
             const fb = JSON.parse(rawFb);
             if (fb && fb.schedule && fb.schedule.days?.length > 0) {
@@ -897,9 +941,8 @@ async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
     (total ? `📈 *Поточний бал з предмета:* *${total} / 100*\n` : '') +
     `\nПереглянути журнал: у додатку в розділі «Корисне» ➡️ «Мої бали» ↗️`;
 
-  const oldToken = env.OLD_BOT_TOKEN || "8578336635:AAG2VuApAstUwp0dszRnjQVzHjnNCI_CfEI";
   try {
-    let r = await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
+    await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -908,21 +951,6 @@ async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
         parse_mode: "Markdown"
       })
     });
-    let d = await r.json().catch(() => null);
-    if (!d?.ok && oldToken) {
-      await fetch(`https://api.telegram.org/bot${oldToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: tgChatId,
-          text: text + "\n\n⚠️ _Оновіть бота для отримання сповіщень:_ 👇",
-          parse_mode: "Markdown",
-          reply_markup: {
-            inline_keyboard: [[{ text: "🚀 Оновити до @schedapp_bot", url: "https://t.me/schedapp_bot" }]]
-          }
-        })
-      });
-    }
   } catch (err) {
     console.error("notifyTelegramNewGrade error:", err);
   }
@@ -951,7 +979,13 @@ async function handleDekanatRoutes(request, env, ctx) {
     try {
       const parsedData = await fetchDekanatGrades(user_name, user_pwd);
 
-      if (kv && userId) {
+      if (userId) {
+        const sUid = String(userId);
+        memoryDekanatCreds.set(sUid, { user_name, user_pwd });
+        memoryDekanatCache.set(sUid, { ts: Date.now(), data: parsedData });
+      }
+
+      if (kv && userId && !checkKvBlocked()) {
         await globalSafeKvPut(kv, `dekanat_creds:${userId}`, JSON.stringify({ user_name, user_pwd }));
         await globalSafeKvPut(kv, `dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: parsedData }));
       }
@@ -974,22 +1008,35 @@ async function handleDekanatRoutes(request, env, ctx) {
     let body;
     try { body = await request.json(); } catch { return json({ error: 'Bad JSON' }, 400); }
     let { user_name, user_pwd, userId, forceRefresh } = body || {};
+    const sUid = userId ? String(userId) : null;
 
-    let cached = null;
-    if (kv && userId) {
+    let cached = sUid ? memoryDekanatCache.get(sUid) : null;
+    if (!cached && kv && userId && !checkKvBlocked()) {
       try {
-        const rawCache = await kv.get(`dekanat_cache:${userId}`);
-        if (rawCache) cached = JSON.parse(rawCache);
+        const rawCache = await globalSafeKvGet(kv, `dekanat_cache:${userId}`);
+        if (rawCache) {
+          cached = JSON.parse(rawCache);
+          if (cached && sUid) memoryDekanatCache.set(sUid, cached);
+        }
+      } catch {}
+    }
 
-        if (!user_name || !user_pwd) {
-          const rawCreds = await kv.get(`dekanat_creds:${userId}`);
+    if (!user_name || !user_pwd) {
+      if (sUid && memoryDekanatCreds.has(sUid)) {
+        const c = memoryDekanatCreds.get(sUid);
+        user_name = c.user_name;
+        user_pwd = c.user_pwd;
+      } else if (kv && userId && !checkKvBlocked()) {
+        try {
+          const rawCreds = await globalSafeKvGet(kv, `dekanat_creds:${userId}`);
           if (rawCreds) {
             const creds = JSON.parse(rawCreds);
             user_name = creds.user_name;
             user_pwd = creds.user_pwd;
+            if (sUid) memoryDekanatCreds.set(sUid, creds);
           }
-        }
-      } catch {}
+        } catch {}
+      }
     }
 
     if (!user_name || !user_pwd) {
@@ -1024,7 +1071,11 @@ async function handleDekanatRoutes(request, env, ctx) {
         }
       }
 
-      if (kv && userId) {
+      if (sUid) {
+        memoryDekanatCache.set(sUid, { ts: Date.now(), data: freshData });
+      }
+
+      if (kv && userId && !checkKvBlocked()) {
         await globalSafeKvPut(kv, `dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: freshData }));
       }
 
@@ -1056,7 +1107,12 @@ async function handleDekanatRoutes(request, env, ctx) {
     let body;
     try { body = await request.json(); } catch { body = {}; }
     const { userId } = body || {};
-    if (kv && userId) {
+    if (userId) {
+      const sUid = String(userId);
+      memoryDekanatCreds.delete(sUid);
+      memoryDekanatCache.delete(sUid);
+    }
+    if (kv && userId && !checkKvBlocked()) {
       await globalSafeKvDelete(kv, `dekanat_creds:${userId}`);
       await globalSafeKvDelete(kv, `dekanat_cache:${userId}`);
     }
@@ -1157,9 +1213,9 @@ async function getAuthCode(code, env = null) {
   }
 
   // 2. Check KV for confirmed state
-  if (env?.PREFS_KV) {
+  if (env?.PREFS_KV && !checkKvBlocked()) {
     try {
-      const raw = await env.PREFS_KV.get(`code_token:${code}`);
+      const raw = await globalSafeKvGet(env.PREFS_KV, `code_token:${code}`);
       if (raw && raw !== "__pending__") {
         const item = { status: "confirmed", userData: raw, expiresAt: now + 600000 };
         memoryCodeTokens.set(code, item);
@@ -1198,9 +1254,9 @@ async function getAuthCode(code, env = null) {
     if (item && item.expiresAt > now) return item;
   }
 
-  if (env?.PREFS_KV) {
+  if (env?.PREFS_KV && !checkKvBlocked()) {
     try {
-      const raw = await env.PREFS_KV.get(`code_token:${code}`);
+      const raw = await globalSafeKvGet(env.PREFS_KV, `code_token:${code}`);
       if (raw === "__pending__") {
         return { status: "__pending__", userData: "", expiresAt: now + 600000 };
       }
@@ -1258,9 +1314,9 @@ async function getLinkToken(token, env = null) {
     memoryLinkTokens.delete(token);
   }
 
-  if (env?.PREFS_KV) {
+  if (env?.PREFS_KV && !checkKvBlocked()) {
     try {
-      const raw = await env.PREFS_KV.get(`link_token:${token}`);
+      const raw = await globalSafeKvGet(env.PREFS_KV, `link_token:${token}`);
       if (raw) return raw;
     } catch {}
   }
@@ -1288,7 +1344,7 @@ async function getLinkToken(token, env = null) {
 
 async function deleteLinkToken(token, env = null) {
   memoryLinkTokens.delete(token);
-  if (env?.PREFS_KV) {
+  if (env?.PREFS_KV && !checkKvBlocked()) {
     await globalSafeKvDelete(env.PREFS_KV, `link_token:${token}`);
   }
   const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
@@ -1306,7 +1362,7 @@ async function storeSupMessage(msgId, targetUserId, env = null) {
   const sUserId = String(targetUserId);
   memorySupMessages.set(sMsgId, sUserId);
 
-  if (env?.PREFS_KV) {
+  if (env?.PREFS_KV && !checkKvBlocked()) {
     await globalSafeKvPut(env.PREFS_KV, `sup:${sMsgId}`, sUserId, { expirationTtl: 604800 });
   }
 
@@ -1333,9 +1389,9 @@ async function getSupMessage(msgId, env = null) {
   const sMsgId = String(msgId);
   if (memorySupMessages.has(sMsgId)) return memorySupMessages.get(sMsgId);
 
-  if (env?.PREFS_KV) {
+  if (env?.PREFS_KV && !checkKvBlocked()) {
     try {
-      const v = await env.PREFS_KV.get(`sup:${sMsgId}`);
+      const v = await globalSafeKvGet(env.PREFS_KV, `sup:${sMsgId}`);
       if (v) {
         memorySupMessages.set(sMsgId, v);
         return v;
@@ -1567,18 +1623,26 @@ export default {
           "Access-Control-Allow-Origin": "*",
         }
       });
-      if (!kv) return jsonRes({ ok: true, note: "KV offline, skipping" }, 200);
 
       if (request.method === "GET") {
         const uid = url.searchParams.get("uid");
         if (!uid) return jsonRes({ error: "Missing uid" }, 400);
-        try {
-          const raw = await kv.get(`user_sync:${uid}`);
-          const parsed = raw ? JSON.parse(raw) : null;
-          return jsonRes({ ok: true, data: parsed });
-        } catch (e) {
-          return jsonRes({ ok: true, data: null });
+
+        if (memoryUserSyncCache.has(uid)) {
+          return jsonRes({ ok: true, data: memoryUserSyncCache.get(uid) });
         }
+
+        if (kv && !checkKvBlocked()) {
+          try {
+            const raw = await globalSafeKvGet(kv, `user_sync:${uid}`);
+            const parsed = raw ? JSON.parse(raw) : null;
+            if (parsed) memoryUserSyncCache.set(uid, parsed);
+            return jsonRes({ ok: true, data: parsed });
+          } catch (e) {
+            return jsonRes({ ok: true, data: null });
+          }
+        }
+        return jsonRes({ ok: true, data: null });
       }
 
       if (request.method === "POST") {
@@ -1594,28 +1658,32 @@ export default {
             ...data,
             updatedAt: Date.now()
           };
-          await globalSafeKvPut(kv, `user_sync:${uid}`, JSON.stringify(payload), { expirationTtl: 15552000 });
+          memoryUserSyncCache.set(uid, payload);
 
-          if (data.activeGroup) {
-            try {
-              const currentBotPrefs = await kv.get(`u:${uid}`);
-              const p = currentBotPrefs ? JSON.parse(currentBotPrefs) : {};
-              const cleanG = String(data.activeGroup || "").trim().toLowerCase();
-              const normG = (cleanG === "fep11" || cleanG === "феп-11с" || cleanG === "феп11" || cleanG === "феп 11") ? "fep11"
-                : (cleanG === "fep12" || cleanG === "феп-12с" || cleanG === "феп12" || cleanG === "феп 12") ? "fep12"
-                : (cleanG === "fep13" || cleanG === "феп-13с" || cleanG === "феп13" || cleanG === "феп 13") ? "fep13"
-                : cleanG.replace(/[\s\-_с]/g, "");
-              const gKey = data.activeGroupId || normG;
-              const groupConf = (data.groupConfigs && (data.groupConfigs[gKey] || data.groupConfigs[normG] || data.groupConfigs[data.activeGroup])) || {};
-              const updatedBot = {
-                ...p,
-                group: data.activeGroup,
-                subgroup: groupConf.subgroup || p.subgroup || "all",
-                eng: groupConf.eng || p.eng || "all",
-                step: "done"
-              };
-              await globalSafeKvPut(kv, `u:${uid}`, JSON.stringify(updatedBot));
-            } catch {}
+          if (kv && !checkKvBlocked()) {
+            await globalSafeKvPut(kv, `user_sync:${uid}`, JSON.stringify(payload), { expirationTtl: 15552000 });
+
+            if (data.activeGroup) {
+              try {
+                const currentBotPrefs = await globalSafeKvGet(kv, `u:${uid}`);
+                const p = currentBotPrefs ? JSON.parse(currentBotPrefs) : {};
+                const cleanG = String(data.activeGroup || "").trim().toLowerCase();
+                const normG = (cleanG === "fep11" || cleanG === "феп-11с" || cleanG === "феп11" || cleanG === "феп 11") ? "fep11"
+                  : (cleanG === "fep12" || cleanG === "феп-12с" || cleanG === "феп12" || cleanG === "феп 12") ? "fep12"
+                  : (cleanG === "fep13" || cleanG === "феп-13с" || cleanG === "феп13" || cleanG === "феп 13") ? "fep13"
+                  : cleanG.replace(/[\s\-_с]/g, "");
+                const gKey = data.activeGroupId || normG;
+                const groupConf = (data.groupConfigs && (data.groupConfigs[gKey] || data.groupConfigs[normG] || data.groupConfigs[data.activeGroup])) || {};
+                const updatedBot = {
+                  ...p,
+                  group: data.activeGroup,
+                  subgroup: groupConf.subgroup || p.subgroup || "all",
+                  eng: groupConf.eng || p.eng || "all",
+                  step: "done"
+                };
+                await globalSafeKvPut(kv, `u:${uid}`, JSON.stringify(updatedBot));
+              } catch {}
+            }
           }
 
           return jsonRes({ ok: true, updatedAt: payload.updatedAt });
@@ -1815,10 +1883,9 @@ export default {
         : `📢 *Загальне оголошення:*\n\n`;
       const fullMessage = `${headerPrefix}${cleanText}`;
 
-      const oldToken = env.OLD_BOT_TOKEN || "8578336635:AAG2VuApAstUwp0dszRnjQVzHjnNCI_CfEI";
       const sendTg = async (chatId, msg) => {
         try {
-          // 1. Try sending via current bot (@schedapp_bot)
+          // 1. Try sending Markdown
           let r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -1826,6 +1893,7 @@ export default {
           });
           let res = await r.json().catch(() => null);
           if (!res?.ok) {
+            // Fallback plain text
             r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
               method: "POST",
               headers: { "content-type": "application/json" },
@@ -1833,44 +1901,7 @@ export default {
             });
             res = await r.json().catch(() => null);
           }
-          if (res?.ok) return true;
-
-          // 2. If new bot failed (e.g. 403 Forbidden because student hasn't started @schedapp_bot yet),
-          // fallback to old bot (@shedulefep_bot) with an action button to migrate to @schedapp_bot!
-          if (oldToken) {
-            const migNotice = "\n\n⚠️ _Ми переїхали на нового бота! Натисніть кнопку нижче, щоб оновити:_ 👇";
-            const updateMarkup = {
-              inline_keyboard: [
-                [{ text: "🚀 Перейти в @schedapp_bot", url: "https://t.me/schedapp_bot" }]
-              ]
-            };
-            let rOld = await fetch(`https://api.telegram.org/bot${oldToken}/sendMessage`, {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({
-                chat_id: chatId,
-                text: msg + migNotice,
-                parse_mode: "Markdown",
-                reply_markup: updateMarkup
-              }),
-            });
-            let resOld = await rOld.json().catch(() => null);
-            if (!resOld?.ok) {
-              rOld = await fetch(`https://api.telegram.org/bot${oldToken}/sendMessage`, {
-                method: "POST",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({
-                  chat_id: chatId,
-                  text: msg + "\n\n⚠️ Ми переїхали на нового бота @schedapp_bot",
-                  reply_markup: updateMarkup
-                }),
-              });
-              resOld = await rOld.json().catch(() => null);
-            }
-            if (resOld?.ok) return true;
-          }
-
-          return false;
+          return Boolean(res?.ok);
         } catch {
           return false;
         }
@@ -1969,121 +2000,10 @@ export default {
         body: JSON.stringify({ chat_id: targetUid, text }),
       });
       let data = await r.json().catch(() => null);
-      if (!data?.ok) {
-        const oldToken = env.OLD_BOT_TOKEN || "8578336635:AAG2VuApAstUwp0dszRnjQVzHjnNCI_CfEI";
-        if (oldToken) {
-          const rOld = await fetch(`https://api.telegram.org/bot${oldToken}/sendMessage`, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              chat_id: targetUid,
-              text: text + "\n\n⚠️ Ми переїхали на нового бота @schedapp_bot",
-              reply_markup: {
-                inline_keyboard: [[{ text: "🚀 Перейти в @schedapp_bot", url: "https://t.me/schedapp_bot" }]]
-              }
-            }),
-          });
-          const dataOld = await rOld.json().catch(() => null);
-          if (dataOld?.ok) return jsonRes(dataOld, 200);
-        }
-      }
       return jsonRes(data || { ok: false }, data?.ok ? 200 : 400);
     }
 
-    
-    
-    
-    if (url.pathname === "/bot-old" && request.method === "POST") {
-      const oldToken = env.OLD_BOT_TOKEN || "8578336635:AAG2VuApAstUwp0dszRnjQVzHjnNCI_CfEI";
-      try {
-        const update = await request.json();
-        if (update?.update_id && isDuplicateEvent(`old_upd:${update.update_id}`, 120000)) {
-          return new Response("OK");
-        }
-        const msg = update?.message || update?.edited_message;
-        const cb = update?.callback_query;
-
-        if (cb) {
-          await fetch(`https://api.telegram.org/bot${oldToken}/answerCallbackQuery`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              callback_query_id: cb.id,
-              text: "⚠️ Ми переїхали на нового бота @schedapp_bot!",
-              show_alert: true,
-            })
-          }).catch(() => null);
-          return new Response("OK");
-        }
-
-        if (msg) {
-          const chatType = msg.chat?.type || "private";
-          if (chatType !== "private") {
-            return new Response("OK");
-          }
-
-          const rawText = (msg.text || "").trim();
-          const startMatch = rawText.match(/^\/start\s+(?:code_)?(\d{6})$/i);
-          const prefixMatch = rawText.match(/^(?:code_?|код[:\s]?)\s*(\d{6})$/i);
-          const cleaned = rawText.replace(/[\s\-_]/g, "");
-          const candidateCode = startMatch ? startMatch[1] : (prefixMatch ? prefixMatch[1] : (/^\d{6}$/.test(cleaned) ? cleaned : null));
-
-          if (candidateCode) {
-            const item = await getAuthCode(candidateCode, env);
-            if (item && item.status === "__pending__") {
-              const userData = {
-                id:         String(msg.from.id),
-                first_name: msg.from.first_name ?? "",
-                last_name:  msg.from.last_name  ?? "",
-                username:   msg.from.username   ?? "",
-                photo_url:  WORKER_URL ? `${WORKER_URL}/avatar/${msg.from.id}` : "",
-              };
-              await storeAuthCode(candidateCode, userData, 600, env);
-              if (ctx?.waitUntil) ctx.waitUntil(saveUserToFirebase(msg.from));
-              else saveUserToFirebase(msg.from).catch(() => {});
-
-              await fetch(`https://api.telegram.org/bot${oldToken}/sendMessage`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  chat_id: msg.chat.id,
-                  text: `✅ <b>Готово! Акаунт прив'язано до сайту розкладу.</b>\nПоверніться у браузер — ви вже увійшли!\n\n⚠️ <i>Також переходьте у нашого нового бота @schedapp_bot, щоб отримувати розклад пар!</i>`,
-                  parse_mode: "HTML",
-                  reply_markup: {
-                    inline_keyboard: [
-                      [{ text: "🚀 Перейти в @schedapp_bot", url: "https://t.me/schedapp_bot" }]
-                    ]
-                  }
-                })
-              }).catch(() => null);
-              return new Response("OK");
-            }
-          }
-
-          const migText =
-            `👋 <b>Привіт! Ми повністю оновилися та переїхали на нового бота:</b>\n` +
-            `👉 @schedapp_bot\n\n` +
-            `🚀 <i>Увесь актуальний розклад занять, дзвінки, нагадування та оцінки тепер працюють там!</i>\n\n` +
-            `Натисніть кнопку нижче, щоб перейти 👇`;
-
-          await fetch(`https://api.telegram.org/bot${oldToken}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: msg.chat.id,
-              text: migText,
-              parse_mode: "HTML",
-              reply_markup: {
-                inline_keyboard: [
-                  [{ text: "🚀 Перейти в @schedapp_bot", url: "https://t.me/schedapp_bot" }]
-                ]
-              }
-            })
-          }).catch(() => null);
-        }
-      } catch (e) {
-        console.error("bot-old error:", e);
-      }
+    if (url.pathname === "/bot-old") {
       return new Response("OK");
     }
 
@@ -2163,23 +2083,23 @@ export default {
     };
 
     const safeKvPut = async (key, val, opt) => {
-      if (!KV) return false;
+      if (!KV || checkKvBlocked()) return false;
       try {
         await KV.put(key, val, opt);
         return true;
       } catch (e) {
-        console.warn(`KV put ignored (${key}):`, e?.message || e);
+        handleKvError(e, 'put', key);
         return false;
       }
     };
 
     const safeKvDelete = async (key) => {
-      if (!KV) return false;
+      if (!KV || checkKvBlocked()) return false;
       try {
         await KV.delete(key);
         return true;
       } catch (e) {
-        console.warn(`KV delete ignored (${key}):`, e?.message || e);
+        handleKvError(e, 'delete', key);
         return false;
       }
     };
@@ -2192,12 +2112,11 @@ export default {
       if (base && memoryActiveChats.has("-" + base)) return memoryActiveChats.get("-" + base);
       if (base && memoryActiveChats.has("-100" + base)) return memoryActiveChats.get("-100" + base);
 
-      if (KV) {
+      if (KV && !checkKvBlocked()) {
         try {
           const v = (
-            await KV.get("active_chat:" + s) ||
-            (base ? await KV.get("active_chat:-" + base) : null) ||
-            (base ? await KV.get("active_chat:-100" + base) : null)
+            await globalSafeKvGet(KV, "active_chat:" + s) ||
+            (base ? await globalSafeKvGet(KV, "active_chat:-" + base) : null)
           );
           if (v) {
             memoryActiveChats.set(s, v);
@@ -2217,11 +2136,7 @@ export default {
         memoryActiveChats.set("-" + base, String(targetUid));
         memoryActiveChats.set("-100" + base, String(targetUid));
       }
-      await safeKvPut("active_chat:" + s, String(targetUid), { expirationTtl: 86400 });
-      if (base) {
-        await safeKvPut("active_chat:-" + base, String(targetUid), { expirationTtl: 86400 });
-        await safeKvPut("active_chat:-100" + base, String(targetUid), { expirationTtl: 86400 });
-      }
+      await safeKvPut("active_chat:" + (base ? "-" + base : s), String(targetUid), { expirationTtl: 86400 });
     };
 
     const deleteActiveChat = async (cId) => {
@@ -2233,11 +2148,7 @@ export default {
         memoryActiveChats.delete("-" + base);
         memoryActiveChats.delete("-100" + base);
       }
-      await safeKvDelete("active_chat:" + s);
-      if (base) {
-        await safeKvDelete("active_chat:-" + base);
-        await safeKvDelete("active_chat:-100" + base);
-      }
+      await safeKvDelete("active_chat:" + (base ? "-" + base : s));
     };
 
     const escapeHtml = (s) =>
@@ -2432,55 +2343,29 @@ export default {
       const sUid = String(uid);
       memoryPrefs.set(sUid, { ts: Date.now(), p: data });
       await safeKvPut(kvKey(uid), JSON.stringify(data));
+      if (data?.group && env.FIREBASE_API_KEY) {
+        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/users/${sUid}?key=${env.FIREBASE_API_KEY}&updateMask.fieldPaths=group`;
+        fetch(firestoreUrl, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ fields: { group: { stringValue: data.group } } }),
+          signal: AbortSignal.timeout(3000)
+        }).catch(() => {});
+      }
     };
 
-    
     const broadcastToAll = async (messageText) => {
       const result = { total: 0, sent: 0, failed: 0 };
       const users = await getAllUsers();
       if (!users || !users.length) return result;
-      const oldToken = env.OLD_BOT_TOKEN || "8578336635:AAG2VuApAstUwp0dszRnjQVzHjnNCI_CfEI";
 
       for (const u of users) {
         if (!u.id) continue;
         result.total++;
-        let r = await api("sendMessage", {
+        const r = await api("sendMessage", {
           chat_id: u.id,
           text: messageText,
         });
-        if (!r?.ok && oldToken) {
-          try {
-            const updateMarkup = {
-              inline_keyboard: [
-                [{ text: "🚀 Перейти в @schedapp_bot", url: "https://t.me/schedapp_bot" }]
-              ]
-            };
-            let rOld = await fetch(`https://api.telegram.org/bot${oldToken}/sendMessage`, {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({
-                chat_id: u.id,
-                text: messageText + "\n\n⚠️ _Ми переїхали на нового бота! Натисніть кнопку нижче, щоб оновити:_ 👇",
-                parse_mode: "Markdown",
-                reply_markup: updateMarkup
-              }),
-            });
-            let resOld = await rOld.json().catch(() => null);
-            if (!resOld?.ok) {
-              rOld = await fetch(`https://api.telegram.org/bot${oldToken}/sendMessage`, {
-                method: "POST",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({
-                  chat_id: u.id,
-                  text: messageText + "\n\n⚠️ Ми переїхали на нового бота @schedapp_bot",
-                  reply_markup: updateMarkup
-                }),
-              });
-              resOld = await rOld.json().catch(() => null);
-            }
-            if (resOld?.ok) r = resOld;
-          } catch {}
-        }
         if (r?.ok) result.sent++; else result.failed++;
         await new Promise(r => setTimeout(r, 40));
       }
@@ -2934,27 +2819,14 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
           console.error(`Firebase saveUser HTTP ${res.status}:`, errText);
         }
 
-        if (KV) {
-          try {
-            const uName = [from.first_name, from.last_name].filter(Boolean).join(" ") || "Студент";
-            const uUser = from.username || "";
-            const uGroup = userGroup || "";
+        const uName = [from.first_name, from.last_name].filter(Boolean).join(" ") || "Студент";
+        const uUser = from.username || "";
+        const uGroup = userGroup || "";
 
-            if (uUser) {
-              await safeKvPut("uname:" + uUser.toLowerCase(), uidStr, { expirationTtl: 2592000 });
-            }
-            await safeKvPut("uinfo:" + uidStr, JSON.stringify({ id: uidStr, name: uName, username: uUser, group: uGroup }), { expirationTtl: 2592000 });
-
-            const rawRecent = await KV.get("recent_bot_users");
-            let list = rawRecent ? JSON.parse(rawRecent) : [];
-            list = list.filter(u => String(u.id) !== uidStr);
-            list.unshift({ id: uidStr, name: uName, username: uUser, group: uGroup, ts: Date.now() });
-            if (list.length > 30) list = list.slice(0, 30);
-            await safeKvPut("recent_bot_users", JSON.stringify(list));
-          } catch (e) {
-            console.warn("KV saveUser cache error:", e);
-          }
+        if (uUser) {
+          memoryUsernameToUid.set(uUser.toLowerCase(), uidStr);
         }
+        memoryUserCards.set(uidStr, { id: uidStr, name: uName, username: uUser, group: uGroup, ts: Date.now() });
       } catch (e) {
         console.error("Firebase saveUser error:", e);
       }
@@ -2965,9 +2837,9 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
         return memoryAllUsers;
       }
 
-      if (KV) {
+      if (KV && !checkKvBlocked()) {
         try {
-          const raw = await KV.get("all_cached_users");
+          const raw = await globalSafeKvGet(KV, "all_cached_users");
           if (raw) {
             const list = JSON.parse(raw);
             if (Array.isArray(list) && list.length > 0) {
@@ -3132,33 +3004,45 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
       const cleanUname = s.replace(/^@/, "").toLowerCase();
       if (!cleanUname) return null;
 
+      if (memoryUsernameToUid.has(cleanUname)) {
+        return memoryUsernameToUid.get(cleanUname);
+      }
+
       const all = await getAllUsers();
       const found = all.find(u =>
         (u.username || "").toLowerCase() === cleanUname ||
         (u.name || "").toLowerCase() === cleanUname ||
         String(u.id) === cleanUname
       );
-      if (found) return found.id;
+      if (found) {
+        if (found.username) memoryUsernameToUid.set(found.username.toLowerCase(), String(found.id));
+        return found.id;
+      }
       return null;
     };
 
     const getUserCardInfo = async (uid) => {
-      let info = { id: String(uid), name: "Користувач", username: "", group: "не обрано" };
-      if (KV) {
+      const sUid = String(uid);
+      if (memoryUserCards.has(sUid)) {
+        return { ...memoryUserCards.get(sUid) };
+      }
+      let info = { id: sUid, name: "Користувач", username: "", group: "не обрано" };
+      if (KV && !checkKvBlocked()) {
         try {
-          const raw = await KV.get("uinfo:" + uid);
+          const raw = await globalSafeKvGet(KV, "uinfo:" + uid);
           if (raw) Object.assign(info, JSON.parse(raw));
         } catch {}
       }
       if (info.name === "Користувач" || !info.username) {
         const all = await getAllUsers();
-        const found = all.find(u => String(u.id) === String(uid));
+        const found = all.find(u => String(u.id) === sUid);
         if (found) Object.assign(info, found);
       }
       if (!info.group || info.group === "не обрано") {
         const p = await getPrefs(uid);
         if (p?.group) info.group = p.group;
       }
+      memoryUserCards.set(sUid, info);
       return info;
     };
 
@@ -4278,14 +4162,10 @@ if (data === "link:site") {
         await storeSupMessage(sentMsgId, sUserId, env);
       }
 
-      const ackKey = `sup_ack:${sUserId}`;
       let alreadyAcked = memoryAcks.has(sUserId);
-      if (!alreadyAcked && KV) {
-        try { alreadyAcked = Boolean(await KV.get(ackKey)); } catch {}
-      }
       if (!alreadyAcked && studentMsg) {
         memoryAcks.add(sUserId);
-        await safeKvPut(ackKey, "1", { expirationTtl: 60 });
+        setTimeout(() => memoryAcks.delete(sUserId), 60000);
         await api("sendMessage", {
           chat_id: chatId,
           text: "✅ Ваше повідомлення надіслано адміністратору розкладу. Очікуйте на відповідь!",
@@ -4683,23 +4563,23 @@ if (data === "link:site") {
     }
   },
 
-  // ─── HOURLY CRON: auto-check Dekanat grades for all users ───────────────────
+  // ─── CRON: auto-check Dekanat grades for all users ─────────────────────────
   async scheduled(event, env, ctx) {
+    if (checkKvBlocked()) return; // Skip if KV quota is currently exceeded
     const kv = env.PREFS_KV;
     if (!kv || !env.BOT_TOKEN) return;
 
     // ── Night mode: Kyiv time = UTC+3 ────────────────────────────────────────
-    // Daytime  07:00–23:59 → check every hour
+    // Daytime  07:00–23:59 → check
     // Nighttime 00:00–06:59 → check only at 00, 03, 06
     const kyivHour = (new Date().getUTCHours() + 3) % 24;
     const isNight = kyivHour >= 0 && kyivHour < 7;
     if (isNight && kyivHour % 3 !== 0) {
-      return; // skip this run — next check at the 3-hour mark
+      return;
     }
 
     // Skip if cache was updated within last 50 min (user opened app themselves)
     const SKIP_IF_NEWER_MS = 50 * 60 * 1000;
-    // Max users to process per cron run (stay within 30-sec wall-clock limit)
     const MAX_PER_RUN = 10;
 
     try {
@@ -4710,16 +4590,16 @@ if (data === "link:site") {
         const userId = key.name.replace('dekanat_creds:', '');
         try {
           // Load credentials
-          const rawCreds = await kv.get(key.name);
+          const rawCreds = await globalSafeKvGet(kv, key.name);
           if (!rawCreds) continue;
           const { user_name, user_pwd } = JSON.parse(rawCreds);
           if (!user_name || !user_pwd) continue;
 
           // Load cached grades
-          const rawCache = await kv.get(`dekanat_cache:${userId}`);
+          const rawCache = await globalSafeKvGet(kv, `dekanat_cache:${userId}`);
           const cached = rawCache ? JSON.parse(rawCache) : null;
 
-          // Skip if recently synced — user just opened the app
+          // Skip if recently synced
           if (cached && cached.ts && (Date.now() - cached.ts) < SKIP_IF_NEWER_MS) {
             continue;
           }
@@ -4729,20 +4609,25 @@ if (data === "link:site") {
           try {
             freshData = await fetchDekanatGrades(user_name, user_pwd);
           } catch (fetchErr) {
-            // Wrong password or Dekanat down — skip silently, don't remove creds
             continue;
           }
 
+          let hasNewGrades = false;
           // Compare with cached — find new grades
           if (cached && cached.data && Array.isArray(cached.data.subjects)) {
             const newGrades = findNewGrades(cached.data.subjects, freshData.subjects);
-            for (const ng of newGrades) {
-              await notifyTelegramNewGrade(env, userId, ng);
+            if (newGrades.length > 0) {
+              hasNewGrades = true;
+              for (const ng of newGrades) {
+                await notifyTelegramNewGrade(env, userId, ng);
+              }
             }
           }
 
-          // Save fresh cache
-          await globalSafeKvPut(kv, `dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: freshData }));
+          // Save fresh cache ONLY if grades changed or first time
+          if (hasNewGrades || !cached) {
+            await globalSafeKvPut(kv, `dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: freshData }));
+          }
 
         } catch (userErr) {
           console.error(`[cron:dekanat] userId=${userId} error:`, userErr.message);
