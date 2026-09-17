@@ -1662,28 +1662,6 @@ export default {
 
           if (kv && !checkKvBlocked()) {
             await globalSafeKvPut(kv, `user_sync:${uid}`, JSON.stringify(payload), { expirationTtl: 15552000 });
-
-            if (data.activeGroup) {
-              try {
-                const currentBotPrefs = await globalSafeKvGet(kv, `u:${uid}`);
-                const p = currentBotPrefs ? JSON.parse(currentBotPrefs) : {};
-                const cleanG = String(data.activeGroup || "").trim().toLowerCase();
-                const normG = (cleanG === "fep11" || cleanG === "феп-11с" || cleanG === "феп11" || cleanG === "феп 11") ? "fep11"
-                  : (cleanG === "fep12" || cleanG === "феп-12с" || cleanG === "феп12" || cleanG === "феп 12") ? "fep12"
-                  : (cleanG === "fep13" || cleanG === "феп-13с" || cleanG === "феп13" || cleanG === "феп 13") ? "fep13"
-                  : cleanG.replace(/[\s\-_с]/g, "");
-                const gKey = data.activeGroupId || normG;
-                const groupConf = (data.groupConfigs && (data.groupConfigs[gKey] || data.groupConfigs[normG] || data.groupConfigs[data.activeGroup])) || {};
-                const updatedBot = {
-                  ...p,
-                  group: data.activeGroup,
-                  subgroup: groupConf.subgroup || p.subgroup || "all",
-                  eng: groupConf.eng || p.eng || "all",
-                  step: "done"
-                };
-                await globalSafeKvPut(kv, `u:${uid}`, JSON.stringify(updatedBot));
-              } catch {}
-            }
           }
 
           return jsonRes({ ok: true, updatedAt: payload.updatedAt });
