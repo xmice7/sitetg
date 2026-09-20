@@ -1019,10 +1019,98 @@ async function fetchDekanatGrades(user_name, user_pwd) {
   let grp = homeDossier.group || "";
   let curCourse = homeDossier.course || "";
 
-  const subjects = [];
   const subjectMap = new Map();
 
-  // 1. Fetch current semester disciplines and grades from n=7 (Поточна успішність)
+  // 1. Fetch and parse Individual Study Plan (Індивідуальний навчальний план)
+  let planHtml = "";
+  try {
+    const allLinks = [...postHtml.matchAll(/<a\b[^>]*href=["\x27]([^"'\x27]+)["\x27][^>]*>([\s\S]*?)<\/a>/gi)];
+    const planLink = allLinks.find(m => /індивідуальний\s*навчальний\s*план/i.test(m[2]));
+    let planUrl = planLink
+      ? planLink[1].replace(/&amp;/g, '&')
+      : `html_doc.cgi?actions=140&varZv=1014&sesID=${sesID}`;
+    if (!planUrl.startsWith("http")) {
+      planUrl = "https://dekanat.lnu.edu.ua/cgi-bin/" + planUrl.replace("./", "");
+    }
+    const pRes = await fetch(planUrl, {
+      headers: {
+        "Referer": currentUrl,
+        "User-Agent": 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+        ...(cookieJar.size ? { "Cookie": jarToCookieHeader(cookieJar) } : {})
+      },
+      signal: AbortSignal.timeout(6000)
+    });
+    if (pRes.ok) {
+      const pBuf = await pRes.arrayBuffer();
+      planHtml = win1251Decoder.decode(pBuf);
+    }
+  } catch (e) {}
+
+  if (planHtml) {
+    // Extract electives (ВИБІРКОВИЙ КОМПОНЕНТ)
+    const electivesBySem = new Map();
+    const electiveTableMatch = planHtml.match(/<table[^>]*>[\s\S]*?ВИБІРКОВИЙ\s*КОМПОНЕНТ[\s\S]*?<\/table>/i);
+    if (electiveTableMatch) {
+      const rows = [...electiveTableMatch[0].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
+      for (const r of rows) {
+        const cells = [...r[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(c => stripTags(c[1]));
+        if (cells.length >= 3) {
+          const subj = cells[1];
+          const sem = parseInt(cells[2], 10);
+          const teacher = cells[6] || "";
+          if (subj && !isNaN(sem)) {
+            electivesBySem.set(sem, { subject: subj, teacher });
+          }
+        }
+      }
+    }
+
+    const currentMonth = new Date().getMonth() + 1;
+    const targetSem = (currentMonth >= 9 || currentMonth === 1) ? 1 : 2;
+    let curSem = 0;
+
+    const rows = [...planHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
+    for (const r of rows) {
+      const rText = stripTags(r[1]);
+      if (/1\s*півріччя/i.test(rText)) {
+        curSem = 1;
+        continue;
+      } else if (/2\s*півріччя/i.test(rText)) {
+        curSem = 2;
+        continue;
+      } else if (/Разом\s*за\s*рік/i.test(rText) || /ВИБІРКОВИЙ\s*КОМПОНЕНТ/i.test(rText)) {
+        curSem = 0;
+      }
+
+      if (curSem !== targetSem) continue;
+
+      const cells = [...r[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(c => stripTags(c[1]));
+      if (cells.length >= 10) {
+        const num = parseInt(cells[0], 10);
+        let subj = cells[1];
+        let teacher = cells[11] || "";
+
+        if (!isNaN(num) && subj) {
+          if (/дисциплін[а-я]*\s*вільного\s*вибору/i.test(subj)) {
+            const elect = electivesBySem.get(curSem);
+            if (elect) {
+              subj = elect.subject;
+              if (elect.teacher && (!teacher || teacher === "—")) teacher = elect.teacher;
+            }
+          }
+          subjectMap.set(subj, {
+            subject: subj,
+            teacher: teacher || "—",
+            total: 0,
+            ects: "",
+            grades: []
+          });
+        }
+      }
+    }
+  }
+
+  // 2. Fetch current semester disciplines and grades from n=7 (Поточна успішність)
   const n7Url = `https://dekanat.lnu.edu.ua/cgi-bin/classman.cgi?n=7${sesID ? '&sesID=' + sesID : ''}`;
   let n7Html = "";
   try {
@@ -1190,23 +1278,32 @@ async function fetchDekanatGrades(user_name, user_pwd) {
         else if (total >= 35) ects = "FX";
         else if (total > 0) ects = "F";
 
-        const subjectItem = {
-          subject: opt.text,
-          teacher: teacher || "—",
+        // Match existing subject from study plan or add new
+        let matchedKey = null;
+        for (const key of subjectMap.keys()) {
+          if (key.toLowerCase() === opt.text.toLowerCase() ||
+              key.toLowerCase().replace(/\s+/g, '') === opt.text.toLowerCase().replace(/\s+/g, '')) {
+            matchedKey = key;
+            break;
+          }
+        }
+
+        const targetKey = matchedKey || opt.text;
+        const existing = subjectMap.get(targetKey) || {};
+        subjectMap.set(targetKey, {
+          subject: targetKey,
+          teacher: teacher || existing.teacher || "—",
           total,
           ects,
           grades
-        };
-
-        if (!subjectMap.has(opt.text)) {
-          subjectMap.set(opt.text, subjectItem);
-          subjects.push(subjectItem);
-        }
+        });
       }
     }
   }
 
-  // 2. Calculate average over subjects with total > 0
+  const subjects = [...subjectMap.values()];
+
+  // 3. Calculate average over subjects with total > 0
   const gradedSubjects = subjects.filter(s => s.total > 0);
   const average = gradedSubjects.length
     ? (gradedSubjects.reduce((sum, s) => sum + s.total, 0) / gradedSubjects.length).toFixed(1)
