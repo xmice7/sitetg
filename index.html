@@ -2160,28 +2160,35 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             flex-shrink: 0;
         }
         .grades-refresh-btn {
-            background: var(--bg-body);
-            border: 1px solid var(--border);
-            color: var(--text-main);
-            display: flex;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #10b981;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            height: 36px;
-            padding: 0 10px;
+            gap: 7px;
+            height: 38px;
+            padding: 0 14px;
             border-radius: 12px;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 700;
             cursor: pointer;
-            transition: transform 0.2s var(--fm-spring), background 0.2s;
+            transition: transform 0.2s var(--fm-spring), background 0.2s, border-color 0.2s, box-shadow 0.2s;
             flex-shrink: 0;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+        }
+        .grades-refresh-btn:hover {
+            background: rgba(16, 185, 129, 0.18);
+            border-color: rgba(16, 185, 129, 0.45);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
         }
         .grades-refresh-btn:active {
-            transform: scale(0.94);
+            transform: scale(0.95);
         }
         .grades-refresh-btn svg {
-            width: 15px;
-            height: 15px;
+            width: 16px;
+            height: 16px;
             stroke: currentColor;
             fill: none;
             stroke-width: 2.2;
@@ -2193,33 +2200,78 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             will-change: transform;
             transform: translateZ(0);
         }
-        .grades-more-btn {
-            background: var(--bg-body);
-            border: 1px solid var(--border);
-            color: var(--text-muted);
-            width: 36px;
-            height: 36px;
-            border-radius: 12px;
+        .grades-dossier-footer {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
             display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: transform 0.2s var(--fm-spring), color 0.2s, border-color 0.2s;
-            flex-shrink: 0;
+            justify-content: flex-end;
         }
-        .grades-more-btn:hover {
+        .grades-dossier-logout-btn {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.25);
             color: #ef4444;
-            border-color: rgba(239,68,68,0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 13px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s var(--fm-spring), background 0.2s, border-color 0.2s;
         }
-        .grades-more-btn:active {
-            transform: scale(0.92);
+        .grades-dossier-logout-btn:hover {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.45);
         }
-        .grades-more-btn svg {
-            width: 17px;
-            height: 17px;
+        .grades-dossier-logout-btn:active {
+            transform: scale(0.96);
+        }
+        .grades-dossier-logout-btn svg {
+            width: 14px;
+            height: 14px;
             stroke: currentColor;
             fill: none;
             stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .grades-view-footer {
+            margin-top: 24px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: center;
+        }
+        .grades-footer-logout-btn {
+            background: transparent;
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            color: #ef4444;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 14px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s var(--fm-spring), background 0.2s, border-color 0.2s;
+        }
+        .grades-footer-logout-btn:hover {
+            background: rgba(239, 68, 68, 0.08);
+            border-color: rgba(239, 68, 68, 0.45);
+        }
+        .grades-footer-logout-btn:active {
+            transform: scale(0.96);
+        }
+        .grades-footer-logout-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
         .grades-stats-row {
@@ -2418,18 +2470,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             white-space: nowrap;
             max-width: 100%;
             overflow: hidden;
-            text-overflow: ellipsis;
         }
-        @media (max-width: 520px) {
-            .grades-refresh-btn #grades-refresh-label {
-                display: none;
-            }
-            .grades-refresh-btn {
-                width: 36px;
-                height: 36px;
-                padding: 0;
-            }
-        }
+
 
         .grades-timeline-box {
             margin-top: 10px;
@@ -3427,9 +3469,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                                 <svg id="grades-refresh-icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                                 <span id="grades-refresh-label">Оновити</span>
                             </button>
-                            <button type="button" class="grades-more-btn" id="btn-grades-logout" title="Вийти / Змінити пароль">
-                                <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                            </button>
                         </div>
                     </div>
 
@@ -3516,6 +3555,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                                 <span id="grades-dossier-end-year">Випуск: —</span>
                             </div>
                         </div>
+
+                        <div class="grades-dossier-footer">
+                            <button type="button" class="grades-dossier-logout-btn grades-logout-trigger" title="Вийти з кабінету Деканату">
+                                <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                                <span>Вийти з кабінету Деканату</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -3536,6 +3582,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                 </div>
 
                 <div class="grades-subjects-wrap" id="grades-subjects-list"></div>
+
+                <div class="grades-view-footer">
+                    <button type="button" class="grades-footer-logout-btn grades-logout-trigger" id="btn-grades-logout" title="Вийти з кабінету Деканату">
+                        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        <span>Вийти з кабінету Деканату</span>
+                    </button>
+                </div>
             </div>
 
             <!-- VIEW 3: LOADING SKELETON -->
@@ -7727,8 +7780,9 @@ function initDekanatGrades() {
         });
     }
 
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', async () => {
+    const logoutTriggers = document.querySelectorAll('.grades-logout-trigger, #btn-grades-logout');
+    logoutTriggers.forEach(trigger => {
+        trigger.addEventListener('click', async () => {
             haptic('impact');
             if (!confirm('Вийти з журналу успішності Деканату?')) return;
 
@@ -7754,7 +7808,7 @@ function initDekanatGrades() {
             updateCardPreview();
             showView('auth');
         });
-    }
+    });
 
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
