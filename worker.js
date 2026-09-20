@@ -1318,7 +1318,7 @@ async function fetchDekanatGrades(user_name, user_pwd) {
 
   return {
     studentName: homeDossier.studentName || studentName,
-    group: grp || homeDossier.group || "ФЕП-23с",
+    group: grp || homeDossier.group || "",
     dossier: homeDossier,
     subjects,
     average
