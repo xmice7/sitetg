@@ -6002,7 +6002,7 @@ function initAdminPanel() {
 
             let tgUser = null;
             try { tgUser = JSON.parse(localStorage.getItem('tg_user_cache') || 'null'); } catch(e) {}
-            const adminPass = storage.get('admin_authed_pass', '') || '0711';
+            const adminPass = storage.get('admin_authed_pass', '');
             const adminUser = tgUser?.username || (tgUser?.id ? String(tgUser.id) : '') || (storage.get('admin_unlocked_xmice', '') === 'true' ? 'xmice' : '');
             const workerBase = localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
 

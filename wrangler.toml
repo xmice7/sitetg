@@ -12,7 +12,6 @@ id = "bec163350c35472ba3233430b1b4d6ba"
 [vars]
 BASE_MONDAY = "2026-02-09"
 BASE_WEEK_TYPE = "numerator"
-FIREBASE_API_KEY = "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo"
 SITE_URL = "https://xmice7.github.io/sitetg/"
 TZ_OFFSET_MIN = "120"
 VERCEL_URL = "https://sitetg-kappa.vercel.app"

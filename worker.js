@@ -1152,6 +1152,10 @@ function isDuplicateEvent(key, ttlMs = 120000) {
   return false;
 }
 
+function getFirestoreApiKey(env) {
+  return env?.FIREBASE_API_KEY || "";
+}
+
 // In-memory stores for auth linking
 const memoryCodeTokens = new Map(); // code -> { status, userData, expiresAt }
 const memoryLinkTokens = new Map(); // token -> { userData, expiresAt }
@@ -1176,24 +1180,26 @@ async function storeAuthCode(code, statusOrData, ttlSeconds = 600, env = null) {
   }
 
   // 3. Firestore store (cross-edge persistent, generous free quotas)
-  const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
-  try {
-    await fetch(
-      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/auth_codes/${code}?key=${apiKey}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fields: {
-            status: { stringValue: status },
-            userData: { stringValue: userDataStr },
-            expiresAt: { integerValue: String(expiresAt) },
-          },
-        }),
-      }
-    );
-  } catch (e) {
-    console.warn("storeAuthCode Firestore write error:", e);
+  const apiKey = getFirestoreApiKey(env);
+  if (apiKey) {
+    try {
+      await fetch(
+        `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/auth_codes/${code}?key=${apiKey}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fields: {
+              status: { stringValue: status },
+              userData: { stringValue: userDataStr },
+              expiresAt: { integerValue: String(expiresAt) },
+            },
+          }),
+        }
+      );
+    } catch (e) {
+      console.warn("storeAuthCode Firestore write error:", e);
+    }
   }
 }
 
@@ -1225,27 +1231,29 @@ async function getAuthCode(code, env = null) {
   }
 
   // 3. Check Firestore (authoritative cross-isolate state)
-  const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
-  try {
-    const res = await fetch(
-      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/auth_codes/${code}?key=${apiKey}`,
-      { signal: AbortSignal.timeout(3000) }
-    );
-    if (res.ok) {
-      const data = await res.json();
-      const exp = Number(data?.fields?.expiresAt?.integerValue || 0);
-      if (exp > now || exp === 0) {
-        const status = data?.fields?.status?.stringValue || "";
-        const userData = data?.fields?.userData?.stringValue || "";
-        const item = { status, userData, expiresAt: exp || (now + 600000) };
-        if (status === "confirmed") {
-          memoryCodeTokens.set(code, item);
+  const apiKey = getFirestoreApiKey(env);
+  if (apiKey) {
+    try {
+      const res = await fetch(
+        `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/auth_codes/${code}?key=${apiKey}`,
+        { signal: AbortSignal.timeout(3000) }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const exp = Number(data?.fields?.expiresAt?.integerValue || 0);
+        if (exp > now || exp === 0) {
+          const status = data?.fields?.status?.stringValue || "";
+          const userData = data?.fields?.userData?.stringValue || "";
+          const item = { status, userData, expiresAt: exp || (now + 600000) };
+          if (status === "confirmed") {
+            memoryCodeTokens.set(code, item);
+          }
+          return item;
         }
-        return item;
       }
+    } catch (e) {
+      console.warn("getAuthCode Firestore read error:", e);
     }
-  } catch (e) {
-    console.warn("getAuthCode Firestore read error:", e);
   }
 
   // 4. If neither KV nor Firestore has confirmed, fallback to pending from RAM or KV
@@ -1271,13 +1279,15 @@ async function deleteAuthCode(code, env = null) {
   if (env?.PREFS_KV) {
     await globalSafeKvDelete(env.PREFS_KV, `code_token:${code}`);
   }
-  const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
-  try {
-    await fetch(
-      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/auth_codes/${code}?key=${apiKey}`,
-      { method: "DELETE" }
-    );
-  } catch {}
+  const apiKey = getFirestoreApiKey(env);
+  if (apiKey) {
+    try {
+      await fetch(
+        `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/auth_codes/${code}?key=${apiKey}`,
+        { method: "DELETE" }
+      );
+    } catch {}
+  }
 }
 
 async function storeLinkToken(token, userDataObj, ttlSeconds = 600, env = null) {
@@ -1288,22 +1298,24 @@ async function storeLinkToken(token, userDataObj, ttlSeconds = 600, env = null) 
     await globalSafeKvPut(env.PREFS_KV, `link_token:${token}`, userDataStr, { expirationTtl: ttlSeconds });
   }
 
-  const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
-  try {
-    await fetch(
-      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/link_tokens/${token}?key=${apiKey}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fields: {
-            userData: { stringValue: userDataStr },
-            expiresAt: { integerValue: String(expiresAt) },
-          },
-        }),
-      }
-    );
-  } catch {}
+  const apiKey = getFirestoreApiKey(env);
+  if (apiKey) {
+    try {
+      await fetch(
+        `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/link_tokens/${token}?key=${apiKey}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fields: {
+              userData: { stringValue: userDataStr },
+              expiresAt: { integerValue: String(expiresAt) },
+            },
+          }),
+        }
+      );
+    } catch {}
+  }
 }
 
 async function getLinkToken(token, env = null) {
@@ -1321,23 +1333,25 @@ async function getLinkToken(token, env = null) {
     } catch {}
   }
 
-  const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
-  try {
-    const res = await fetch(
-      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/link_tokens/${token}?key=${apiKey}`
-    );
-    if (res.ok) {
-      const data = await res.json();
-      const exp = Number(data?.fields?.expiresAt?.integerValue || 0);
-      if (exp > now || exp === 0) {
-        const userData = data?.fields?.userData?.stringValue || "";
-        if (userData) {
-          memoryLinkTokens.set(token, { userData, expiresAt: exp || (now + 600000) });
-          return userData;
+  const apiKey = getFirestoreApiKey(env);
+  if (apiKey) {
+    try {
+      const res = await fetch(
+        `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/link_tokens/${token}?key=${apiKey}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const exp = Number(data?.fields?.expiresAt?.integerValue || 0);
+        if (exp > now || exp === 0) {
+          const userData = data?.fields?.userData?.stringValue || "";
+          if (userData) {
+            memoryLinkTokens.set(token, { userData, expiresAt: exp || (now + 600000) });
+            return userData;
+          }
         }
       }
-    }
-  } catch {}
+    } catch {}
+  }
 
   return null;
 }
@@ -1347,13 +1361,15 @@ async function deleteLinkToken(token, env = null) {
   if (env?.PREFS_KV && !checkKvBlocked()) {
     await globalSafeKvDelete(env.PREFS_KV, `link_token:${token}`);
   }
-  const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
-  try {
-    await fetch(
-      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/link_tokens/${token}?key=${apiKey}`,
-      { method: "DELETE" }
-    );
-  } catch {}
+  const apiKey = getFirestoreApiKey(env);
+  if (apiKey) {
+    try {
+      await fetch(
+        `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/link_tokens/${token}?key=${apiKey}`,
+        { method: "DELETE" }
+      );
+    } catch {}
+  }
 }
 
 async function storeSupMessage(msgId, targetUserId, env = null) {
@@ -1366,22 +1382,24 @@ async function storeSupMessage(msgId, targetUserId, env = null) {
     await globalSafeKvPut(env.PREFS_KV, `sup:${sMsgId}`, sUserId, { expirationTtl: 604800 });
   }
 
-  const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
-  try {
-    await fetch(
-      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/sup_messages/${sMsgId}?key=${apiKey}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fields: {
-            userId: { stringValue: sUserId },
-            createdAt: { integerValue: String(Date.now()) },
-          },
-        }),
-      }
-    );
-  } catch {}
+  const apiKey = getFirestoreApiKey(env);
+  if (apiKey) {
+    try {
+      await fetch(
+        `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/sup_messages/${sMsgId}?key=${apiKey}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fields: {
+              userId: { stringValue: sUserId },
+              createdAt: { integerValue: String(Date.now()) },
+            },
+          }),
+        }
+      );
+    } catch {}
+  }
 }
 
 async function getSupMessage(msgId, env = null) {
@@ -1399,20 +1417,22 @@ async function getSupMessage(msgId, env = null) {
     } catch {}
   }
 
-  const apiKey = env?.FIREBASE_API_KEY || "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo";
-  try {
-    const res = await fetch(
-      `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/sup_messages/${sMsgId}?key=${apiKey}`
-    );
-    if (res.ok) {
-      const data = await res.json();
-      const uid = data?.fields?.userId?.stringValue;
-      if (uid) {
-        memorySupMessages.set(sMsgId, uid);
-        return uid;
+  const apiKey = getFirestoreApiKey(env);
+  if (apiKey) {
+    try {
+      const res = await fetch(
+        `https://firestore.googleapis.com/v1/projects/telegram-xmice/databases/(default)/documents/sup_messages/${sMsgId}?key=${apiKey}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const uid = data?.fields?.userId?.stringValue;
+        if (uid) {
+          memorySupMessages.set(sMsgId, uid);
+          return uid;
+        }
       }
-    }
-  } catch {}
+    } catch {}
+  }
 
   return null;
 }
@@ -1804,19 +1824,18 @@ export default {
       catch { return jsonRes({ error: "Bad JSON" }, 400); }
 
       const { adminPass, adminUser, group = "all", text } = body || {};
-      const broadcastPass = env.BROADCAST_PASSWORD ?? "0711";
+      const broadcastPass = env?.BROADCAST_PASSWORD;
       const adminPassHash = "d16e394090d88753b438e3285c7843113a67729ff93f0994d30cd80faa36f6ee";
 
-      
       let isAuthed = false;
       if (adminUser) {
         const u = String(adminUser).toLowerCase().replace("@", "");
-        if (u === "xmice" || String(adminUser) === String(env.ADMIN_USER_ID || "918235475")) {
+        if (u === "xmice" || String(adminUser) === String(env?.ADMIN_USER_ID || "918235475")) {
           isAuthed = true;
         }
       }
       if (!isAuthed && adminPass) {
-        if (String(adminPass) === broadcastPass) {
+        if (broadcastPass && String(adminPass) === broadcastPass) {
           isAuthed = true;
         } else {
           try {
@@ -1959,7 +1978,7 @@ export default {
         const u = String(adminUser).toLowerCase().replace("@", "");
         if (u === "xmice" || String(adminUser) === String(env.ADMIN_USER_ID || "918235475")) isAuthed = true;
       }
-      if (!isAuthed && adminPass && (String(adminPass) === (env.BROADCAST_PASSWORD ?? "0711"))) isAuthed = true;
+      if (!isAuthed && adminPass && env?.BROADCAST_PASSWORD && (String(adminPass) === env.BROADCAST_PASSWORD)) isAuthed = true;
       if (!isAuthed) return jsonRes({ error: "Unauthorized" }, 401);
 
       if (!target || !text) return jsonRes({ error: "Missing target or text" }, 400);
@@ -4153,7 +4172,7 @@ if (data === "link:site") {
     };
 
     const prefs = await getPrefs(userId);
-    const BROADCAST_PASSWORD = env.BROADCAST_PASSWORD ?? "0711";
+    const BROADCAST_PASSWORD = env?.BROADCAST_PASSWORD;
     const isXmice = (fromUser?.username ?? "").toLowerCase().replace("@", "") === "xmice" || userId === ADMIN_USER_ID;
 
     // Check active direct chat session for admin in private chat
@@ -4286,7 +4305,7 @@ if (data === "link:site") {
 
       if (prefs.await_mes === "password") {
         await clearBroadcastState(); 
-        if (text !== BROADCAST_PASSWORD) {
+        if (!BROADCAST_PASSWORD || text !== BROADCAST_PASSWORD) {
           await sendPlain(chatId, "❌ Невірний пароль.");
           return new Response("OK");
         }
