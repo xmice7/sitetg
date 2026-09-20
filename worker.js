@@ -383,6 +383,34 @@ async function handleScheduleRoutes(request, env, ctx) {
 
 const DEKANAT_CLASSMAN_URL = 'https://dekanat.lnu.edu.ua/cgi-bin/classman.cgi';
 
+function parseCookiesFromHeaders(headers, existingJar = new Map()) {
+  const jar = new Map(existingJar);
+  if (!headers) return jar;
+  const rawCookies = typeof headers.getSetCookie === 'function'
+    ? headers.getSetCookie()
+    : [headers.get('set-cookie')].filter(Boolean);
+
+  for (const raw of rawCookies) {
+    const parts = String(raw).split(/,(?=[^;]+=[^;]+)/);
+    for (const part of parts) {
+      const firstPair = part.split(';')[0].trim();
+      const eqIdx = firstPair.indexOf('=');
+      if (eqIdx > 0) {
+        const name = firstPair.slice(0, eqIdx).trim();
+        const value = firstPair.slice(eqIdx + 1).trim();
+        if (name && !['path', 'expires', 'domain', 'samesite', 'secure', 'httponly', 'max-age'].includes(name.toLowerCase())) {
+          jar.set(name, value);
+        }
+      }
+    }
+  }
+  return jar;
+}
+
+function jarToCookieHeader(jar) {
+  return [...jar.entries()].map(([k, v]) => `${k}=${v}`).join('; ');
+}
+
 const GRADE_CATEGORIES = {
   "Лек": { label: "Контроль на лекції", icon: "📖", color: "#3b82f6" },
   "ПрСем": { label: "Практич./Семін. зан.", icon: "✍️", color: "#8b5cf6" },
@@ -582,10 +610,10 @@ function findGradesTable(html) {
   // Prefer table that has grades indicators (бал, ects, grade category headers)
   for (const t of allTables) {
     const tableHtml = t[1];
-    const hasScoreHeader = /<th>[^<]*(?:бал|ects|підсумок|разом)[^<]*<\/th>/i.test(tableHtml) ||
+    const hasScoreHeader = /<(?:th|td)[^>]*>[\s\S]*?(?:бал|ects|підсумок|разом)[\s\S]*?<\/(?:th|td)>/i.test(tableHtml) ||
                            /class=["\x27][^"\x27]*(?:bal|ects|grade)/i.test(tableHtml);
-    const hasGradeCategory = /<th>[^<]*(?:Лаб|ПрСем|Лек|МК|КтР|Тест|Кол|Зал)[^<]*<\/th>/i.test(tableHtml);
-    const hasDiscipline = /<th>[^<]*(?:Дисципліна|Предмет)[^<]*<\/th>/i.test(tableHtml);
+    const hasGradeCategory = /<(?:th|td)[^>]*>[\s\S]*?(?:Лаб|ПрСем|Лек|МК|КтР|Тест|Кол|Зал|ІндЗд|Сам)[\s\S]*?<\/(?:th|td)>/i.test(tableHtml);
+    const hasDiscipline = /<(?:th|td)[^>]*>[\s\S]*?(?:Дисципліна|Предмет|Назва)[\s\S]*?<\/(?:th|td)>/i.test(tableHtml);
 
     if (hasScoreHeader || (hasGradeCategory && hasDiscipline) || hasGradeCategory) {
       return t;
@@ -708,104 +736,187 @@ function parseDekanatGrades(html, fallbackUserName = "") {
   const dossier = extractStudentDossier(html, group, fallbackUserName);
   dossier.studentName = studentName;
 
-  const tableMatch = findGradesTable(html);
-  if (!tableMatch) return { studentName, group: dossier.group || group, dossier, subjects: [], average: "0" };
+  const allTables = [...html.matchAll(/<table[^>]*>([\s\S]*?)<\/table>/gi)];
+  if (!allTables.length) return { studentName, group: dossier.group || group, dossier, subjects: [], average: "0" };
 
-  const tableHtml = tableMatch[1];
-  const trMatches = [...tableHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
-  if (trMatches.length < 2) return { studentName, group: dossier.group || group, dossier, subjects: [], average: "0" };
+  // Identify all tables that could contain grades
+  const candidateTables = [];
+  for (const t of allTables) {
+    const tableHtml = t[1];
+    const hasScoreHeader = /<(?:th|td)[^>]*>[\s\S]*?(?:бал|ects|підсумок|разом)[\s\S]*?<\/(?:th|td)>/i.test(tableHtml) ||
+                           /class=["\x27][^"\x27]*(?:bal|ects|grade)/i.test(tableHtml);
+    const hasGradeCategory = /<(?:th|td)[^>]*>[\s\S]*?(?:Лаб|ПрСем|Лек|МК|КтР|Тест|Кол|Зал|ІндЗд|Сам)[\s\S]*?<\/(?:th|td)>/i.test(tableHtml);
+    const hasDiscipline = /<(?:th|td)[^>]*>[\s\S]*?(?:Дисципліна|Предмет|Назва)[\s\S]*?<\/(?:th|td)>/i.test(tableHtml);
 
-  const headerRow = trMatches[0][1];
-  let thMatches = [...headerRow.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gi)];
-  if (!thMatches.length) {
-    thMatches = [...headerRow.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)];
+    if (hasScoreHeader || (hasGradeCategory && hasDiscipline) || hasGradeCategory) {
+      candidateTables.push(t);
+    }
   }
-  const headers = thMatches.map((m, idx) => {
-    const raw = m[1];
-    const titleMatch = m[0].match(/title=["\x27]([^"\x27]*)["\x27]/i);
-    const title = titleMatch ? titleMatch[1] : "";
-    const text = stripTags(raw);
-    const dateMatch = raw.match(/(\d{2}\.\d{2}(?:\.\d{2,4})?)/);
-    const date = dateMatch ? dateMatch[1] : "";
 
-    let category = "Інше";
-    const catList = ["Лек", "ПрСем", "Лаб", "ІнЗан", "Сам", "ІндЗд", "Доп", "ПрЗд", "МК", "КтР", "Тест", "Кол", "Екз", "ЗалДз"];
-    for (const c of catList) {
-      if (text.includes(c) || title.includes(c)) {
-        category = c;
-        break;
+  if (!candidateTables.length) {
+    let bestTable = allTables[0];
+    let maxCells = 0;
+    for (const t of allTables) {
+      const cellsCount = (t[1].match(/<(?:td|th)/gi) || []).length;
+      if (cellsCount > maxCells) {
+        maxCells = cellsCount;
+        bestTable = t;
+      }
+    }
+    candidateTables.push(bestTable);
+  }
+
+  const subjectMap = new Map();
+
+  for (const tableMatch of candidateTables) {
+    const tableHtml = tableMatch[1];
+    const trMatches = [...tableHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
+    if (trMatches.length < 2) continue;
+
+    let headerRowIndex = 0;
+    let maxHeaderCols = 0;
+    for (let i = 0; i < Math.min(trMatches.length, 4); i++) {
+      const rHtml = trMatches[i][1];
+      const cells = [...rHtml.matchAll(/<(?:th|td)[^>]*>([\s\S]*?)<\/(?:th|td)>/gi)];
+      const text = stripTags(rHtml).toLowerCase();
+      const hasKeyWords = /дисциплін|предмет|викладач|№|бал|ects|лаб|лек|семестр|підсум/i.test(text);
+      if (cells.length > maxHeaderCols && (hasKeyWords || cells.length > 2)) {
+        maxHeaderCols = cells.length;
+        headerRowIndex = i;
       }
     }
 
-    const isBal = /бал|всього|разом/i.test(text) || /class=["\x27][^"\x27]*bal/i.test(m[0]);
-    const isEcts = /ects/i.test(text) || /class=["\x27][^"\x27]*ects/i.test(m[0]);
-
-    return { idx, text, title, date, category, isBal, isEcts };
-  });
-
-  const subjects = [];
-  for (let i = 1; i < trMatches.length; i++) {
-    const rowHtml = trMatches[i][1];
-    const tdMatches = [...rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)];
-    if (tdMatches.length < 2) continue;
-
-    const firstTd = stripTags(tdMatches[0][1]);
-    if (!firstTd || /разом|всього|підсумок/i.test(firstTd)) continue;
-
-    let subject = firstTd;
-    let teacher = "";
-    if (tdMatches.length > 1 && !headers[1]?.isBal && !headers[1]?.isEcts && headers[1]?.category === "Інше") {
-      teacher = stripTags(tdMatches[1][1]);
+    const headerRow = trMatches[headerRowIndex][1];
+    let cellMatches = [...headerRow.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gi)];
+    if (!cellMatches.length) {
+      cellMatches = [...headerRow.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)];
     }
 
-    let total = 0;
-    let ects = "";
-    const grades = [];
+    const headers = cellMatches.map((m, idx) => {
+      const raw = m[1];
+      const titleMatch = m[0].match(/title=["\x27]([^"\x27]*)["\x27]/i);
+      const title = titleMatch ? titleMatch[1] : "";
+      const text = stripTags(raw);
+      const dateMatch = raw.match(/(\d{2}\.\d{2}(?:\.\d{2,4})?)/);
+      const date = dateMatch ? dateMatch[1] : "";
 
-    tdMatches.forEach((td, colIdx) => {
-      const colHeader = headers[colIdx];
-      if (!colHeader) return;
-      const tdContent = stripTags(td[1]);
-      const tdTitle = (td[0].match(/title=["\x27]([^"\x27]*)["\x27]/i) || [])[1] || "";
-
-      if (colHeader.isBal) {
-        const num = parseFloat(tdContent.replace(",", "."));
-        if (!isNaN(num)) total = num;
-      } else if (colHeader.isEcts) {
-        ects = tdContent;
-      } else if (colIdx > (teacher ? 1 : 0)) {
-        if (tdContent && tdContent !== "-" && tdContent !== "0" && tdContent !== "&nbsp;") {
-          const numVal = parseFloat(tdContent.replace(",", "."));
-          grades.push({
-            category: colHeader.category,
-            categoryLabel: GRADE_CATEGORIES[colHeader.category]?.label || colHeader.title || colHeader.category,
-            date: colHeader.date || "",
-            value: isNaN(numVal) ? tdContent : numVal,
-            note: tdTitle
-          });
+      let category = "Інше";
+      const catList = ["Лек", "ПрСем", "Лаб", "ІнЗан", "Сам", "ІндЗд", "Доп", "ПрЗд", "МК", "КтР", "Тест", "Кол", "Екз", "ЗалДз"];
+      for (const c of catList) {
+        if (text.toLowerCase().includes(c.toLowerCase()) || title.toLowerCase().includes(c.toLowerCase())) {
+          category = c;
+          break;
         }
       }
+
+      const isNumCol = /^(?:№|n|n\s*з\/п|з\/п)$/i.test(text.trim());
+      const isSubjectCol = /дисциплін|предмет|назва/i.test(text) || /дисциплін|предмет/i.test(title);
+      const isTeacherCol = /викладач|прізвище\s*вик|вчитель/i.test(text) || /викладач/i.test(title);
+      const isBal = /бал|всього|разом|підсумок/i.test(text) || /class=["\x27][^"\x27]*bal/i.test(m[0]);
+      const isEcts = /ects/i.test(text) || /class=["\x27][^"\x27]*ects/i.test(m[0]);
+
+      return { idx, text, title, date, category, isNumCol, isSubjectCol, isTeacherCol, isBal, isEcts };
     });
 
-    if (!ects) {
-      if (total >= 90) ects = "A";
-      else if (total >= 81) ects = "B";
-      else if (total >= 71) ects = "C";
-      else if (total >= 61) ects = "D";
-      else if (total >= 51) ects = "E";
-      else if (total >= 35) ects = "FX";
-      else if (total > 0) ects = "F";
+    let subjectColIdx = headers.findIndex(h => h.isSubjectCol);
+    if (subjectColIdx === -1) {
+      subjectColIdx = headers[0]?.isNumCol ? 1 : 0;
     }
 
-    subjects.push({
-      subject,
-      teacher,
-      total,
-      ects,
-      grades
-    });
+    let teacherColIdx = headers.findIndex(h => h.isTeacherCol);
+    if (teacherColIdx === -1) {
+      if (subjectColIdx === 0 && headers.length > 1 && !headers[1].isBal && !headers[1].isEcts && headers[1].category === "Інше") {
+        teacherColIdx = 1;
+      } else if (subjectColIdx === 1 && headers.length > 2 && !headers[2].isBal && !headers[2].isEcts && headers[2].category === "Інше") {
+        teacherColIdx = 2;
+      }
+    }
+
+    for (let i = headerRowIndex + 1; i < trMatches.length; i++) {
+      const rowHtml = trMatches[i][1];
+      const tdMatches = [...rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)];
+      if (tdMatches.length < 2) continue;
+
+      const rowFullText = stripTags(rowHtml);
+      if (/підсумок|всього|середній|разом/i.test(rowFullText) && !rowFullText.includes("дисциплін")) {
+        continue;
+      }
+
+      let subject = "";
+      let teacher = "";
+
+      if (subjectColIdx >= 0 && tdMatches[subjectColIdx]) {
+        subject = stripTags(tdMatches[subjectColIdx][1]);
+      }
+
+      if (/^\d+$/.test(subject) && tdMatches[subjectColIdx + 1]) {
+        subject = stripTags(tdMatches[subjectColIdx + 1][1]);
+        if (tdMatches[subjectColIdx + 2]) {
+          teacher = stripTags(tdMatches[subjectColIdx + 2][1]);
+        }
+      } else if (teacherColIdx >= 0 && tdMatches[teacherColIdx]) {
+        teacher = stripTags(tdMatches[teacherColIdx][1]);
+      }
+
+      subject = subject.replace(/^\d+[\.\)]\s*/, '').trim();
+      if (!subject || subject.length < 2 || /^\d+$/.test(subject)) continue;
+
+      let total = 0;
+      let ects = "";
+      const grades = [];
+
+      tdMatches.forEach((td, colIdx) => {
+        if (colIdx === subjectColIdx || colIdx === teacherColIdx || (colIdx === 0 && /^\d+$/.test(stripTags(td[1])))) {
+          return;
+        }
+        const colHeader = headers[colIdx];
+        const tdContent = stripTags(td[1]);
+        const tdTitle = (td[0].match(/title=["\x27]([^"\x27]*)["\x27]/i) || [])[1] || "";
+
+        if (colHeader?.isBal) {
+          const num = parseFloat(tdContent.replace(",", "."));
+          if (!isNaN(num)) total = num;
+        } else if (colHeader?.isEcts) {
+          ects = tdContent.replace(/[^A-Za-z]/g, "").toUpperCase();
+        } else {
+          if (tdContent && tdContent !== "-" && tdContent !== "0" && tdContent !== "&nbsp;" && tdContent !== "—") {
+            const numVal = parseFloat(tdContent.replace(",", "."));
+            const cat = colHeader?.category || "Інше";
+            grades.push({
+              category: cat,
+              categoryLabel: GRADE_CATEGORIES[cat]?.label || colHeader?.title || cat,
+              date: colHeader?.date || "",
+              value: isNaN(numVal) ? tdContent : numVal,
+              note: tdTitle
+            });
+          }
+        }
+      });
+
+      const currentGradeSum = grades.reduce((sum, g) => typeof g.value === 'number' ? sum + g.value : sum, 0);
+      if (total === 0 && currentGradeSum > 0) {
+        total = Math.round(currentGradeSum * 10) / 10;
+      }
+
+      if (!ects && total > 0) {
+        if (total >= 90) ects = "A";
+        else if (total >= 81) ects = "B";
+        else if (total >= 71) ects = "C";
+        else if (total >= 61) ects = "D";
+        else if (total >= 51) ects = "E";
+        else if (total >= 35) ects = "FX";
+        else ects = "F";
+      }
+
+      const item = { subject, teacher, total, ects, grades };
+      const existing = subjectMap.get(subject);
+      if (!existing || (item.total > existing.total) || (item.grades.length > existing.grades.length)) {
+        subjectMap.set(subject, item);
+      }
+    }
   }
 
+  const subjects = [...subjectMap.values()];
   const average = subjects.length ? (subjects.reduce((sum, s) => sum + s.total, 0) / subjects.length).toFixed(1) : "0";
   return {
     studentName,
@@ -821,9 +932,11 @@ async function fetchDekanatGrades(user_name, user_pwd) {
     headers: {
       'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
     },
-    signal: AbortSignal.timeout(6000)
+    signal: AbortSignal.timeout(7000)
   });
   if (!initRes.ok) throw new Error("DEKANAT_UNAVAILABLE");
+
+  let cookieJar = parseCookiesFromHeaders(initRes.headers);
 
   const initBuf = await initRes.arrayBuffer();
   const initHtml = win1251Decoder.decode(initBuf);
@@ -844,19 +957,46 @@ async function fetchDekanatGrades(user_name, user_pwd) {
     butsubm: "Увійти"
   });
 
-  const postRes = await fetch(actionUrl, {
+  let postRes = await fetch(actionUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       "Referer": `${DEKANAT_CLASSMAN_URL}?n=999`,
-      "User-Agent": 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
+      "User-Agent": 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+      ...(cookieJar.size ? { "Cookie": jarToCookieHeader(cookieJar) } : {})
     },
     body: formBody,
-    signal: AbortSignal.timeout(6000)
+    redirect: "manual",
+    signal: AbortSignal.timeout(7000)
   });
 
+  cookieJar = parseCookiesFromHeaders(postRes.headers, cookieJar);
+
+  let currentUrl = actionUrl;
+  let postHtml = "";
+
+  // Follow redirects (301, 302, 303, 307) up to 4 times with manual cookies
+  let redirectCount = 0;
+  while ((postRes.status === 301 || postRes.status === 302 || postRes.status === 303 || postRes.status === 307) && redirectCount < 4) {
+    redirectCount++;
+    const loc = postRes.headers.get("location");
+    if (!loc) break;
+    currentUrl = loc.startsWith("http") ? loc : "https://dekanat.lnu.edu.ua/cgi-bin/" + loc.replace("./", "").replace(/&amp;/g, "&");
+
+    postRes = await fetch(currentUrl, {
+      headers: {
+        "Referer": actionUrl,
+        "User-Agent": 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+        ...(cookieJar.size ? { "Cookie": jarToCookieHeader(cookieJar) } : {})
+      },
+      redirect: "manual",
+      signal: AbortSignal.timeout(7000)
+    });
+    cookieJar = parseCookiesFromHeaders(postRes.headers, cookieJar);
+  }
+
   const postBuf = await postRes.arrayBuffer();
-  const postHtml = win1251Decoder.decode(postBuf);
+  postHtml = win1251Decoder.decode(postBuf);
 
   if (/Ви невірно вказали Прізвище або № залікової книжки/i.test(postHtml)) {
     throw new Error("AUTH_INVALID_CREDENTIALS");
@@ -866,32 +1006,118 @@ async function fetchDekanatGrades(user_name, user_pwd) {
     throw new Error("DEKANAT_SERVER_ERROR");
   }
 
-  const cookieHeader = postRes.headers.get("set-cookie") || "";
-  let homeHtml = "";
-  if (cookieHeader) {
-    try {
-      const homeRes = await fetch(DEKANAT_CLASSMAN_URL, {
-        headers: {
-          "Cookie": cookieHeader,
-          "Referer": actionUrl,
-          "User-Agent": 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
-        },
-        signal: AbortSignal.timeout(6000)
-      });
-      if (homeRes.ok) {
-        const homeBuf = await homeRes.arrayBuffer();
-        homeHtml = win1251Decoder.decode(homeBuf);
-      }
-    } catch (e) {}
+  const sesIdMatch = postHtml.match(/name=["\x27]sesID["\x27][^>]*value=["\x27]([^"\x27]+)["\x27]/i);
+  if (sesIdMatch && sesIdMatch[1] && !cookieJar.has("sesID") && !cookieJar.has("SESID")) {
+    cookieJar.set("sesID", sesIdMatch[1]);
   }
 
-  const result = parseDekanatGrades(postHtml, user_name);
+  let journalHtml = "";
+  const homeHtml = postHtml;
+
+  // Check if postHtml already has the grades table
+  let tableFound = findGradesTable(postHtml);
+
+  if (!tableFound) {
+    // Scan all links in postHtml to find the journal page ("Навчання студента" / "Журнал успішності")
+    const allLinks = [...postHtml.matchAll(/<a\b[^>]*href=["\x27]([^"'\x27]+)["\x27][^>]*>([\s\S]*?)<\/a>/gi)];
+    let bestLink = null;
+    let bestScore = -1;
+
+    for (const l of allLinks) {
+      const href = l[1].replace(/&amp;/g, '&');
+      const text = stripTags(l[2]).toLowerCase();
+      if (/вихід|logout|exit|розклад|опитування|загальна\s*інформація/i.test(text)) continue;
+      if (/n=999|logout/i.test(href)) continue;
+
+      let score = 0;
+      if (/поточн[а-я]*\s*успішність/i.test(text)) score = 100;
+      else if (/журнал\s*успішності/i.test(text)) score = 90;
+      else if (/навчання\s*студента/i.test(text)) score = 80;
+      else if (/семестров[а-я]*\s*бали/i.test(text)) score = 70;
+      else if (/успішність|оцінки|бали/i.test(text)) score = 60;
+      else if (/classman\.cgi\?n=2\b/i.test(href)) score = 50;
+      else if (/classman\.cgi\?n=[^19]\d*/i.test(href)) score = 30;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestLink = href;
+      }
+    }
+
+    const journalUrlCandidate = bestLink
+      ? (bestLink.startsWith("http") ? bestLink : "https://dekanat.lnu.edu.ua/cgi-bin/" + bestLink.replace("./", ""))
+      : `${DEKANAT_CLASSMAN_URL}?n=2`;
+
+    try {
+      const jRes = await fetch(journalUrlCandidate, {
+        headers: {
+          "Referer": currentUrl,
+          "User-Agent": 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+          ...(cookieJar.size ? { "Cookie": jarToCookieHeader(cookieJar) } : {})
+        },
+        signal: AbortSignal.timeout(7000)
+      });
+      if (jRes.ok) {
+        cookieJar = parseCookiesFromHeaders(jRes.headers, cookieJar);
+        const jBuf = await jRes.arrayBuffer();
+        journalHtml = win1251Decoder.decode(jBuf);
+      }
+    } catch (e) {}
+
+    // Check if journalHtml has a sub-link or tab (e.g. "Поточна успішність")
+    if (journalHtml) {
+      if (!findGradesTable(journalHtml)) {
+        const subLinks = [...journalHtml.matchAll(/<a\b[^>]*href=["\x27]([^"'\x27]+)["\x27][^>]*>([\s\S]*?)<\/a>/gi)];
+        let subBest = null;
+        for (const sl of subLinks) {
+          const sText = stripTags(sl[2]).toLowerCase();
+          const sHref = sl[1].replace(/&amp;/g, '&');
+          if (/поточн[а-я]*\s*успішність|семестров[а-я]*\s*бали|журнал/i.test(sText)) {
+            subBest = sHref;
+            break;
+          }
+        }
+        if (subBest) {
+          const subUrl = subBest.startsWith("http") ? subBest : "https://dekanat.lnu.edu.ua/cgi-bin/" + subBest.replace("./", "");
+          try {
+            const subRes = await fetch(subUrl, {
+              headers: {
+                "Referer": journalUrlCandidate,
+                "User-Agent": 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+                ...(cookieJar.size ? { "Cookie": jarToCookieHeader(cookieJar) } : {})
+              },
+              signal: AbortSignal.timeout(7000)
+            });
+            if (subRes.ok) {
+              const subBuf = await subRes.arrayBuffer();
+              const subHtml = win1251Decoder.decode(subBuf);
+              if (findGradesTable(subHtml)) {
+                journalHtml = subHtml;
+              }
+            }
+          } catch (e) {}
+        }
+      }
+    }
+  }
+
+  // Parse grades from journalHtml if available, else postHtml
+  const parseHtml = journalHtml || postHtml;
+  const result = parseDekanatGrades(parseHtml, user_name);
+
+  // Merge student dossier from home page if not present in journal
   if (homeHtml && /Загальна інформація|Факультет/i.test(homeHtml)) {
     const homeDossier = extractStudentDossier(homeHtml, result.group, user_name);
     for (const [k, v] of Object.entries(homeDossier)) {
       if (v && (!result.dossier[k] || result.dossier[k] === "—")) {
         result.dossier[k] = v;
       }
+    }
+    if (!result.group && homeDossier.group) {
+      result.group = homeDossier.group;
+    }
+    if ((!result.studentName || result.studentName === "Студент" || result.studentName === user_name) && homeDossier.studentName) {
+      result.studentName = homeDossier.studentName;
     }
   }
 
