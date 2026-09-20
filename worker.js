@@ -1206,59 +1206,7 @@ async function fetchDekanatGrades(user_name, user_pwd) {
     }
   }
 
-  // 2. Fetch past completed semester subjects from n=6 (Семестрові бали)
-  if (sesID) {
-    try {
-      const n6Url = `https://dekanat.lnu.edu.ua/cgi-bin/classman.cgi?n=6&sesID=${sesID}&typeView=4&action=20&idtype=0`;
-      const n6Res = await fetch(n6Url, {
-        headers: {
-          "Referer": currentUrl,
-          "User-Agent": 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
-          ...(cookieJar.size ? { "Cookie": jarToCookieHeader(cookieJar) } : {})
-        },
-        signal: AbortSignal.timeout(6000)
-      });
-      if (n6Res.ok) {
-        const n6Buf = await n6Res.arrayBuffer();
-        const n6Html = win1251Decoder.decode(n6Buf);
-        const rows = [...n6Html.matchAll(/<tr[\s\S]*?<\/tr>/gi)];
-        for (const r of rows) {
-          const rHtml = r[0];
-          const cells = [...rHtml.matchAll(/<td[\s\S]*?<\/td>/gi)].map(c => stripTags(c[0]));
-          if (cells.length >= 3) {
-            const subj = cells[0];
-            const scoreRaw = cells[2];
-            if (!subj || /разом|всього|підсумок|дисципліна/i.test(subj)) continue;
-
-            const scoreMatch = scoreRaw.match(/(\d+(?:[\.,]\d+)?)/);
-            const ectsMatch = scoreRaw.match(/\b([A-FX]{1,2})\b/i);
-            const total = scoreMatch ? parseFloat(scoreMatch[1].replace(',', '.')) : 0;
-            const ects = ectsMatch ? ectsMatch[1].toUpperCase() : "";
-
-            if (!subjectMap.has(subj)) {
-              const item = {
-                subject: subj,
-                teacher: "—",
-                total,
-                ects,
-                grades: total > 0 ? [{
-                  category: "ЗалДз",
-                  categoryLabel: "Залік / диф. зал.",
-                  date: "",
-                  value: total,
-                  note: scoreRaw
-                }] : []
-              };
-              subjectMap.set(subj, item);
-              subjects.push(item);
-            }
-          }
-        }
-      }
-    } catch (e) {}
-  }
-
-  // 3. Calculate average over subjects with total > 0
+  // 2. Calculate average over subjects with total > 0
   const gradedSubjects = subjects.filter(s => s.total > 0);
   const average = gradedSubjects.length
     ? (gradedSubjects.reduce((sum, s) => sum + s.total, 0) / gradedSubjects.length).toFixed(1)
