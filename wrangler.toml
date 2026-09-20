@@ -12,7 +12,6 @@ id = "bec163350c35472ba3233430b1b4d6ba"
 [vars]
 BASE_MONDAY = "2026-02-09"
 BASE_WEEK_TYPE = "numerator"
-BOT_TOKEN = "8584284374:AAFwh8zU8yzwKjbHgBK8oyJBM9yYyXcVq0M"
 FIREBASE_API_KEY = "AIzaSyBH8JKNOBWTjxSIINVI8LiwK8u9sPyVTo"
 SITE_URL = "https://xmice7.github.io/sitetg/"
 TZ_OFFSET_MIN = "120"

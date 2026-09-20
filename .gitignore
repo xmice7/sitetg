@@ -3,3 +3,6 @@
 node_modules/
 викачане/
 *.mp4
+.env
+.env.*
+.dev.vars
