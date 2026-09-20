@@ -2092,21 +2092,27 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         }
         .grades-summary-top {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: space-between;
+            gap: 10px;
             margin-bottom: 16px;
         }
         .grades-student-meta {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             min-width: 0;
             flex: 1;
         }
+        .grades-student-meta-info {
+            min-width: 0;
+            flex: 1;
+            overflow: hidden;
+        }
         .grades-avatar-badge {
-            width: 46px;
-            height: 46px;
-            border-radius: 15px;
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
             background: linear-gradient(135deg, rgba(16,185,129,0.22), rgba(59,130,246,0.22));
             border: 1.5px solid rgba(16,185,129,0.35);
             display: flex;
@@ -2119,15 +2125,22 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             box-shadow: 0 4px 12px rgba(16,185,129,0.2);
         }
         .grades-student-name {
-            font-size: 15.5px;
+            font-size: 15px;
             font-weight: 800;
             color: var(--text-main);
             letter-spacing: -0.3px;
-            margin-bottom: 2px;
+            margin-bottom: 3px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             line-height: 1.25;
+        }
+        .grades-student-badges {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px;
+            max-width: 100%;
         }
         .grades-student-group {
             display: inline-block;
@@ -2138,13 +2151,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             padding: 2px 7px;
             border-radius: 7px;
             border: 1px solid rgba(16,185,129,0.25);
+            white-space: nowrap;
         }
         .grades-header-actions {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             flex-shrink: 0;
-            margin-left: 10px;
         }
         .grades-refresh-btn {
             background: var(--bg-body);
@@ -2152,23 +2165,26 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             color: var(--text-main);
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
-            padding: 8px 12px;
+            height: 36px;
+            padding: 0 10px;
             border-radius: 12px;
             font-size: 12px;
             font-weight: 700;
             cursor: pointer;
             transition: transform 0.2s var(--fm-spring), background 0.2s;
+            flex-shrink: 0;
         }
         .grades-refresh-btn:active {
             transform: scale(0.94);
         }
         .grades-refresh-btn svg {
-            width: 14px;
-            height: 14px;
+            width: 15px;
+            height: 15px;
             stroke: currentColor;
             fill: none;
-            stroke-width: 2;
+            stroke-width: 2.2;
             stroke-linecap: round;
             stroke-linejoin: round;
         }
@@ -2189,6 +2205,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             justify-content: center;
             cursor: pointer;
             transition: transform 0.2s var(--fm-spring), color 0.2s, border-color 0.2s;
+            flex-shrink: 0;
         }
         .grades-more-btn:hover {
             color: #ef4444;
@@ -2274,13 +2291,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         }
         .grades-dossier-title-wrap {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 10px;
             min-width: 0;
             flex: 1;
         }
         .grades-dossier-crest {
-            font-size: 22px;
+            font-size: 20px;
             width: 36px;
             height: 36px;
             border-radius: 10px;
@@ -2290,24 +2307,24 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            margin-top: 2px;
         }
         .grades-dossier-uni {
-            font-size: 11px;
+            font-size: 10.5px;
             font-weight: 700;
             color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            letter-spacing: 0.4px;
+            line-height: 1.35;
+            margin-bottom: 3px;
+            word-break: break-word;
         }
         .grades-dossier-faculty {
             font-size: 13.5px;
             font-weight: 700;
             color: var(--text-main);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            line-height: 1.35;
+            word-break: break-word;
         }
         .dossier-chevron {
             width: 18px;
@@ -2318,6 +2335,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             stroke-linecap: round;
             stroke-linejoin: round;
             transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.25, 1);
+            flex-shrink: 0;
         }
         .grades-dossier-card.collapsed .dossier-chevron {
             transform: rotate(-90deg);
@@ -2390,20 +2408,26 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            font-size: 11px;
+            font-size: 10.5px;
             font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 8px;
+            padding: 2px 7px;
+            border-radius: 7px;
             background: rgba(16,185,129,0.12);
             color: #10b981;
             border: 1px solid rgba(16,185,129,0.25);
+            white-space: nowrap;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        @media (max-width: 380px) {
+        @media (max-width: 520px) {
             .grades-refresh-btn #grades-refresh-label {
                 display: none;
             }
             .grades-refresh-btn {
-                padding: 8px 10px;
+                width: 36px;
+                height: 36px;
+                padding: 0;
             }
         }
 
@@ -3390,9 +3414,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                     <div class="grades-summary-top">
                         <div class="grades-student-meta">
                             <div class="grades-avatar-badge" id="grades-student-avatar">🎓</div>
-                            <div>
+                            <div class="grades-student-meta-info">
                                 <div class="grades-student-name" id="grades-student-name">Студент</div>
-                                <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-top:2px;">
+                                <div class="grades-student-badges">
                                     <span class="grades-student-group" id="grades-student-group">Група</span>
                                     <span class="grades-payment-pill" id="grades-payment-pill" style="display:none;">Держ.замовлення</span>
                                 </div>
