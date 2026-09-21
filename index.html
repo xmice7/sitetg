@@ -382,8 +382,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         header { margin-bottom: 20px; position: relative; padding-top: 4px; }
         .header-top-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
         .header-brand { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
-        .site-logo { width: 34px; height: 34px; border-radius: 10px; object-fit: cover; border: 1.5px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); flex-shrink: 0; transition: transform 0.3s var(--spring-bounce); }
+        .site-logo { width: 34px; height: 34px; border-radius: 10px; object-fit: cover; border: 1.5px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); flex-shrink: 0; transition: transform 0.25s var(--spring-bounce); cursor: pointer; user-select: none; -webkit-user-select: none; }
         .site-logo:hover { transform: scale(1.08) rotate(3deg); }
+        .site-logo:active { transform: scale(0.92); }
         .header-brand h1 { font-size: clamp(17px, 4.4vw, 20px); font-weight: 800; background: linear-gradient(135deg,var(--text-main) 40%,var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; -webkit-box-decoration-break: clone; box-decoration-break: clone; letter-spacing: -0.4px; line-height: 1.18; margin: 0; white-space: normal; word-break: normal; overflow-wrap: break-word; }
         @media (max-width: 380px) {
             .header-brand h1 { font-size: 16.5px; line-height: 1.15; }
@@ -2868,7 +2869,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             <header>
                 <div class="header-top-row">
                     <div class="header-brand">
-                        <img src="./logo.png" alt="Логотип" class="site-logo" loading="lazy" onerror="this.style.display='none'"/>
+                        <img src="./logo.png" alt="Логотип" class="site-logo" id="site-logo" title="Показати QR-код бота" role="button" tabindex="0" aria-label="Показати QR-код бота" loading="lazy" onerror="this.style.display='none'"/>
                         <h1 id="app-title">Розклад</h1>
                     </div>
                     <div class="header-actions-wrap">
@@ -4167,6 +4168,49 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
     </div>
 </div>
 
+<!-- BOT QR MODAL -->
+<div class="modal-overlay" id="bot-qr-modal" style="z-index:9060;">
+    <div class="modal-content" style="max-width:380px;text-align:center;">
+        <div class="modal-header" style="border-bottom:none;padding:16px 20px 0;display:flex;justify-content:space-between;align-items:center;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:20px;">📲</span>
+                <span style="font-size:16px;font-weight:700;color:var(--text-main);">QR-код бота</span>
+            </div>
+            <button type="button" class="close-btn" id="close-bot-qr-modal" aria-label="Закрити">×</button>
+        </div>
+        <div class="modal-body" style="padding:10px 24px 24px;display:flex;flex-direction:column;align-items:center;">
+            <div style="margin-bottom:12px;">
+                <h3 style="margin:0 0 4px;font-size:18px;font-weight:800;color:var(--text-main);">Розклад у Telegram</h3>
+                <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;background:rgba(42,171,238,0.12);color:#2AABEE;font-weight:700;font-size:13px;letter-spacing:-0.2px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .37z"/></svg>
+                    <span>@schedapp_bot</span>
+                </div>
+            </div>
+
+            <div class="bot-qr-card" style="background:#ffffff;border-radius:20px;padding:14px;box-shadow:0 12px 36px rgba(0,0,0,0.22),0 2px 8px rgba(0,0,0,0.08);margin-bottom:14px;display:flex;align-items:center;justify-content:center;">
+                <svg width="210" height="210" viewBox="0 0 29 29" version="1.1" xmlns="http://www.w3.org/2000/svg" style="display:block;border-radius:6px;">
+                    <path d="M2,2H3V3H2zM3,2H4V3H3zM4,2H5V3H4zM5,2H6V3H5zM6,2H7V3H6zM7,2H8V3H7zM8,2H9V3H8zM10,2H11V3H10zM13,2H14V3H13zM15,2H16V3H15zM16,2H17V3H16zM20,2H21V3H20zM21,2H22V3H21zM22,2H23V3H22zM23,2H24V3H23zM24,2H25V3H24zM25,2H26V3H25zM26,2H27V3H26zM2,3H3V4H2zM8,3H9V4H8zM10,3H11V4H10zM13,3H14V4H13zM15,3H16V4H15zM18,3H19V4H18zM20,3H21V4H20zM26,3H27V4H26zM2,4H3V5H2zM4,4H5V5H4zM5,4H6V5H5zM6,4H7V5H6zM8,4H9V5H8zM10,4H11V5H10zM11,4H12V5H11zM14,4H15V5H14zM15,4H16V5H15zM17,4H18V5H17zM20,4H21V5H20zM22,4H23V5H22zM23,4H24V5H23zM24,4H25V5H24zM26,4H27V5H26zM2,5H3V6H2zM4,5H5V6H4zM5,5H6V6H5zM6,5H7V6H6zM8,5H9V6H8zM13,5H14V6H13zM15,5H16V6H15zM18,5H19V6H18zM20,5H21V6H20zM22,5H23V6H22zM23,5H24V6H23zM24,5H25V6H24zM26,5H27V6H26zM2,6H3V7H2zM4,6H5V7H4zM5,6H6V7H5zM6,6H7V7H6zM8,6H9V7H8zM10,6H11V7H10zM12,6H13V7H12zM16,6H17V7H16zM18,6H19V7H18zM20,6H21V7H20zM22,6H23V7H22zM23,6H24V7H23zM24,6H25V7H24zM26,6H27V7H26zM2,7H3V8H2zM8,7H9V8H8zM12,7H13V8H12zM18,7H19V8H18zM20,7H21V8H20zM26,7H27V8H26zM2,8H3V9H2zM3,8H4V9H3zM4,8H5V9H4zM5,8H6V9H5zM6,8H7V9H6zM7,8H8V9H7zM8,8H9V9H8zM10,8H11V9H10zM12,8H13V9H12zM14,8H15V9H14zM16,8H17V9H16zM18,8H19V9H18zM20,8H21V9H20zM21,8H22V9H21zM22,8H23V9H22zM23,8H24V9H23zM24,8H25V9H24zM25,8H26V9H25zM26,8H27V9H26zM11,9H12V10H11zM12,9H13V10H12zM13,9H14V10H13zM15,9H16V10H15zM2,10H3V11H2zM5,10H6V11H5zM6,10H7V11H6zM7,10H8V11H7zM8,10H9V11H8zM9,10H10V11H9zM10,10H11V11H10zM13,10H14V11H13zM14,10H15V11H14zM16,10H17V11H16zM18,10H19V11H18zM19,10H20V11H19zM22,10H23V11H22zM24,10H25V11H24zM25,10H26V11H25zM26,10H27V11H26zM3,11H4V12H3zM5,11H6V12H5zM6,11H7V12H6zM7,11H8V12H7zM9,11H10V12H9zM11,11H12V12H11zM13,11H14V12H13zM14,11H15V12H14zM17,11H18V12H17zM22,11H23V12H22zM23,11H24V12H23zM24,11H25V12H24zM25,11H26V12H25zM2,12H3V13H2zM3,12H4V13H3zM4,12H5V13H4zM5,12H6V13H5zM6,12H7V13H6zM8,12H9V13H8zM11,12H12V13H11zM13,12H14V13H13zM16,12H17V13H16zM17,12H18V13H17zM18,12H19V13H18zM22,12H23V13H22zM23,12H24V13H23zM26,12H27V13H26zM4,13H5V14H4zM9,13H10V14H9zM12,13H13V14H12zM13,13H14V14H13zM14,13H15V14H14zM17,13H18V14H17zM18,13H19V14H18zM19,13H20V14H19zM21,13H22V14H21zM23,13H24V14H23zM24,13H25V14H24zM25,13H26V14H25zM26,13H27V14H26zM3,14H4V15H3zM5,14H6V15H5zM8,14H9V15H8zM10,14H11V15H10zM12,14H13V15H12zM14,14H15V15H14zM17,14H18V15H17zM18,14H19V15H18zM20,14H21V15H20zM26,14H27V15H26zM2,15H3V16H2zM4,15H5V16H4zM6,15H7V16H6zM10,15H11V16H10zM15,15H16V16H15zM17,15H18V16H17zM18,15H19V16H18zM22,15H23V16H22zM25,15H26V16H25zM2,16H3V17H2zM3,16H4V17H3zM4,16H5V17H4zM5,16H6V17H5zM8,16H9V17H8zM11,16H12V17H11zM12,16H13V17H12zM13,16H14V17H13zM14,16H15V17H14zM15,16H16V17H15zM17,16H18V17H17zM19,16H20V17H19zM22,16H23V17H22zM23,16H24V17H23zM24,16H25V17H24zM25,16H26V17H25zM26,16H27V17H26zM2,17H3V18H2zM4,17H5V18H4zM10,17H11V18H10zM11,17H12V18H11zM13,17H14V18H13zM16,17H17V18H16zM17,17H18V18H17zM18,17H19V18H18zM19,17H20V18H19zM20,17H21V18H20zM21,17H22V18H21zM23,17H24V18H23zM24,17H25V18H24zM26,17H27V18H26zM2,18H3V19H2zM8,18H9V19H8zM11,18H12V19H11zM14,18H15V19H14zM17,18H18V19H17zM18,18H19V19H18zM19,18H20V19H19zM20,18H21V19H20zM21,18H22V19H21zM22,18H23V19H22zM24,18H25V19H24zM25,18H26V19H25zM10,19H11V20H10zM13,19H14V20H13zM14,19H15V20H14zM15,19H16V20H15zM16,19H17V20H16zM17,19H18V20H17zM18,19H19V20H18zM22,19H23V20H22zM24,19H25V20H24zM25,19H26V20H25zM2,20H3V21H2zM3,20H4V21H3zM4,20H5V21H4zM5,20H6V21H5zM6,20H7V21H6zM7,20H8V21H7zM8,20H9V21H8zM10,20H11V21H10zM11,20H12V21H11zM12,20H13V21H12zM13,20H14V21H13zM14,20H15V21H14zM18,20H19V21H18zM20,20H21V21H20zM22,20H23V21H22zM26,20H27V21H26zM2,21H3V22H2zM8,21H9V22H8zM10,21H11V22H10zM12,21H13V22H12zM15,21H16V22H15zM17,21H18V22H17zM18,21H19V22H18zM22,21H23V22H22zM25,21H26V22H25zM26,21H27V22H26zM2,22H3V23H2zM4,22H5V23H4zM5,22H6V23H5zM6,22H7V23H6zM8,22H9V23H8zM10,22H11V23H10zM11,22H12V23H11zM12,22H13V23H12zM16,22H17V23H16zM17,22H18V23H17zM18,22H19V23H18zM19,22H20V23H19zM20,22H21V23H20zM21,22H22V23H21zM22,22H23V23H22zM2,23H3V24H2zM4,23H5V24H4zM5,23H6V24H5zM6,23H7V24H6zM8,23H9V24H8zM10,23H11V24H10zM11,23H12V24H11zM12,23H13V24H12zM13,23H14V24H13zM16,23H17V24H16zM17,23H18V24H17zM19,23H20V24H19zM20,23H21V24H20zM25,23H26V24H25zM26,23H27V24H26zM2,24H3V25H2zM4,24H5V25H4zM5,24H6V25H5zM6,24H7V25H6zM8,24H9V25H8zM12,24H13V25H12zM13,24H14V25H13zM15,24H16V25H15zM16,24H17V25H16zM18,24H19V25H18zM19,24H20V25H19zM22,24H23V25H22zM23,24H24V25H23zM24,24H25V25H24zM25,24H26V25H25zM26,24H27V25H26zM2,25H3V26H2zM8,25H9V26H8zM12,25H13V26H12zM20,25H21V26H20zM21,25H22V26H21zM22,25H23V26H22zM24,25H25V26H24zM25,25H26V26H25zM26,25H27V26H26zM2,26H3V27H2zM3,26H4V27H3zM4,26H5V27H4zM5,26H6V27H5zM6,26H7V27H6zM7,26H8V27H7zM8,26H9V27H8zM10,26H11V27H10zM14,26H15V27H14zM17,26H18V27H17zM18,26H19V27H18zM20,26H21V27H20zM23,26H24V27H23zM26,26H27V27H26z" id="bot-qr-path" fill="#0a0a0a" fill-opacity="1" fill-rule="nonzero" stroke="none"/>
+                </svg>
+            </div>
+
+            <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 16px;line-height:1.4;max-width:270px;">
+                Наведи камеру або покажи екран одногрупнику, щоб відкрити бота
+            </p>
+
+            <div style="display:flex;gap:10px;width:100%;">
+                <button type="button" id="btn-copy-bot-qr-link" class="ios-action-button ios-btn-gray" style="flex:1;padding:12px;font-size:13.5px;border-radius:13px;display:flex;align-items:center;justify-content:center;gap:6px;">
+                    <span id="copy-bot-qr-icon">📋</span>
+                    <span id="copy-bot-qr-text">Скопіювати</span>
+                </button>
+                <a href="https://t.me/schedapp_bot" target="_blank" rel="noopener" class="ios-action-button ios-btn-blue" style="flex:1;padding:12px;font-size:13.5px;border-radius:13px;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;">
+                    <span>✈️</span>
+                    <span>Відкрити</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="quick-group-modal" style="z-index:9050;">
     <div class="modal-content" style="max-width:480px;">
         <div class="modal-header">
@@ -5160,6 +5204,14 @@ function init() {
         headerGroupChip.addEventListener('click', () => {
             haptic('light');
             openQuickGroupModal();
+        });
+    }
+
+    const siteLogo = document.getElementById('site-logo');
+    if (siteLogo && !siteLogo._bound) {
+        siteLogo._bound = true;
+        siteLogo.addEventListener('click', () => {
+            openBotQrModal();
         });
     }
 
@@ -7095,11 +7147,103 @@ function initQuickGroupModal() {
     }
 }
 
+function openBotQrModal() {
+    const modal = document.getElementById('bot-qr-modal');
+    if (modal) {
+        modal.classList.add('active');
+        if (typeof haptic === 'function') haptic('light');
+    }
+}
+
+function closeBotQrModal() {
+    const modal = document.getElementById('bot-qr-modal');
+    if (modal) {
+        modal.classList.remove('active');
+        if (typeof haptic === 'function') haptic('selection');
+    }
+}
+
+function initBotQrModal() {
+    const logo = document.getElementById('site-logo') || document.querySelector('.site-logo');
+    const modal = document.getElementById('bot-qr-modal');
+    const closeBtn = document.getElementById('close-bot-qr-modal');
+    const copyBtn = document.getElementById('btn-copy-bot-qr-link');
+    const copyIcon = document.getElementById('copy-bot-qr-icon');
+    const copyText = document.getElementById('copy-bot-qr-text');
+
+    if (logo && !logo._qrInited) {
+        logo._qrInited = true;
+        logo.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openBotQrModal();
+        });
+        logo.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openBotQrModal();
+            }
+        });
+    }
+
+    if (closeBtn && !closeBtn._qrInited) {
+        closeBtn._qrInited = true;
+        closeBtn.addEventListener('click', closeBotQrModal);
+    }
+
+    if (modal && !modal._qrInited) {
+        modal._qrInited = true;
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeBotQrModal();
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal && modal.classList.contains('active')) {
+            closeBotQrModal();
+        }
+    });
+
+    if (copyBtn && !copyBtn._qrInited) {
+        copyBtn._qrInited = true;
+        copyBtn.addEventListener('click', async () => {
+            const botUrl = 'https://t.me/schedapp_bot';
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(botUrl);
+                } else {
+                    const ta = document.createElement('textarea');
+                    ta.value = botUrl;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.focus();
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                }
+                if (typeof haptic === 'function') haptic('success');
+                if (copyIcon) copyIcon.textContent = '✓';
+                if (copyText) copyText.textContent = 'Скопійовано!';
+                copyBtn.style.borderColor = 'var(--accent-green)';
+                setTimeout(() => {
+                    if (copyIcon) copyIcon.textContent = '📋';
+                    if (copyText) copyText.textContent = 'Скопіювати';
+                    copyBtn.style.borderColor = '';
+                }, 2000);
+            } catch (err) {
+                if (typeof haptic === 'function') haptic('selection');
+                prompt('Скопіюйте посилання на бота:', botUrl);
+            }
+        });
+    }
+}
+
 function initGroupPicker() {
     renderSavedGroupsUI();
     renderLocalCustomLessons();
     initCustomLessonsUI();
     initQuickGroupModal();
+    initBotQrModal();
     const input = document.getElementById('settings-group-search');
     const results = document.getElementById('settings-group-results');
     if (input && results) {
