@@ -439,7 +439,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .header-brand { display: flex; align-items: center; gap: 9px; min-width: 0; }
         .site-logo { width: 36px; height: 36px; border-radius: 11px; object-fit: cover; border: 1.5px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); flex-shrink: 0; transition: transform 0.3s var(--spring-bounce); }
         .site-logo:hover { transform: scale(1.08) rotate(3deg); }
-        .header-brand h1 { font-size: 21px; font-weight: 800; background: linear-gradient(135deg,var(--text-main) 40%,var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -0.4px; line-height: 1.2; margin: 0; }
+        .header-brand h1 { font-size: 21px; font-weight: 800; background: linear-gradient(135deg,var(--text-main) 40%,var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -0.4px; line-height: 1.2; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        @media (max-width: 380px) {
+            .header-brand h1 { font-size: 18px; }
+            .header-group-chip { padding: 5px 9px; font-size: 12px; gap: 4px; }
+            .site-logo { width: 32px; height: 32px; border-radius: 9px; }
+        }
         .header-actions-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         .header-group-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 12px; background: var(--header-chip-bg, rgba(255,255,255,0.08)); border: 1px solid var(--header-chip-border, rgba(255,255,255,0.15)); color: var(--text-main); font-size: 13px; font-weight: 700; cursor: pointer; transition: transform 0.2s var(--spring-bounce), background-color 0.2s, border-color 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.06); user-select: none; -webkit-user-select: none; }
         .header-group-chip:active { transform: scale(0.95); }
