@@ -4298,6 +4298,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
     </div>
 </div>
 
+<!-- iOS Safari & PWA native haptic switch trigger -->
+<label id="ios-haptic-trigger-label" aria-hidden="true" style="position:fixed;top:-9999px;left:-9999px;opacity:0.0001;pointer-events:none;width:1px;height:1px;overflow:hidden;z-index:-1;">
+    <input type="checkbox" switch id="ios-haptic-trigger-switch" aria-hidden="true" tabindex="-1" style="opacity:0.0001;pointer-events:none;">
+</label>
+
 <script>
 const storage = {
     get: (key, def) => { try { return localStorage.getItem(key) || def; } catch(e) { return def; } },
@@ -4305,26 +4310,79 @@ const storage = {
     remove: (key) => { try { localStorage.removeItem(key); } catch(e) {} }
 };
 
+function triggerIosSwitchHaptic(type) {
+    try {
+        let label = document.getElementById('ios-haptic-trigger-label');
+        let sw = document.getElementById('ios-haptic-trigger-switch');
+        if (!label || !sw) {
+            label = document.createElement('label');
+            label.id = 'ios-haptic-trigger-label';
+            label.setAttribute('aria-hidden', 'true');
+            label.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0.0001;pointer-events:none;width:1px;height:1px;overflow:hidden;z-index:-1;';
+            sw = document.createElement('input');
+            sw.type = 'checkbox';
+            sw.setAttribute('switch', '');
+            sw.id = 'ios-haptic-trigger-switch';
+            sw.setAttribute('aria-hidden', 'true');
+            sw.tabIndex = -1;
+            sw.style.cssText = 'opacity:0.0001;pointer-events:none;';
+            label.appendChild(sw);
+            (document.body || document.documentElement).appendChild(label);
+        }
+        label.click();
+        if (type === 'success') {
+            setTimeout(() => { try { label.click(); } catch(e) {} }, 110);
+        } else if (type === 'error' || type === 'warning') {
+            setTimeout(() => { try { label.click(); } catch(e) {} }, 90);
+            setTimeout(() => { try { label.click(); } catch(e) {} }, 190);
+        }
+    } catch(e) {}
+}
+
+function triggerVibrationApi(type) {
+    if (!navigator.vibrate) return;
+    try {
+        if (type === 'selection' || type === 'light') {
+            navigator.vibrate(12);
+        } else if (type === 'medium') {
+            navigator.vibrate(22);
+        } else if (type === 'heavy' || type === 'impact') {
+            navigator.vibrate(35);
+        } else if (type === 'success') {
+            navigator.vibrate([15, 50, 20]);
+        } else if (type === 'error' || type === 'warning') {
+            navigator.vibrate([25, 40, 25, 40, 30]);
+        } else {
+            navigator.vibrate(15);
+        }
+    } catch(e) {}
+}
+
 function haptic(type = 'light') {
     try {
         if (storage.get('toggle-haptic_v', 'true') === 'false') return;
         const tg = window.Telegram && window.Telegram.WebApp;
-        if (tg && tg.HapticFeedback && tg.isVersionAtLeast && tg.isVersionAtLeast('6.1')) {
-            if (type === 'selection') {
-                tg.HapticFeedback.selectionChanged();
-            } else if (type === 'success' || type === 'warning' || type === 'error') {
-                tg.HapticFeedback.notificationOccurred(type);
-            } else {
-                // valid impact types: light, medium, heavy, rigid, soft
-                const impact = (type === 'impact') ? 'medium' : (type || 'light');
-                tg.HapticFeedback.impactOccurred(impact);
-            }
-            return; // TG handled it — skip navigator.vibrate fallback
+        const inTg = !!(
+            tg &&
+            tg.HapticFeedback &&
+            (window.TelegramWebviewProxy || (tg.initData && tg.initData.length > 0) || (tg.platform && tg.platform !== 'unknown'))
+        );
+        if (inTg) {
+            try {
+                if (type === 'selection') {
+                    tg.HapticFeedback.selectionChanged();
+                } else if (type === 'success' || type === 'warning' || type === 'error') {
+                    tg.HapticFeedback.notificationOccurred(type);
+                } else {
+                    const impact = (type === 'impact') ? 'medium' : (type || 'light');
+                    tg.HapticFeedback.impactOccurred(impact);
+                }
+                return;
+            } catch(e) {}
         }
-        // Fallback for non-Telegram browsers
-        if (navigator.vibrate) {
-            navigator.vibrate(type === 'selection' ? 6 : type === 'medium' ? 12 : type === 'heavy' ? 20 : 8);
-        }
+        // Fallbacks for Standalone PWA / Web browser:
+        triggerVibrationApi(type);
+        triggerIosSwitchHaptic(type);
     } catch(e) {}
 }
 
@@ -8630,12 +8688,18 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         });
 
         // Tactile Haptic Feedback across the entire interface (delegated for dynamic elements)
-        document.addEventListener('pointerdown', (e) => {
-            const target = e.target.closest('button, .day-btn, .nav-item, .subgroup-pill, .group-pill, .modal-close, .go-tomorrow-btn, .refresh-btn, .quick-filter-btn, .custom-lesson-btn, .grades-filter-chip, .grades-refresh-pill, .grades-login-btn, .theme-toggle, .bottom-nav-item, [role="button"]');
+        let _lastHapticTap = 0;
+        function handleHapticTap(e) {
+            const now = Date.now();
+            if (now - _lastHapticTap < 70) return;
+            const target = e.target.closest('button, a, .day-btn, .nav-item, .subgroup-pill, .group-pill, .modal-close, .go-tomorrow-btn, .refresh-btn, .quick-filter-btn, .custom-lesson-btn, .grades-filter-chip, .grades-refresh-pill, .grades-login-btn, .theme-toggle, .bottom-nav-item, .ios-theme-card, .ios-item-row, .ios-switch, .ios-profile-banner, [role="button"]');
             if (target) {
+                _lastHapticTap = now;
                 haptic('light');
             }
-        }, { passive: true });
+        }
+        document.addEventListener('touchstart', handleHapticTap, { passive: true });
+        document.addEventListener('pointerdown', handleHapticTap, { passive: true });
 
         
         document.getElementById('reset-all-settings-btn')?.addEventListener('click', () => {
