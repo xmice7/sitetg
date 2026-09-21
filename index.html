@@ -5096,6 +5096,7 @@ function renderColorPicker() {
             applyColor(state.color);
             renderColorPicker();
             syncHueSliderUI();
+            haptic('selection');
         });
     });
     syncHueSliderUI();
@@ -5157,6 +5158,7 @@ function init() {
     if (headerGroupChip && !headerGroupChip._bound) {
         headerGroupChip._bound = true;
         headerGroupChip.addEventListener('click', () => {
+            haptic('light');
             openQuickGroupModal();
         });
     }
@@ -5182,9 +5184,9 @@ function init() {
         });
     });
 
-    els.settingsBtn.addEventListener('click', () => { renderLocalCustomLessons(); renderSavedGroupsUI(); if(window.syncProfileBannerUI) window.syncProfileBannerUI(); els.settingsModal.classList.add('active'); });
-    els.closeSettingsBtn.addEventListener('click', () => els.settingsModal.classList.remove('active'));
-    els.settingsModal.addEventListener('click', e => { if(e.target===els.settingsModal) els.settingsModal.classList.remove('active'); });
+    els.settingsBtn.addEventListener('click', () => { haptic('light'); renderLocalCustomLessons(); renderSavedGroupsUI(); if(window.syncProfileBannerUI) window.syncProfileBannerUI(); els.settingsModal.classList.add('active'); });
+    els.closeSettingsBtn.addEventListener('click', () => { haptic('selection'); els.settingsModal.classList.remove('active'); });
+    els.settingsModal.addEventListener('click', e => { if(e.target===els.settingsModal) { haptic('selection'); els.settingsModal.classList.remove('active'); } });
     if(els.moodleBtn) {
         els.moodleBtn.addEventListener('click', () => els.moodleModal.classList.add('active'));
         els.closeMoodleBtn.addEventListener('click', () => els.moodleModal.classList.remove('active'));
@@ -5201,9 +5203,9 @@ function init() {
     }
     const syncNowBtn = document.getElementById('btn-cloud-sync-now');
     if (syncNowBtn) {
-        syncNowBtn.addEventListener('click', () => { if (window.CloudSync) window.CloudSync.pull(); });
+        syncNowBtn.addEventListener('click', () => { haptic('selection'); if (window.CloudSync) window.CloudSync.pull(); });
     }
-    els.themeBtns.forEach(btn => { btn.addEventListener('click', () => { state.theme=btn.dataset.themeVal; htmlEl.setAttribute('data-theme',state.theme); gset(state.scheduleGroup,'theme',state.theme); updateThemeUI(); if(window.CloudSync) window.CloudSync.push(); }); });
+    els.themeBtns.forEach(btn => { btn.addEventListener('click', () => { state.theme=btn.dataset.themeVal; htmlEl.setAttribute('data-theme',state.theme); gset(state.scheduleGroup,'theme',state.theme); updateThemeUI(); haptic('selection'); if(window.CloudSync) window.CloudSync.push(); }); });
     render();
     refreshSchedule();
     if (window.CloudSync) window.CloudSync.pull();
@@ -5322,17 +5324,17 @@ async function loadDonationsLeaderboard() {
 
 function initNewSettings() {
     const simpleToggle = document.getElementById('toggle-simple');
-    if(simpleToggle){simpleToggle.checked=state.simpleMode;simpleToggle.addEventListener('change',()=>{state.simpleMode=simpleToggle.checked;gset(state.scheduleGroup,'simple_mode',state.simpleMode);applyBodyClasses();});}
+    if(simpleToggle){simpleToggle.checked=state.simpleMode;simpleToggle.addEventListener('change',()=>{state.simpleMode=simpleToggle.checked;gset(state.scheduleGroup,'simple_mode',state.simpleMode);applyBodyClasses();haptic('selection');});}
     const sizeBtns = document.querySelectorAll('.size-btn');
-    sizeBtns.forEach(btn => { btn.classList.toggle('active',btn.dataset.size===state.fontSize); btn.addEventListener('click',()=>{state.fontSize=btn.dataset.size;gset(state.scheduleGroup,'font_size',state.fontSize);applyFontSize(state.fontSize);sizeBtns.forEach(b=>b.classList.toggle('active',b.dataset.size===state.fontSize));}); });
+    sizeBtns.forEach(btn => { btn.classList.toggle('active',btn.dataset.size===state.fontSize); btn.addEventListener('click',()=>{state.fontSize=btn.dataset.size;gset(state.scheduleGroup,'font_size',state.fontSize);applyFontSize(state.fontSize);sizeBtns.forEach(b=>b.classList.toggle('active',b.dataset.size===state.fontSize));haptic('selection');}); });
     const glassToggle=document.getElementById('toggle-glass');
-    if(glassToggle){glassToggle.checked=state.glassCards;glassToggle.addEventListener('change',()=>{state.glassCards=glassToggle.checked;gset(state.scheduleGroup,'glass_cards',state.glassCards);applyBodyClasses();});}
+    if(glassToggle){glassToggle.checked=state.glassCards;glassToggle.addEventListener('change',()=>{state.glassCards=glassToggle.checked;gset(state.scheduleGroup,'glass_cards',state.glassCards);applyBodyClasses();haptic('selection');});}
     const compactToggle=document.getElementById('toggle-compact');
-    if(compactToggle){compactToggle.checked=state.compact;compactToggle.addEventListener('change',()=>{state.compact=compactToggle.checked;gset(state.scheduleGroup,'compact',state.compact);applyBodyClasses();});}
+    if(compactToggle){compactToggle.checked=state.compact;compactToggle.addEventListener('change',()=>{state.compact=compactToggle.checked;gset(state.scheduleGroup,'compact',state.compact);applyBodyClasses();haptic('selection');});}
     const teacherToggle=document.getElementById('toggle-teacher');
-    if(teacherToggle){teacherToggle.checked=state.showTeacher;teacherToggle.addEventListener('change',()=>{state.showTeacher=teacherToggle.checked;gset(state.scheduleGroup,'show_teacher',state.showTeacher);applyBodyClasses();});}
+    if(teacherToggle){teacherToggle.checked=state.showTeacher;teacherToggle.addEventListener('change',()=>{state.showTeacher=teacherToggle.checked;gset(state.scheduleGroup,'show_teacher',state.showTeacher);applyBodyClasses();haptic('selection');});}
     const roomToggle=document.getElementById('toggle-room');
-    if(roomToggle){roomToggle.checked=state.showRoom;roomToggle.addEventListener('change',()=>{state.showRoom=roomToggle.checked;gset(state.scheduleGroup,'show_room',state.showRoom);applyBodyClasses();});}
+    if(roomToggle){roomToggle.checked=state.showRoom;roomToggle.addEventListener('change',()=>{state.showRoom=roomToggle.checked;gset(state.scheduleGroup,'show_room',state.showRoom);applyBodyClasses();haptic('selection');});}
 
     // Devices and Registration formatter
     function formatDeviceTime(ts) {
@@ -6847,13 +6849,19 @@ function initCustomLessonsUI() {
     const addLocalBtn = document.getElementById('btn-add-local-custom-lesson');
     if (addLocalBtn && !addLocalBtn._inited) {
         addLocalBtn._inited = true;
-        addLocalBtn.addEventListener('click', () => openCustomLessonModal({ scope: 'local' }));
+        addLocalBtn.addEventListener('click', () => {
+            haptic('light');
+            openCustomLessonModal({ scope: 'local' });
+        });
     }
 
     const addAdminBtn = document.getElementById('btn-add-admin-custom-lesson');
     if (addAdminBtn && !addAdminBtn._inited) {
         addAdminBtn._inited = true;
-        addAdminBtn.addEventListener('click', () => openCustomLessonModal({ scope: 'admin' }));
+        addAdminBtn.addEventListener('click', () => {
+            haptic('light');
+            openCustomLessonModal({ scope: 'admin' });
+        });
     }
 
     if (closeBtn && !closeBtn._inited) {
@@ -6946,6 +6954,7 @@ function initCustomLessonsUI() {
                 renderLocalCustomLessons();
                 render();
                 closeCustomLessonModal();
+                haptic('success');
             } else if (scope === 'admin') {
                 saveBtn.disabled = true;
                 saveBtn.textContent = '…';
@@ -6964,6 +6973,7 @@ function initCustomLessonsUI() {
                         renderAdminCustomLessons();
                         render();
                         closeCustomLessonModal();
+                        haptic('success');
                     } else {
                         alert('Помилка збереження в Firebase');
                     }
@@ -8644,12 +8654,14 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                 storage.set('custom_display_name', nameInput.value.trim());
                 window.renderProfileBar && window.renderProfileBar();
                 nameInput.style.borderColor = 'var(--accent-green)';
+                haptic('success');
                 setTimeout(() => nameInput.style.borderColor = '', 1000);
                 if (window.CloudSync) window.CloudSync.push();
             });
             document.getElementById('custom-name-clear-btn')?.addEventListener('click', () => {
                 nameInput.value = ''; storage.set('custom_display_name', '');
                 window.renderProfileBar && window.renderProfileBar();
+                haptic('selection');
                 if (window.CloudSync) window.CloudSync.push();
             });
         }
@@ -8661,6 +8673,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             profileBarToggle.addEventListener('change', () => {
                 storage.set('toggle-profile-bar', profileBarToggle.checked ? 'true' : 'false');
                 window.renderProfileBar && window.renderProfileBar();
+                haptic('selection');
             });
         }
 
@@ -8670,7 +8683,10 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             if (!el) return;
             const defaults = { 'toggle-notif-ann':'true', 'toggle-notif-dl':'true', 'toggle-auto-today':'true', 'toggle-haptic':'true', 'toggle-track-visits':'true' };
             el.checked = storage.get(id+'_v', defaults[id]||'false') !== 'false';
-            el.addEventListener('change', () => storage.set(id+'_v', el.checked ? 'true' : 'false'));
+            el.addEventListener('change', () => {
+                storage.set(id+'_v', el.checked ? 'true' : 'false');
+                haptic('selection');
+            });
         });
 
         
@@ -8687,22 +8703,8 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             btn.addEventListener('click', () => storage.set('last_active_tab', btn.dataset.tab));
         });
 
-        // Tactile Haptic Feedback across the entire interface (delegated for dynamic elements)
-        let _lastHapticTap = 0;
-        function handleHapticTap(e) {
-            const now = Date.now();
-            if (now - _lastHapticTap < 70) return;
-            const target = e.target.closest('button, a, .day-btn, .nav-item, .subgroup-pill, .group-pill, .modal-close, .go-tomorrow-btn, .refresh-btn, .quick-filter-btn, .custom-lesson-btn, .grades-filter-chip, .grades-refresh-pill, .grades-login-btn, .theme-toggle, .bottom-nav-item, .ios-theme-card, .ios-item-row, .ios-switch, .ios-profile-banner, [role="button"]');
-            if (target) {
-                _lastHapticTap = now;
-                haptic('light');
-            }
-        }
-        document.addEventListener('touchstart', handleHapticTap, { passive: true });
-        document.addEventListener('pointerdown', handleHapticTap, { passive: true });
-
-        
         document.getElementById('reset-all-settings-btn')?.addEventListener('click', () => {
+            haptic('warning');
             if (confirm('Скинути всі налаштування? Група та тема збережуться.')) {
                 const keep = ['app_active_group','app_has_visited'];
                 const keys = [];
