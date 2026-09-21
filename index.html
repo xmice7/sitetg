@@ -542,22 +542,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .saved-group-active-dot { font-size: 12px; font-weight: 900; color: var(--primary); }
         .saved-group-del-btn { background: transparent; border: none; border-left: 1px solid var(--border); color: var(--text-muted); font-size: 13px; font-weight: 700; padding: 9px 10px; cursor: pointer; transition: all 0.15s ease; display: flex; align-items: center; justify-content: center; }
         .saved-group-del-btn:hover { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-        .quick-faculty-btn {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            color: var(--text-main);
-            padding: 6px 12px;
-            border-radius: 10px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: border-color 0.2s, background-color 0.2s, color 0.2s;
-        }
-        .quick-faculty-btn:hover {
-            border-color: var(--primary);
-            background: var(--bg-blue);
-            color: var(--primary);
-        }
         .quick-group-chip-btn {
             background: var(--bg-card);
             border: 1.5px solid var(--border);
@@ -643,10 +627,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .cancelled-badge { background: #ef4444; color: #fff; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px; }
         .modified-badge { background: #f59e0b; color: #fff; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
         .mod-note { font-size: 12px; color: #f59e0b; font-weight: 600; margin-top: 6px; display: flex; align-items: center; gap: 5px; }
-        .current-badge { position:absolute; top:-1px; right:16px; background:var(--accent-green); color:#fff; font-size:10px; font-weight:800; padding:4px 10px; border-radius:0 0 8px 8px; text-transform:uppercase; letter-spacing:0.5px; z-index:10; animation:pulse 2s infinite; }
+        .lesson-card.current-lesson,
+        .lesson-card.next-lesson {
+            padding-top: 36px;
+        }
+        .current-badge { position:absolute; top:-1px; right:16px; background:var(--accent-green); color:#fff; font-size:10px; font-weight:800; padding:4px 11px; border-radius:0 0 9px 9px; text-transform:uppercase; letter-spacing:0.5px; z-index:5; animation:pulse 2s infinite; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,0.18); }
         @keyframes pulse { 0%{opacity:1} 50%{opacity:0.7} 100%{opacity:1} }
         .lesson-card.next-lesson { border-color: var(--primary); border-width: 2px; }
-        .next-badge { position:absolute; top:-1px; right:16px; background:var(--primary); color:#fff; font-size:10px; font-weight:800; padding:4px 10px; border-radius:0 0 8px 8px; text-transform:uppercase; letter-spacing:0.5px; }
+        .next-badge { position:absolute; top:-1px; right:16px; background:var(--primary); color:#fff; font-size:10px; font-weight:800; padding:4px 11px; border-radius:0 0 9px 9px; text-transform:uppercase; letter-spacing:0.5px; z-index:5; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,0.18); }
         .time-block { min-width:62px; text-align:center; border-right:1.5px dashed var(--border); padding-right:14px; display:flex; flex-direction:column; justify-content:center; z-index:2; flex-shrink:0; }
         .time-start { font-size:var(--fs-time); font-weight:800; color:var(--text-main); letter-spacing:-0.4px; font-variant-numeric:tabular-nums; }
         .time-end { font-size:var(--fs-time-end); font-weight:600; color:var(--text-muted); margin-top:3px; font-variant-numeric:tabular-nums; }
@@ -858,7 +846,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .toggle-slider::before { content:''; position:absolute; width:20px; height:20px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:transform 0.25s; box-shadow:0 1px 4px rgba(0,0,0,0.2); }
         .toggle input:checked + .toggle-slider { background: var(--primary); }
         .toggle input:checked + .toggle-slider::before { transform: translateX(18px); }
-        body.compact .lesson-card{padding:10px 12px} body.compact .lesson-card.current-lesson{padding-bottom:20px} body.compact .time-start{font-size:15px} body.compact .lesson-title{font-size:13px;margin-bottom:4px} body.compact .lesson-meta{font-size:12px;margin-bottom:3px} body.compact .badges{margin-bottom:4px;gap:4px} body.compact .schedule-list{gap:8px}
+        body.compact .lesson-card{padding:10px 12px} body.compact .lesson-card.current-lesson, body.compact .lesson-card.next-lesson{padding-top:28px!important} body.compact .lesson-card.current-lesson{padding-bottom:20px} body.compact .time-start{font-size:15px} body.compact .lesson-title{font-size:13px;margin-bottom:4px} body.compact .lesson-meta{font-size:12px;margin-bottom:3px} body.compact .badges{margin-bottom:4px;gap:4px} body.compact .schedule-list{gap:8px}
         body.glass-cards .lesson-card{background:rgba(255,255,255,0.05);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-color:rgba(255,255,255,0.1)}
         [data-theme="light"] body.glass-cards .lesson-card{background:rgba(255,255,255,0.6);border-color:rgba(255,255,255,0.7)}
         body.hide-teacher .lesson-meta-teacher{display:none} body.hide-room .lesson-meta-room{display:none}
@@ -4242,19 +4230,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                 </div>
                 <div id="quick-group-saved-chips" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
             </div>
-
-            <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
-                <div style="font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-                    <span>🏛️</span> Популярні спеціальності
-                </div>
-                <div style="display:flex;flex-wrap:wrap;gap:6px;">
-                    <button type="button" class="quick-faculty-btn" data-prefix="ФЕП">ФЕП (Інженерія ПЗ)</button>
-                    <button type="button" class="quick-faculty-btn" data-prefix="ФЕІ">ФЕІ (Інформ. системи)</button>
-                    <button type="button" class="quick-faculty-btn" data-prefix="ФЕС">ФЕС (Комп. науки)</button>
-                    <button type="button" class="quick-faculty-btn" data-prefix="ФЕБ">ФЕБ (Кібербезпека)</button>
-                    <button type="button" class="quick-faculty-btn" data-prefix="ПМІ">ПМІ (Прикладна мат.)</button>
-                </div>
-            </div>
         </div>
     </div>
 </div>
@@ -7086,17 +7061,6 @@ function initQuickGroupModal() {
             }
         });
     }
-
-    modal.querySelectorAll('.quick-faculty-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const prefix = btn.dataset.prefix;
-            if (prefix && searchInput) {
-                searchInput.value = prefix + '-';
-                searchInput.focus();
-                searchInput.dispatchEvent(new Event('input'));
-            }
-        });
-    });
 }
 
 function initGroupPicker() {
