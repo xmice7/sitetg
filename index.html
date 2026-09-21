@@ -4308,18 +4308,21 @@ function haptic(type = 'light') {
     try {
         if (storage.get('toggle-haptic_v', 'true') === 'false') return;
         const tg = window.Telegram && window.Telegram.WebApp;
-        if (tg && tg.HapticFeedback) {
+        if (tg && tg.HapticFeedback && tg.isVersionAtLeast && tg.isVersionAtLeast('6.1')) {
             if (type === 'selection') {
-                try { tg.HapticFeedback.selectionChanged(); } catch(e) {}
-                try { tg.HapticFeedback.impactOccurred('light'); } catch(e) {}
+                tg.HapticFeedback.selectionChanged();
             } else if (type === 'success' || type === 'warning' || type === 'error') {
-                try { tg.HapticFeedback.notificationOccurred(type); } catch(e) {}
+                tg.HapticFeedback.notificationOccurred(type);
             } else {
-                try { tg.HapticFeedback.impactOccurred(type || 'light'); } catch(e) {}
+                // valid impact types: light, medium, heavy, rigid, soft
+                const impact = (type === 'impact') ? 'medium' : (type || 'light');
+                tg.HapticFeedback.impactOccurred(impact);
             }
+            return; // TG handled it — skip navigator.vibrate fallback
         }
+        // Fallback for non-Telegram browsers
         if (navigator.vibrate) {
-            navigator.vibrate(type === 'selection' ? 8 : (type === 'medium' ? 14 : (type === 'heavy' ? 22 : 10)));
+            navigator.vibrate(type === 'selection' ? 6 : type === 'medium' ? 12 : type === 'heavy' ? 20 : 8);
         }
     } catch(e) {}
 }
