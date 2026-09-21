@@ -310,22 +310,36 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         :root,
         [data-theme="light"] {
             --fs-title: 15.5px; --fs-meta: 13px; --fs-time: 18px; --fs-time-end: 13px; --fs-day-title: 18px;
-            --bg-body: #f1f5f9; --bg-card: #ffffff; --text-main: #0f172a; --text-muted: #64748b;
+            --bg-body: #f8fafc; --bg-card: #ffffff; --text-main: #0f172a; --text-muted: #64748b;
             --border: #e2e8f0; --accent-green: #059669; --bg-green: #d1fae5; --accent-purple: #7c3aed;
             --bg-purple: #ede9fe; --bg-blue: #dbeafe;
             --shadow: 0 4px 14px -2px rgba(0,0,0,0.06), 0 2px 4px -1px rgba(0,0,0,0.04);
             --shadow-hover: 0 12px 28px -4px rgba(0,0,0,0.12), 0 4px 8px -2px rgba(0,0,0,0.06);
-            --modal-bg: rgba(255,255,255,0.92); --orb-opacity: 0.12;
+            --modal-bg: rgba(255,255,255,0.95); --orb-opacity: 0.08;
             --spring-easing: cubic-bezier(0.32, 0.72, 0, 1);
             --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
             --apple-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, sans-serif;
+            --badge-lec-bg: rgba(37, 99, 235, 0.1); --badge-lec-text: #1d4ed8; --badge-lec-border: rgba(37, 99, 235, 0.25);
+            --badge-prac-bg: rgba(16, 185, 129, 0.1); --badge-prac-text: #047857; --badge-prac-border: rgba(16, 185, 129, 0.25);
+            --badge-lab-bg: rgba(225, 29, 72, 0.1); --badge-lab-text: #be123c; --badge-lab-border: rgba(225, 29, 72, 0.25);
+            --badge-dvvs-bg: rgba(217, 119, 6, 0.1); --badge-dvvs-text: #b45309; --badge-dvvs-border: rgba(217, 119, 6, 0.25);
+            --badge-group-bg: rgba(100, 116, 139, 0.1); --badge-group-text: #334155; --badge-group-border: rgba(100, 116, 139, 0.22);
+            --badge-custom-bg: rgba(147, 51, 234, 0.1); --badge-custom-text: #7e22ce; --badge-custom-border: rgba(147, 51, 234, 0.25);
+            --header-chip-bg: rgba(0, 0, 0, 0.05); --header-chip-border: rgba(0, 0, 0, 0.1);
         }
         [data-theme="dark"] {
-            --bg-body: #0f172a; --bg-card: #1e293b; --text-main: #f8fafc; --text-muted: #94a3b8;
-            --border: #334155; --accent-green: #10b981; --bg-green: rgba(16,185,129,0.15);
+            --bg-body: #0b0f19; --bg-card: #151d2f; --text-main: #f8fafc; --text-muted: #94a3b8;
+            --border: #27354f; --accent-green: #10b981; --bg-green: rgba(16,185,129,0.15);
             --accent-purple: #a78bfa; --bg-purple: rgba(139,92,246,0.15); --bg-blue: rgba(59,130,246,0.15);
-            --shadow: 0 4px 6px -1px rgba(0,0,0,0.3); --shadow-hover: 0 10px 15px -3px rgba(0,0,0,0.4);
-            --modal-bg: rgba(30,41,59,0.95); --orb-opacity: 0.18;
+            --shadow: 0 4px 12px -2px rgba(0,0,0,0.35); --shadow-hover: 0 12px 24px -4px rgba(0,0,0,0.5);
+            --modal-bg: rgba(21,29,47,0.96); --orb-opacity: 0.15;
+            --badge-lec-bg: rgba(59, 130, 246, 0.18); --badge-lec-text: #93c5fd; --badge-lec-border: rgba(59, 130, 246, 0.35);
+            --badge-prac-bg: rgba(16, 185, 129, 0.18); --badge-prac-text: #6ee7b7; --badge-prac-border: rgba(16, 185, 129, 0.35);
+            --badge-lab-bg: rgba(244, 63, 94, 0.18); --badge-lab-text: #fda4af; --badge-lab-border: rgba(244, 63, 94, 0.35);
+            --badge-dvvs-bg: rgba(245, 158, 11, 0.18); --badge-dvvs-text: #fcd34d; --badge-dvvs-border: rgba(245, 158, 11, 0.35);
+            --badge-group-bg: rgba(148, 163, 184, 0.14); --badge-group-text: #cbd5e1; --badge-group-border: rgba(148, 163, 184, 0.25);
+            --badge-custom-bg: rgba(168, 85, 247, 0.18); --badge-custom-text: #c084fc; --badge-custom-border: rgba(168, 85, 247, 0.35);
+            --header-chip-bg: rgba(255, 255, 255, 0.08); --header-chip-border: rgba(255, 255, 255, 0.15);
         }
         [data-theme="black"],
         [data-theme="oled"] {
@@ -334,6 +348,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             --accent-purple: #b388ff; --bg-purple: rgba(179,136,255,0.1); --bg-blue: rgba(59,130,246,0.1);
             --shadow: none; --shadow-hover: 0 0 15px rgba(255,255,255,0.05);
             --modal-bg: rgba(15,15,15,0.98); --orb-opacity: 0.12;
+            --badge-lec-bg: rgba(59, 130, 246, 0.16); --badge-lec-text: #60a5fa; --badge-lec-border: rgba(59, 130, 246, 0.35);
+            --badge-prac-bg: rgba(0, 255, 136, 0.12); --badge-prac-text: #00ff88; --badge-prac-border: rgba(0, 255, 136, 0.3);
+            --badge-lab-bg: rgba(255, 77, 109, 0.15); --badge-lab-text: #ff4d6d; --badge-lab-border: rgba(255, 77, 109, 0.3);
+            --badge-dvvs-bg: rgba(255, 183, 3, 0.15); --badge-dvvs-text: #ffb703; --badge-dvvs-border: rgba(255, 183, 3, 0.3);
+            --badge-group-bg: rgba(255, 255, 255, 0.1); --badge-group-text: #dddddd; --badge-group-border: rgba(255, 255, 255, 0.2);
+            --badge-custom-bg: rgba(179, 136, 255, 0.16); --badge-custom-text: #b388ff; --badge-custom-border: rgba(179, 136, 255, 0.3);
+            --header-chip-bg: rgba(255, 255, 255, 0.08); --header-chip-border: rgba(255, 255, 255, 0.18);
         }
         [data-theme="cyber"] {
             --bg-body: #080915; --bg-card: rgba(13, 17, 34, 0.88); --text-main: #f0f6fc; --text-muted: #8b9bb4;
@@ -342,6 +363,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             --primary: #00f0ff; --shadow: 0 4px 20px rgba(0, 240, 255, 0.12);
             --shadow-hover: 0 0 25px rgba(0, 240, 255, 0.25);
             --modal-bg: rgba(10, 14, 28, 0.96); --orb-opacity: 0.35;
+            --badge-lec-bg: rgba(0, 240, 255, 0.16); --badge-lec-text: #00f0ff; --badge-lec-border: rgba(0, 240, 255, 0.35);
+            --badge-prac-bg: rgba(0, 255, 170, 0.16); --badge-prac-text: #00ffaa; --badge-prac-border: rgba(0, 255, 170, 0.35);
+            --badge-lab-bg: rgba(255, 0, 127, 0.16); --badge-lab-text: #ff007f; --badge-lab-border: rgba(255, 0, 127, 0.35);
+            --badge-dvvs-bg: rgba(255, 215, 0, 0.16); --badge-dvvs-text: #ffd700; --badge-dvvs-border: rgba(255, 215, 0, 0.35);
+            --badge-group-bg: rgba(0, 240, 255, 0.12); --badge-group-text: #a5f3fc; --badge-group-border: rgba(0, 240, 255, 0.25);
+            --badge-custom-bg: rgba(255, 0, 127, 0.16); --badge-custom-text: #ff007f; --badge-custom-border: rgba(255, 0, 127, 0.35);
+            --header-chip-bg: rgba(0, 240, 255, 0.12); --header-chip-border: rgba(0, 240, 255, 0.3);
         }
         [data-theme="cyber"] .lesson-card {
             border-color: rgba(0, 240, 255, 0.2);
@@ -363,6 +391,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             --primary: #10e7aa; --shadow: 0 4px 20px rgba(16, 231, 170, 0.1);
             --shadow-hover: 0 0 25px rgba(16, 231, 170, 0.22);
             --modal-bg: rgba(7, 24, 35, 0.96); --orb-opacity: 0.35;
+            --badge-lec-bg: rgba(56, 189, 248, 0.16); --badge-lec-text: #38bdf8; --badge-lec-border: rgba(56, 189, 248, 0.35);
+            --badge-prac-bg: rgba(16, 231, 170, 0.16); --badge-prac-text: #10e7aa; --badge-prac-border: rgba(16, 231, 170, 0.35);
+            --badge-lab-bg: rgba(244, 63, 94, 0.16); --badge-lab-text: #fb7185; --badge-lab-border: rgba(244, 63, 94, 0.35);
+            --badge-dvvs-bg: rgba(251, 191, 36, 0.16); --badge-dvvs-text: #fbbf24; --badge-dvvs-border: rgba(251, 191, 36, 0.35);
+            --badge-group-bg: rgba(124, 163, 181, 0.14); --badge-group-text: #e6f7f8; --badge-group-border: rgba(16, 231, 170, 0.2);
+            --badge-custom-bg: rgba(168, 85, 247, 0.18); --badge-custom-text: #c084fc; --badge-custom-border: rgba(168, 85, 247, 0.35);
+            --header-chip-bg: rgba(16, 231, 170, 0.1); --header-chip-border: rgba(16, 231, 170, 0.25);
         }
         [data-theme="aurora"] .lesson-card {
             border-color: rgba(16, 231, 170, 0.2);
@@ -379,13 +414,15 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--apple-font); -webkit-tap-highlight-color: transparent; }
+        :focus-visible { outline: 2px solid var(--primary, #3b82f6); outline-offset: 2px; }
+        button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--primary, #3b82f6); outline-offset: 2px; }
         html { scroll-behavior: smooth; }
         body { background-color: var(--bg-body); color: var(--text-main); line-height: 1.5; padding-bottom: calc(96px + env(safe-area-inset-bottom)); transition: background-color 0.3s ease,color 0.3s ease; overflow-x: hidden; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
         button, a, .day-btn, .theme-btn, .ios-theme-card, .ios-item-row, .ios-switch, .ios-profile-banner, .moodle-btn, .nav-item, .lesson-card {
             touch-action: manipulation;
         }
-        .bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
-        .bg-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: var(--orb-opacity); will-change: transform; }
+        .bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; contain: strict; transform: translateZ(0); }
+        .bg-orb { position: absolute; border-radius: 50%; filter: blur(60px); opacity: var(--orb-opacity); will-change: transform; transform: translateZ(0); }
         .bg-orb-1 { width: 420px; height: 420px; background: var(--primary,#3b82f6); top: -100px; left: -100px; animation: orbFloat1 22s linear infinite; }
         .bg-orb-2 { width: 320px; height: 320px; background: var(--accent-purple); top: 30%; right: -80px; animation: orbFloat2 28s linear infinite; }
         .bg-orb-3 { width: 260px; height: 260px; background: var(--accent-green); bottom: 15%; left: 20%; animation: orbFloat3 18s linear infinite; }
@@ -393,20 +430,24 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         @keyframes orbFloat1 { 0%{transform:translate(0,0) scale(1)} 25%{transform:translate(40px,30px) scale(1.05)} 50%{transform:translate(20px,60px) scale(0.97)} 75%{transform:translate(-20px,30px) scale(1.03)} 100%{transform:translate(0,0) scale(1)} }
         @keyframes orbFloat2 { 0%{transform:translate(0,0) scale(1)} 33%{transform:translate(-50px,40px) scale(1.08)} 66%{transform:translate(30px,-30px) scale(0.95)} 100%{transform:translate(0,0) scale(1)} }
         @keyframes orbFloat3 { 0%{transform:translate(0,0) scale(1)} 40%{transform:translate(60px,-40px) scale(1.1)} 80%{transform:translate(-30px,20px) scale(0.93)} 100%{transform:translate(0,0) scale(1)} }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; position: relative; z-index: 1; }
+        .container { max-width: 600px; margin: 0 auto; padding: 18px 16px; position: relative; z-index: 1; }
         .page { display: none; animation: fadeIn 0.35s ease; }
         .page.active { display: block; }
         @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-        header { text-align: center; margin-bottom: 24px; position: relative; padding-top: 10px; }
-        .header-logo-row { display: flex; align-items: center; justify-content: center; margin-bottom: 6px; position: relative; min-height: 40px; }
-        .header-logo-row .site-logo { position: absolute; left: 0; top: 50%; transform: translateY(-50%); }
-        .site-logo { width: 36px; height: 36px; border-radius: 10px; object-fit: cover; border: 2px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.2); flex-shrink: 0; transition: transform 0.3s ease,box-shadow 0.3s ease; }
-        .site-logo:hover { transform: scale(1.08) rotate(3deg); box-shadow: 0 4px 16px rgba(59,130,246,0.35); }
-        header h1 { font-size: 26px; font-weight: 800; background: linear-gradient(135deg,var(--primary) 0%,var(--accent-purple) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 0 12px rgba(59,130,246,0.4)); }
-        header p { color: var(--text-muted); font-size: 14px; text-transform: capitalize; font-weight: 500; }
-        .settings-btn { position: absolute; top: 5px; right: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 50%; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-main); box-shadow: var(--shadow); transition: all 0.25s ease; }
-        .settings-btn:hover { transform: rotate(45deg); color: var(--primary); border-color: var(--primary); }
-        .settings-btn svg { width: 22px; height: 22px; fill: currentColor; }
+        header { margin-bottom: 20px; position: relative; padding-top: 4px; }
+        .header-top-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 3px; }
+        .header-brand { display: flex; align-items: center; gap: 9px; min-width: 0; }
+        .site-logo { width: 36px; height: 36px; border-radius: 11px; object-fit: cover; border: 1.5px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); flex-shrink: 0; transition: transform 0.3s var(--spring-bounce); }
+        .site-logo:hover { transform: scale(1.08) rotate(3deg); }
+        .header-brand h1 { font-size: 21px; font-weight: 800; background: linear-gradient(135deg,var(--text-main) 40%,var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -0.4px; line-height: 1.2; margin: 0; }
+        .header-actions-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .header-group-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 12px; background: var(--header-chip-bg, rgba(255,255,255,0.08)); border: 1px solid var(--header-chip-border, rgba(255,255,255,0.15)); color: var(--text-main); font-size: 13px; font-weight: 700; cursor: pointer; transition: transform 0.2s var(--spring-bounce), background-color 0.2s, border-color 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.06); user-select: none; -webkit-user-select: none; }
+        .header-group-chip:active { transform: scale(0.95); }
+        .header-group-chip svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.65; }
+        .settings-btn { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-main); box-shadow: var(--shadow); transition: transform 0.2s var(--spring-bounce), color 0.2s, border-color 0.2s; flex-shrink: 0; }
+        .settings-btn:hover { transform: rotate(35deg); color: var(--primary); border-color: var(--primary); }
+        .settings-btn svg { width: 20px; height: 20px; fill: currentColor; }
+        header p { color: var(--text-muted); font-size: 13px; font-weight: 500; margin-top: 2px; }
         .controls { display: flex; margin-bottom: 16px; }
         .select-wrapper { flex: 1; position: relative; }
         .select-wrapper select { width: 100%; appearance: none; background-color: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 14px 18px; border-radius: 14px; font-size: 15px; font-weight: 600; outline: none; cursor: pointer; transition: all 0.2s ease; box-shadow: var(--shadow); }
@@ -496,6 +537,64 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .saved-group-active-dot { font-size: 12px; font-weight: 900; color: var(--primary); }
         .saved-group-del-btn { background: transparent; border: none; border-left: 1px solid var(--border); color: var(--text-muted); font-size: 13px; font-weight: 700; padding: 9px 10px; cursor: pointer; transition: all 0.15s ease; display: flex; align-items: center; justify-content: center; }
         .saved-group-del-btn:hover { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .quick-faculty-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+        }
+        .quick-faculty-btn:hover {
+            border-color: var(--primary);
+            background: var(--bg-blue);
+            color: var(--primary);
+        }
+        .quick-group-chip-btn {
+            background: var(--bg-card);
+            border: 1.5px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 14px;
+            border-radius: 12px;
+            font-size: 13.5px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: border-color 0.2s, background-color 0.2s, color 0.2s, transform 0.15s;
+        }
+        .quick-group-chip-btn:hover {
+            border-color: var(--primary);
+        }
+        .quick-group-chip-btn:active {
+            transform: scale(0.96);
+        }
+        .quick-group-chip-btn.active {
+            background: rgba(59, 130, 246, 0.12);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        #quick-group-modal .modal-content {
+            border-radius: 28px 28px 0 0;
+            max-width: 480px;
+        }
+        @media (min-width: 600px) {
+            #quick-group-modal {
+                align-items: center;
+                padding: 20px;
+            }
+            #quick-group-modal .modal-content {
+                border-radius: 24px;
+                transform: translate3d(0, 16px, 0) scale(0.97);
+            }
+            #quick-group-modal.active .modal-content {
+                transform: translate3d(0, 0, 0) scale(1);
+            }
+        }
         .custom-lessons-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
         .custom-lesson-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px; display: flex; align-items: center; gap: 10px; justify-content: space-between; }
         .custom-lesson-info { flex: 1; min-width: 0; }
@@ -543,25 +642,33 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         @keyframes pulse { 0%{opacity:1} 50%{opacity:0.7} 100%{opacity:1} }
         .lesson-card.next-lesson { border-color: var(--primary); border-width: 2px; }
         .next-badge { position:absolute; top:-1px; right:16px; background:var(--primary); color:#fff; font-size:10px; font-weight:800; padding:4px 10px; border-radius:0 0 8px 8px; text-transform:uppercase; letter-spacing:0.5px; }
-        .time-block { min-width:60px; text-align:center; border-right:2px dashed var(--border); padding-right:12px; display:flex; flex-direction:column; justify-content:center; z-index:2; }
-        .time-start { font-size:var(--fs-time); font-weight:800; color:var(--text-main); letter-spacing:-0.5px; }
-        .time-end { font-size:var(--fs-time-end); font-weight:500; color:var(--text-muted); margin-top:4px; }
-        .info-block { flex:1; z-index:2; }
-        .lesson-title { font-size:var(--fs-title); font-weight:700; margin-bottom:8px; line-height:1.3; color:var(--text-main); }
-        .lesson-meta { display:flex; align-items:center; gap:8px; font-size:var(--fs-meta); font-weight:500; color:var(--text-muted); margin-bottom:6px; }
-        .lesson-meta svg { width:14px; height:14px; fill:currentColor; opacity:0.8; }
-        .badges { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
-        .badge { font-size:10px; font-weight:800; padding:4px 8px; border-radius:6px; text-transform:uppercase; letter-spacing:0.5px; }
-        .badge-group { background-color:var(--bg-green); color:var(--accent-green); }
-        .badge-type { background-color:var(--bg-purple); color:var(--accent-purple); }
-        .badge-potik { background-color:var(--bg-blue); color:var(--primary); }
+        .time-block { min-width:62px; text-align:center; border-right:1.5px dashed var(--border); padding-right:14px; display:flex; flex-direction:column; justify-content:center; z-index:2; flex-shrink:0; }
+        .time-start { font-size:var(--fs-time); font-weight:800; color:var(--text-main); letter-spacing:-0.4px; font-variant-numeric:tabular-nums; }
+        .time-end { font-size:var(--fs-time-end); font-weight:600; color:var(--text-muted); margin-top:3px; font-variant-numeric:tabular-nums; }
+        .info-block { flex:1; z-index:2; min-width:0; }
+        .lesson-title { font-size:var(--fs-title); font-weight:700; margin-bottom:6px; line-height:1.3; color:var(--text-main); word-break:break-word; }
+        .lesson-meta { display:flex; align-items:center; gap:7px; font-size:var(--fs-meta); font-weight:500; color:var(--text-muted); margin-bottom:5px; }
+        .lesson-meta svg { width:14px; height:14px; fill:currentColor; opacity:0.8; flex-shrink:0; }
+        .badges { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:7px; }
+        .badge { font-size:10.5px; font-weight:800; padding:3px 8px; border-radius:7px; text-transform:uppercase; letter-spacing:0.4px; display:inline-flex; align-items:center; line-height:1.2; border:1px solid transparent; }
+        .badge-group { background-color:var(--badge-group-bg); color:var(--badge-group-text); border-color:var(--badge-group-border); }
+        .badge-potik { background-color:var(--badge-lec-bg); color:var(--badge-lec-text); border-color:var(--badge-lec-border); }
+        .badge-type-lecture { background-color:var(--badge-lec-bg); color:var(--badge-lec-text); border-color:var(--badge-lec-border); }
+        .badge-type-practical { background-color:var(--badge-prac-bg); color:var(--badge-prac-text); border-color:var(--badge-prac-border); }
+        .badge-type-lab { background-color:var(--badge-lab-bg); color:var(--badge-lab-text); border-color:var(--badge-lab-border); }
+        .badge-type-dvvs { background-color:var(--badge-dvvs-bg); color:var(--badge-dvvs-text); border-color:var(--badge-dvvs-border); }
+        .badge-type-default { background-color:var(--badge-lec-bg); color:var(--badge-lec-text); border-color:var(--badge-lec-border); }
+        .badge-local-custom { background-color:var(--badge-custom-bg); color:var(--badge-custom-text); border-color:var(--badge-custom-border); }
+        .badge-admin-custom { background-color:var(--badge-lec-bg); color:var(--badge-lec-text); border-color:var(--badge-lec-border); }
+        .badge-numerator { background-color:var(--badge-lec-bg); color:var(--badge-lec-text); border-color:var(--badge-lec-border); }
+        .badge-denominator { background-color:var(--badge-dvvs-bg); color:var(--badge-dvvs-text); border-color:var(--badge-dvvs-border); }
         .lesson-ann-note { margin-top: 10px; padding: 10px 12px; background: var(--bg-purple); border-radius: 10px; border-left: 3px solid var(--accent-purple); font-size: 13px; color: var(--text-main); line-height: 1.4; }
         .lesson-ann-note strong { color: var(--accent-purple); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 3px; }
         .live-timer-wrapper { position:absolute; bottom:0; left:0; width:100%; height:4px; background:var(--border); z-index:1; }
         .live-timer-progress { height:100%; background:var(--accent-green); width:0%; transition:width 1s linear; }
         .live-timer-text { font-size:12px; font-weight:700; color:var(--accent-green); margin-top:8px; display:flex; align-items:center; gap:6px; }
-        .live-timer-text svg { width:14px; height:14px; animation:spin 2s linear infinite; }
-        @keyframes spin { 0%{transform:rotate(0deg) scale(1)} 50%{transform:rotate(180deg) scale(1.35)} 100%{transform:rotate(360deg) scale(1)} }
+        .live-timer-text svg { width:14px; height:14px; animation:spinClock 3s linear infinite; }
+        @keyframes spinClock { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
         .all-done-message { background-color:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:18px; display:flex; align-items:center; gap:16px; margin-top:8px; box-shadow:var(--shadow); flex-wrap:wrap; animation:slideUp 0.5s ease; position:relative; overflow:hidden; }
         .all-done-message::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--accent-green); border-radius:16px 0 0 16px; }
         .all-done-icon { font-size:24px; background:var(--bg-green); width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:50%; }
@@ -2789,14 +2896,23 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
     <div id="page-schedule" class="page active">
         <div class="container">
             <header>
-                <div class="header-logo-row">
-                    <img src="./logo.png" alt="Логотип" class="site-logo" loading="lazy" onerror="this.style.display='none'"/>
-                    <h1 id="app-title">Розклад</h1>
+                <div class="header-top-row">
+                    <div class="header-brand">
+                        <img src="./logo.png" alt="Логотип" class="site-logo" loading="lazy" onerror="this.style.display='none'"/>
+                        <h1 id="app-title">Розклад</h1>
+                    </div>
+                    <div class="header-actions-wrap">
+                        <button type="button" id="header-group-chip" class="header-group-chip" title="Швидка зміна групи" aria-label="Швидка зміна групи">
+                            <span>🎓</span>
+                            <span id="header-group-name">Група</span>
+                            <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <button id="open-settings" class="settings-btn" aria-label="Налаштування" title="Налаштування">
+                            <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+                        </button>
+                    </div>
                 </div>
                 <p id="current-date-display">Завантаження...</p>
-                <button id="open-settings" class="settings-btn" aria-label="Налаштування">
-                    <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
-                </button>
             </header>
 
             <div id="pinned-msg" class="pinned-msg">
@@ -4097,6 +4213,47 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
     </div>
 </div>
 
+<div class="modal-overlay" id="quick-group-modal" style="z-index:9050;">
+    <div class="modal-content" style="max-width:480px;">
+        <div class="modal-header">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:22px;">🎓</span>
+                <div>
+                    <h2 style="margin:0;font-size:18px;font-weight:800;line-height:1.2;">Швидкий вибір групи</h2>
+                    <span style="font-size:11.5px;color:var(--text-muted);font-weight:500;">Оберіть зі збережених або знайдіть нову</span>
+                </div>
+            </div>
+            <button class="close-btn" id="close-quick-group">×</button>
+        </div>
+        <div class="modal-body" style="padding:16px 20px 28px;">
+            <div style="position:relative;margin-bottom:12px;">
+                <input type="text" id="quick-group-search" class="group-search-input" placeholder="🔍 Введіть шифр групи (напр. ФЕП-23)..." autocomplete="off" autocapitalize="characters" spellcheck="false" />
+            </div>
+            <div id="quick-group-search-results" class="group-search-results" style="margin-bottom:14px;"></div>
+
+            <div id="quick-group-saved-section" style="margin-top:8px;">
+                <div style="font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                    <span>⭐</span> Нещодавні та збережені групи
+                </div>
+                <div id="quick-group-saved-chips" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+            </div>
+
+            <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+                <div style="font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                    <span>🏛️</span> Популярні спеціальності
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                    <button type="button" class="quick-faculty-btn" data-prefix="ФЕП">ФЕП (Інженерія ПЗ)</button>
+                    <button type="button" class="quick-faculty-btn" data-prefix="ФЕІ">ФЕІ (Інформ. системи)</button>
+                    <button type="button" class="quick-faculty-btn" data-prefix="ФЕС">ФЕС (Комп. науки)</button>
+                    <button type="button" class="quick-faculty-btn" data-prefix="ФЕБ">ФЕБ (Кібербезпека)</button>
+                    <button type="button" class="quick-faculty-btn" data-prefix="ПМІ">ПМІ (Прикладна мат.)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="custom-lesson-modal" style="z-index:9000;">
     <div class="modal-content" style="max-width:440px;">
         <div class="modal-header">
@@ -4992,6 +5149,15 @@ function init() {
     const titleEl = document.getElementById('app-title');
     if (titleEl) titleEl.textContent = 'Розклад ' + gl;
     document.title = 'Розклад ' + gl;
+    const headerGroupNameEl = document.getElementById('header-group-name');
+    if (headerGroupNameEl) headerGroupNameEl.textContent = gl || 'Вибрати';
+    const headerGroupChip = document.getElementById('header-group-chip');
+    if (headerGroupChip && !headerGroupChip._bound) {
+        headerGroupChip._bound = true;
+        headerGroupChip.addEventListener('click', () => {
+            openQuickGroupModal();
+        });
+    }
 
     els.groupSelect.value = state.group;
     populateEngSelect();
@@ -5525,25 +5691,20 @@ function renderDayBlock(targetDate, showHeader=true) {
         const cleanTeacher=lesson.teacher;
         let badges='';
         if(type) {
-            let typeStyle = '';
-            if (type === 'ДВВС') {
-                typeStyle = 'style="background:rgba(234,179,8,0.18);color:#eab308;border:1px solid rgba(234,179,8,0.35);"';
-            } else if (type === 'Лекція') {
-                typeStyle = 'style="background:rgba(59,130,246,0.18);color:#60a5fa;border:1px solid rgba(59,130,246,0.35);"';
-            } else if (type === 'Практична') {
-                typeStyle = 'style="background:rgba(16,185,129,0.18);color:#34d399;border:1px solid rgba(16,185,129,0.35);"';
-            } else if (type === 'Лабораторна') {
-                typeStyle = 'style="background:rgba(244,63,94,0.18);color:#fb7185;border:1px solid rgba(244,63,94,0.35);"';
-            }
-            badges+=`<span class="badge badge-type" ${typeStyle}>${type}</span>`;
+            let typeClass = 'badge-type-default';
+            if (type === 'ДВВС') typeClass = 'badge-type-dvvs';
+            else if (type === 'Лекція') typeClass = 'badge-type-lecture';
+            else if (type === 'Практична') typeClass = 'badge-type-practical';
+            else if (type === 'Лабораторна') typeClass = 'badge-type-lab';
+            badges+=`<span class="badge badge-type ${typeClass}">${type}</span>`;
         }
         if(lesson.group) badges+=`<span class="badge badge-group">Підгрупа ${lesson.group}</span>`;
         if(isPotik) badges+=`<span class="badge badge-potik">Потік</span>`;
         if(lesson.isCollective&&!(lesson.isEng&&state.engTeacher!=='all')) badges+=`<span class="badge badge-group">Збірна група</span>`;
-        if(lesson.isLocalCustom) badges+=`<span class="badge badge-local-custom" style="background:rgba(168,85,247,0.18);color:#c084fc;border:1px solid rgba(168,85,247,0.35);">✨ Моя пара</span>`;
-        if(lesson.isAdminCustom) badges+=`<span class="badge badge-admin-custom" style="background:rgba(59,130,246,0.18);color:#60a5fa;border:1px solid rgba(59,130,246,0.35);">📌 Групова пара</span>`;
-        if(lesson.periodicity === 'numerator') badges+=`<span class="badge" style="background:rgba(59,130,246,0.15);color:#3b82f6;">Чисельник</span>`;
-        else if(lesson.periodicity === 'denominator') badges+=`<span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">Знаменник</span>`;
+        if(lesson.isLocalCustom) badges+=`<span class="badge badge-local-custom">✨ Моя пара</span>`;
+        if(lesson.isAdminCustom) badges+=`<span class="badge badge-admin-custom">📌 Групова пара</span>`;
+        if(lesson.periodicity === 'numerator') badges+=`<span class="badge badge-numerator">Чисельник</span>`;
+        else if(lesson.periodicity === 'denominator') badges+=`<span class="badge badge-denominator">Знаменник</span>`;
 
         const mod = findMod(dateStr, lesson.title);
         let cardExtra = '';
@@ -5644,6 +5805,15 @@ function render() {
     if(!els.scheduleContainer) return;
     document.querySelectorAll('.day-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.tab===state.tab));
     updateWeekTabBadges();
+    const activeDayBtn = els.daysNav ? els.daysNav.querySelector('.day-btn.active') : null;
+    if (activeDayBtn && els.daysNav && els.daysNav.scrollWidth > els.daysNav.clientWidth) {
+        const navRect = els.daysNav.getBoundingClientRect();
+        const btnRect = activeDayBtn.getBoundingClientRect();
+        if (btnRect.left < navRect.left || btnRect.right > navRect.right) {
+            const scrollTarget = activeDayBtn.offsetLeft - (els.daysNav.clientWidth / 2) + (activeDayBtn.clientWidth / 2);
+            els.daysNav.scrollTo({ left: scrollTarget, behavior: 'smooth' });
+        }
+    }
     if(!gSchedule) {
         els.scheduleContainer.innerHTML = gScheduleError
             ? `<div class="empty-state"><span>😕</span><p>${gScheduleError}</p><button class="go-tomorrow-btn" style="margin:16px auto 0;width:fit-content;" onclick="refreshSchedule(true)">Спробувати ще раз</button></div>`
@@ -6401,6 +6571,7 @@ function removeSavedGroup(groupName) {
 }
 
 function renderSavedGroupsUI() {
+    if (typeof renderQuickGroupChips === 'function') renderQuickGroupChips();
     const container = document.getElementById('saved-groups-container');
     if (!container) return;
     const groups = getSavedGroups();
@@ -6460,12 +6631,15 @@ async function switchGroup(groupName) {
     const titleEl = document.getElementById('app-title');
     if (titleEl) titleEl.textContent = 'Розклад ' + groupName;
     document.title = 'Розклад ' + groupName;
+    const hgn = document.getElementById('header-group-name');
+    if (hgn) hgn.textContent = groupName;
 
     applyColor(state.color);
     if (els.groupSelect) els.groupSelect.value = state.group;
     if (typeof populateEngSelect === 'function') populateEngSelect();
     if (typeof renderColorPicker === 'function') renderColorPicker();
     if (typeof renderSavedGroupsUI === 'function') renderSavedGroupsUI();
+    if (typeof renderQuickGroupChips === 'function') renderQuickGroupChips();
     if (typeof renderLocalCustomLessons === 'function') renderLocalCustomLessons();
     if (typeof renderAdminCustomLessons === 'function') renderAdminCustomLessons();
 
@@ -6803,10 +6977,128 @@ function initCustomLessonsUI() {
     }
 }
 
+function openQuickGroupModal() {
+    const modal = document.getElementById('quick-group-modal');
+    if (!modal) return;
+    if (typeof haptic === 'function') haptic('selection');
+    initQuickGroupModal();
+    renderQuickGroupChips();
+    const searchInput = document.getElementById('quick-group-search');
+    const searchResults = document.getElementById('quick-group-search-results');
+    if (searchInput) searchInput.value = '';
+    if (searchResults) searchResults.innerHTML = '';
+    modal.classList.add('active');
+    setTimeout(() => {
+        if (searchInput) searchInput.focus();
+    }, 120);
+}
+
+function closeQuickGroupModal() {
+    const modal = document.getElementById('quick-group-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function renderQuickGroupChips() {
+    const container = document.getElementById('quick-group-saved-chips');
+    if (!container) return;
+    const groups = typeof getSavedGroups === 'function' ? getSavedGroups() : [];
+    if (!groups || groups.length === 0) {
+        container.innerHTML = '<span style="font-size:12px;color:var(--text-muted);padding:4px 0;">Немає збережених груп</span>';
+        return;
+    }
+    container.innerHTML = groups.map(g => {
+        const isActive = g === state.groupName;
+        return `
+            <button type="button" class="quick-group-chip-btn ${isActive ? 'active' : ''}" data-group="${g.replace(/"/g, '&quot;')}" title="${isActive ? 'Поточна активна група' : 'Перемкнутися на ' + g}">
+                ${isActive ? '<span style="font-weight:900;">✓</span>' : ''}<span>${g}</span>
+            </button>
+        `;
+    }).join('');
+
+    container.querySelectorAll('.quick-group-chip-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const g = btn.dataset.group;
+            if (g) {
+                closeQuickGroupModal();
+                if (g !== state.groupName) {
+                    switchGroup(g);
+                }
+            }
+        });
+    });
+}
+
+function initQuickGroupModal() {
+    const modal = document.getElementById('quick-group-modal');
+    if (!modal || modal._inited) return;
+    modal._inited = true;
+
+    const closeBtn = document.getElementById('close-quick-group');
+    if (closeBtn) closeBtn.addEventListener('click', closeQuickGroupModal);
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeQuickGroupModal();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeQuickGroupModal();
+        }
+    });
+
+    const headerChip = document.getElementById('header-group-chip');
+    if (headerChip && !headerChip._quickBound) {
+        headerChip._quickBound = true;
+        headerChip.addEventListener('click', openQuickGroupModal);
+    }
+
+    const searchInput = document.getElementById('quick-group-search');
+    const searchResults = document.getElementById('quick-group-search-results');
+    if (searchInput && searchResults && typeof createGroupSearch === 'function') {
+        createGroupSearch({
+            input: searchInput,
+            results: searchResults,
+            onPick: (picked) => {
+                closeQuickGroupModal();
+                switchGroup(picked);
+            }
+        });
+
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const firstResult = searchResults.querySelector('.group-search-item');
+                if (firstResult && firstResult.dataset.group) {
+                    closeQuickGroupModal();
+                    switchGroup(firstResult.dataset.group);
+                } else {
+                    const val = searchInput.value.trim().toUpperCase();
+                    if (val) {
+                        closeQuickGroupModal();
+                        switchGroup(val);
+                    }
+                }
+            }
+        });
+    }
+
+    modal.querySelectorAll('.quick-faculty-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const prefix = btn.dataset.prefix;
+            if (prefix && searchInput) {
+                searchInput.value = prefix + '-';
+                searchInput.focus();
+                searchInput.dispatchEvent(new Event('input'));
+            }
+        });
+    });
+}
+
 function initGroupPicker() {
     renderSavedGroupsUI();
     renderLocalCustomLessons();
     initCustomLessonsUI();
+    initQuickGroupModal();
     const input = document.getElementById('settings-group-search');
     const results = document.getElementById('settings-group-results');
     if (input && results) {
@@ -6827,7 +7119,7 @@ function initGroupPicker() {
         grpLabel.style.cursor = 'pointer';
         grpLabel.title = 'Натисніть для вибору іншої групи';
         grpLabel.addEventListener('click', () => {
-            if (els.settingsModal) els.settingsModal.classList.add('active');
+            openQuickGroupModal();
         });
     }
 }
