@@ -1270,20 +1270,22 @@ async function fetchDekanatGrades(user_name, user_pwd) {
         const grades = [];
         let total = 0;
         let summaryAbsences = 0;
-
-        if (absenceSummaryColIdx >= 0 && tdCells[absenceSummaryColIdx]) {
-          const absVal = parseInt(stripTags(tdCells[absenceSummaryColIdx][2]).trim(), 10);
-          if (!isNaN(absVal) && absVal > 0) {
-            summaryAbsences = absVal;
-          }
-        }
+        const seenAbsenceItemIdx = new Set();
 
         for (let cellIdx = 0; cellIdx < tdCells.length; cellIdx++) {
-          if (cellIdx === absenceSummaryColIdx) continue;
           const td = tdCells[cellIdx];
           const attrs = td[1];
           const content = stripTags(td[2]).trim();
 
+          // Check for summary absences: class="f f2" or attrs includes "f2"
+          if (attrs.includes("f f2") || (attrs.includes("f2") && !attrs.includes("f1"))) {
+            const num = parseInt(content, 10);
+            if (!isNaN(num) && num > summaryAbsences) {
+              summaryAbsences = num;
+            }
+          }
+
+          // Check for total score: class="f f1"
           if (attrs.includes("f f1")) {
             const num = parseFloat(content.replace(',', '.'));
             if (!isNaN(num) && num > total) {
@@ -1295,19 +1297,24 @@ async function fetchDekanatGrades(user_name, user_pwd) {
             const date = dateHeaders[itemIdx - 1]?.date || "";
             const cat = catList[itemIdx - 1] || "Лаб";
             const note = dateHeaders[itemIdx - 1]?.title || "";
-            const isAbsence = /^(?:[нnНNhH]|[нnНNhH]\.|\.?[нnНNhH]|[нnНNhH]\/[бbБB]|[нnНNhH][бbБB]|не\s*був|не\s*була|п|пр)$/i.test(content) ||
+
+            // Check if absence (нб/нп, н/б, н, etc.)
+            const isAbsence = /^(?:[нnНNhH]|[нnНNhH]\.|\.?[нnНNhH]|[нnНNhH][бbБB]?\/[нnНNhH]?[бbБBпpПP]?|[нnНNhH][бbБBпpПP]|не\s*був|не\s*була|п|пр)$/i.test(content) ||
                               /пропуск|не\s*був|не\s*була/i.test(content) ||
                               /пропуск|не\s*був|propusk|\bnb\b/i.test(attrs);
 
             if (isAbsence) {
-              grades.push({
-                category: cat,
-                categoryLabel: GRADE_CATEGORIES[cat]?.label || (cat === "Лек" ? "Контроль на лекції" : (cat === "Лаб" ? "Лабораторні роб." : "Практич./Семін. зан.")),
-                date,
-                value: "Н",
-                isAbsence: true,
-                note: note || "Пропуск заняття"
-              });
+              if (!seenAbsenceItemIdx.has(itemIdx)) {
+                seenAbsenceItemIdx.add(itemIdx);
+                grades.push({
+                  category: cat,
+                  categoryLabel: GRADE_CATEGORIES[cat]?.label || (cat === "Лек" ? "Контроль на лекції" : (cat === "Лаб" ? "Лабораторні роб." : "Практич./Семін. зан.")),
+                  date,
+                  value: "Н",
+                  isAbsence: true,
+                  note: note || "Пропуск заняття"
+                });
+              }
             } else if (!isNaN(numVal) && numVal > 0) {
               grades.push({
                 category: cat,
@@ -1316,24 +1323,6 @@ async function fetchDekanatGrades(user_name, user_pwd) {
                 value: numVal,
                 isAbsence: false,
                 note
-              });
-            }
-          } else if (cellIdx >= 2) {
-            // Check cells without data-item/data-history for absences
-            const isAbsence = /^(?:[нnНNhH]|[нnНNhH]\.|\.?[нnНNhH]|[нnНNhH]\/[бbБB]|[нnНNhH][бbБB]|не\s*був|не\s*була|п|пр)$/i.test(content) ||
-                              /пропуск|не\s*був/i.test(content) ||
-                              /пропуск|не\s*був|propusk|\bnb\b/i.test(attrs);
-            if (isAbsence) {
-              const date = dateHeaders[cellIdx - 2]?.date || "";
-              const cat = catList[cellIdx - 2] || "Лаб";
-              const note = dateHeaders[cellIdx - 2]?.title || "";
-              grades.push({
-                category: cat,
-                categoryLabel: GRADE_CATEGORIES[cat]?.label || (cat === "Лек" ? "Контроль на лекції" : (cat === "Лаб" ? "Лабораторні роб." : "Практич./Семін. зан.")),
-                date,
-                value: "Н",
-                isAbsence: true,
-                note: note || "Пропуск заняття"
               });
             }
           }
@@ -1418,7 +1407,8 @@ async function fetchDekanatGrades(user_name, user_pwd) {
     dossier: homeDossier,
     subjects,
     average,
-    totalAbsences
+    totalAbsences,
+    absencesVersion: 2
   };
 }
 
@@ -1581,9 +1571,9 @@ async function handleDekanatRoutes(request, env, ctx) {
       return json({ ok: false, error: 'NO_CREDENTIALS' }, 401);
     }
 
-    // Cache TTL: 15 minutes if not forceRefresh
+    // Cache TTL: 15 minutes if not forceRefresh and absencesVersion is 2
     const CACHE_TTL_MS = 15 * 60 * 1000;
-    if (!forceRefresh && cached && cached.data && (Date.now() - (cached.ts || 0) < CACHE_TTL_MS)) {
+    if (!forceRefresh && cached && cached.data && cached.data.absencesVersion === 2 && (Date.now() - (cached.ts || 0) < CACHE_TTL_MS)) {
       return json({
         ok: true,
         data: cached.data,

@@ -8524,7 +8524,7 @@ function initDekanatGrades() {
         const _sPwd = localStorage.getItem('dekanat_user_pwd');
         const _cached = JSON.parse(localStorage.getItem('dekanat_grades_cache') || 'null');
         const _lastSync = Number(localStorage.getItem('dekanat_last_sync') || '0');
-        if (_sName && _sPwd && _cached && _cached.subjects) {
+        if (_sName && _sPwd && _cached && _cached.subjects && _cached.absencesVersion === 2) {
             renderGradesData(_cached, false, _lastSync);
         } else if (!_sName || !_sPwd) {
             showView('auth');
@@ -8670,14 +8670,14 @@ function initDekanatGrades() {
             lastSync = Number(localStorage.getItem('dekanat_last_sync') || '0');
         } catch(e) {}
 
-        if (cached && cached.subjects) {
+        if (cached && cached.subjects && cached.absencesVersion === 2) {
             renderGradesData(cached, false, lastSync);
             if (Date.now() - lastSync > 15 * 60 * 1000) {
                 setTimeout(() => refreshGrades(false), 800);
             }
         } else {
             showView('loading');
-            refreshGrades(false);
+            refreshGrades(true);
         }
     }
 
