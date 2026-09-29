@@ -2466,6 +2466,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 18px;
+            margin-top: 16px;
             margin-bottom: 14px;
             overflow: hidden;
             box-shadow: var(--shadow);
@@ -3781,6 +3782,48 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                     </div>
                 </div>
 
+                <!-- Instant Search / Filter for Disciplines -->
+                <div class="grades-search-wrap" id="grades-search-wrap">
+                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="search" id="grades-search-input" placeholder="Пошук дисципліни чи викладача..." autocomplete="off" />
+                    <button type="button" id="grades-search-clear" style="display:none;" title="Очистити">✕</button>
+                </div>
+
+                <div class="grades-tools-row">
+                    <button type="button" class="grades-tool-chip" id="btn-grades-legend">
+                        <span>ℹ️ Умовні позначення</span>
+                    </button>
+                    <div class="grades-notif-chip" id="grades-notif-status">
+                        <span>🔔 Сповіщення: <strong>Активні</strong></span>
+                    </div>
+                </div>
+
+                <!-- ABSENCES ANALYTICS & CHART CARD -->
+                <div class="grades-absences-card" id="grades-absences-card" style="display:none;">
+                    <div class="grades-absences-header">
+                        <div class="grades-absences-title-wrap">
+                            <div class="grades-absences-icon">🚫</div>
+                            <div>
+                                <div class="grades-absences-title">Графік пропусків (Н-ок)</div>
+                                <div class="grades-absences-subtitle" id="grades-absences-summary">0 пропусків за семестр</div>
+                            </div>
+                        </div>
+                        <div class="grades-absences-period-tabs">
+                            <button type="button" class="absences-tab-btn active" data-period="month" id="btn-absences-month">По місяцях</button>
+                            <button type="button" class="absences-tab-btn" data-period="week" id="btn-absences-week">По тижнях</button>
+                        </div>
+                    </div>
+                    <div class="grades-absences-chart-wrap" id="grades-absences-chart-wrap">
+                        <canvas id="grades-absences-canvas" height="145"></canvas>
+                    </div>
+                    <div class="grades-absences-empty" id="grades-absences-empty" style="display:none;">
+                        <div class="grades-absences-empty-icon">🎉</div>
+                        <div>Жодного пропуску не зафіксовано! Чудова відвідуваність.</div>
+                    </div>
+                </div>
+
+                <div class="grades-subjects-wrap" id="grades-subjects-list"></div>
+
                 <!-- APPLE ACADEMIC DOSSIER / STUDENT PROFILE CARD -->
                 <div class="grades-dossier-card" id="grades-dossier-card" style="display:none;">
                     <div class="grades-dossier-header" id="grades-dossier-toggle">
@@ -3844,57 +3887,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                                 <span id="grades-dossier-end-year">Випуск: —</span>
                             </div>
                         </div>
-
-                        <div class="grades-dossier-footer">
-                            <button type="button" class="grades-dossier-logout-btn grades-logout-trigger" title="Вийти з кабінету Деканату">
-                                <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                                <span>Вийти з кабінету Деканату</span>
-                            </button>
-                        </div>
                     </div>
                 </div>
-
-                <!-- Instant Search / Filter for Disciplines -->
-                <div class="grades-search-wrap" id="grades-search-wrap">
-                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="search" id="grades-search-input" placeholder="Пошук дисципліни чи викладача..." autocomplete="off" />
-                    <button type="button" id="grades-search-clear" style="display:none;" title="Очистити">✕</button>
-                </div>
-
-                <div class="grades-tools-row">
-                    <button type="button" class="grades-tool-chip" id="btn-grades-legend">
-                        <span>ℹ️ Умовні позначення</span>
-                    </button>
-                    <div class="grades-notif-chip" id="grades-notif-status">
-                        <span>🔔 Сповіщення: <strong>Активні</strong></span>
-                    </div>
-                </div>
-
-                <!-- ABSENCES ANALYTICS & CHART CARD -->
-                <div class="grades-absences-card" id="grades-absences-card" style="display:none;">
-                    <div class="grades-absences-header">
-                        <div class="grades-absences-title-wrap">
-                            <div class="grades-absences-icon">🚫</div>
-                            <div>
-                                <div class="grades-absences-title">Графік пропусків (Н-ок)</div>
-                                <div class="grades-absences-subtitle" id="grades-absences-summary">0 пропусків за семестр</div>
-                            </div>
-                        </div>
-                        <div class="grades-absences-period-tabs">
-                            <button type="button" class="absences-tab-btn active" data-period="month" id="btn-absences-month">По місяцях</button>
-                            <button type="button" class="absences-tab-btn" data-period="week" id="btn-absences-week">По тижнях</button>
-                        </div>
-                    </div>
-                    <div class="grades-absences-chart-wrap" id="grades-absences-chart-wrap">
-                        <canvas id="grades-absences-canvas" height="145"></canvas>
-                    </div>
-                    <div class="grades-absences-empty" id="grades-absences-empty" style="display:none;">
-                        <div class="grades-absences-empty-icon">🎉</div>
-                        <div>Жодного пропуску не зафіксовано! Чудова відвідуваність.</div>
-                    </div>
-                </div>
-
-                <div class="grades-subjects-wrap" id="grades-subjects-list"></div>
 
                 <div class="grades-view-footer">
                     <button type="button" class="grades-footer-logout-btn grades-logout-trigger" id="btn-grades-logout" title="Вийти з кабінету Деканату">
