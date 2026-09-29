@@ -4701,10 +4701,10 @@ const LEGACY_GROUP_NAMES = Object.fromEntries(Object.entries(LEGACY_GROUP_IDS).m
 const toGroupId = (name) => LEGACY_GROUP_IDS[name] || name;
 const toGroupName = (id) => LEGACY_GROUP_NAMES[id] || id;
 
-const ACTIVE_GROUP_NAME = toGroupName(storage.get(APP_ACTIVE_GROUP_KEY, 'ФЕП-13с'));
+const ACTIVE_GROUP_NAME = toGroupName(storage.get(APP_ACTIVE_GROUP_KEY, ''));
 const ACTIVE_GROUP = toGroupId(ACTIVE_GROUP_NAME);
 
-const gKey = (groupId, suffix) => `${groupId}_${suffix}`;
+const gKey = (groupId, suffix) => groupId ? `${groupId}_${suffix}` : suffix;
 const gget = (groupId, suffix, def) => storage.get(gKey(groupId, suffix), def);
 const gset = (groupId, suffix, val) => storage.set(gKey(groupId, suffix), val);
 
@@ -4835,14 +4835,16 @@ const CloudSync = {
         if (!uid || this._isSyncing || !navigator.onLine) return;
         this.updateStatusUi('Збереження...');
         try {
-            const activeGroup = storage.get(APP_ACTIVE_GROUP_KEY, 'ФЕП-13с');
+            const activeGroup = storage.get(APP_ACTIVE_GROUP_KEY, '');
+            if (!activeGroup) { this.updateStatusUi('Готово'); return; }
             const activeGroupId = toGroupId(activeGroup);
             let savedGroups = [];
             try { savedGroups = JSON.parse(storage.get(SAVED_GROUPS_KEY, '[]')); } catch(e) {}
+            if (!Array.isArray(savedGroups)) savedGroups = [];
 
             const groupConfigs = {};
             const customLessons = {};
-            const allGroups = [...new Set([...savedGroups, activeGroup])];
+            const allGroups = [...new Set([...savedGroups, activeGroup])].filter(Boolean);
             for (const g of allGroups) {
                 const gid = toGroupId(g);
                 groupConfigs[gid] = {
@@ -5303,6 +5305,7 @@ function applySchedule(raw) {
 }
 
 async function refreshSchedule(force = false) {
+    if (!state.groupName) return null;
     const cached = readScheduleCache(state.groupName);
     if (cached && cached.data && !gSchedule) {
         applySchedule(cached.data);
@@ -6862,14 +6865,31 @@ function getSavedGroups() {
         const raw = storage.get(SAVED_GROUPS_KEY, '');
         let list = raw ? JSON.parse(raw) : [];
         if (!Array.isArray(list)) list = [];
-        if (state.groupName && !list.includes(state.groupName)) {
+        const hasVisited = storage.get('app_has_visited', '') === '1';
+        if (hasVisited && state && state.groupName && !list.includes(state.groupName)) {
             list.unshift(state.groupName);
         }
         return list.filter(Boolean);
     } catch(e) {
-        return [state.groupName].filter(Boolean);
+        return (state && state.groupName ? [state.groupName] : []).filter(Boolean);
     }
 }
+
+// Clean up phantom 'ФЕП-13с' if user never configured it and active group is different
+try {
+    const rawSaved = storage.get(SAVED_GROUPS_KEY, '');
+    if (rawSaved) {
+        let list = JSON.parse(rawSaved);
+        const active = storage.get(APP_ACTIVE_GROUP_KEY, '');
+        if (Array.isArray(list) && list.includes('ФЕП-13с') && active && active !== 'ФЕП-13с') {
+            const fep13Configured = storage.get('fep13_configured', '') === '1' || storage.get('fep13_saved_group', '') !== '';
+            if (!fep13Configured) {
+                list = list.filter(g => g !== 'ФЕП-13с');
+                storage.set(SAVED_GROUPS_KEY, JSON.stringify(list));
+            }
+        }
+    }
+} catch(e) {}
 
 function saveSavedGroups(groups) {
     try {
@@ -7646,7 +7666,7 @@ function initWelcomeModal() {
     }
 
     function finishSetup(engValue) {
-        addSavedGroup(chosenGroup);
+        saveSavedGroups([chosenGroup]);
         const gid = toGroupId(chosenGroup);
         storage.set(APP_ACTIVE_GROUP_KEY, chosenGroup);
         storage.set(gid + '_saved_group', chosenSub);

@@ -12,7 +12,7 @@
       ╚═════════╝               
 */
 
-const CACHE_NAME = 'fep-schedule-v9-absences';
+const CACHE_NAME = 'fep-schedule-v10-groupfix';
 const OFFLINE_PAGE = './index.html';
 
 const PRECACHE_URLS = [
