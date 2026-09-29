@@ -12,7 +12,7 @@
       ╚═════════╝               
 */
 
-const CACHE_NAME = 'fep-schedule-v12-absences-fixed';
+const CACHE_NAME = 'fep-schedule-v13-card-sub-stacked';
 const OFFLINE_PAGE = './index.html';
 
 const PRECACHE_URLS = [
