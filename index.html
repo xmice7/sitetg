@@ -60,6 +60,50 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="./script.js"></script>
+    <script>
+        // Global safe helper & offline stubs
+        window.firebaseReady = false;
+        window.waitForFirebase = function(timeoutMs = 1500) {
+            return new Promise((resolve) => {
+                if (window.firebaseReady) return resolve(true);
+                let timer;
+                const onReady = () => {
+                    clearTimeout(timer);
+                    window.removeEventListener('firebase-ready', onReady);
+                    resolve(true);
+                };
+                timer = setTimeout(() => {
+                    window.removeEventListener('firebase-ready', onReady);
+                    resolve(false);
+                }, timeoutMs);
+                window.addEventListener('firebase-ready', onReady, { once: true });
+            });
+        };
+        // Safe stubs to prevent unhandled exceptions if offline or Firebase fails
+        window.fbGetAnnouncement = async () => null;
+        window.fbGetAdmin = async (gid='fep13') => {
+            try { return JSON.parse(localStorage.getItem(gid + '_admin_cache') || '{}'); } catch(e) { return {}; }
+        };
+        window.fbSetAdmin = async () => false;
+        window.fbIncrementView = async () => {};
+        window.fbGetStats = async () => ({ total: 0, todayCount: 0, history: {} });
+        window.fbResetStats = async () => false;
+        window.fbSetAnnouncement = async () => false;
+        window.fbDeleteAnnHistoryItem = async () => false;
+        window.fbGetLessonAnnouncements = async (gid='fep13') => {
+            try { return { items: JSON.parse(localStorage.getItem(gid + '_lesson_anns') || '[]') }; } catch(e) { return { items: [] }; }
+        };
+        window.fbSetLessonAnnouncements = async () => false;
+        window.fbGetScheduleMods = async (gid='fep13') => {
+            try { return { mods: JSON.parse(localStorage.getItem(gid + '_sched_mods') || '[]') }; } catch(e) { return { mods: [] }; }
+        };
+        window.fbSetScheduleMods = async () => false;
+        window.fbGetUsers = async () => [];
+        window.fbUpdateUserLastSeen = async () => {};
+        window.fbUnlinkUser = async () => false;
+        window.fbGetDekanatState = async () => null;
+        window.fbSaveDekanatState = async () => false;
+    </script>
     <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -438,10 +482,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         }
         .days-nav::-webkit-scrollbar { display: none; }
         .day-btn {
-            background: rgba(255,255,255,0.08);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            border: 1px solid rgba(255,255,255,0.14);
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border);
             color: var(--text-muted);
             padding: 9px 18px;
             border-radius: 9999px;
@@ -451,25 +493,26 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             white-space: nowrap;
             flex-shrink: 0;
             transition: transform 0.2s var(--spring-bounce), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+            box-shadow: var(--shadow);
             user-select: none;
             -webkit-user-select: none;
         }
         [data-theme="light"] .day-btn {
-            background: rgba(255,255,255,0.78);
+            background: #ffffff;
             border-color: rgba(0,0,0,0.1);
             color: #475569;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
-        .day-btn:active { transform: scale(0.93); }
-        .day-btn:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.25); color: var(--text-main); }
-        [data-theme="light"] .day-btn:hover { background: rgba(255,255,255,0.96); border-color: rgba(0,0,0,0.18); color: #0f172a; }
+        .day-btn:active { transform: scale(0.94); }
+        @media (hover: hover) and (pointer: fine) {
+            .day-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.22); color: var(--text-main); }
+            [data-theme="light"] .day-btn:hover { background: #f8fafc; border-color: rgba(0,0,0,0.18); color: #0f172a; }
+        }
         .day-btn.active {
             background: var(--day-btn-active-bg, var(--primary));
             border-color: var(--day-btn-active-border, var(--primary));
             color: #fff;
             box-shadow: var(--day-btn-active-shadow, 0 4px 18px rgba(59,130,246,0.45));
-            backdrop-filter: none;
             transform: scale(1.02);
         }
         .day-btn.active:active { transform: scale(0.96); }
@@ -546,14 +589,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .day-header .day-title { font-size: var(--fs-day-title); font-weight: 700; color: var(--text-main); }
         .day-header .week-badge, .week-badge { font-size: 11.5px; font-weight: 700; color: var(--text-muted); background: rgba(148, 163, 184, 0.12); border: 1px solid var(--border); padding: 3px 10px; border-radius: 9999px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; letter-spacing: 0.2px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
         [data-theme="light"] .day-header .week-badge, [data-theme="light"] .week-badge { background: rgba(0, 0, 0, 0.05); border-color: rgba(0, 0, 0, 0.1); color: #64748b; }
-        .lesson-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 0; transition: transform 0.25s var(--spring-easing), box-shadow 0.25s var(--spring-easing), border-color 0.2s ease; box-shadow: var(--shadow); position: relative; overflow: hidden; animation: cardSlideIn 0.35s var(--spring-easing) both; contain: layout paint; transform: translate3d(0, 0, 0); will-change: transform; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        .lesson-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 0; transition: transform 0.25s var(--spring-easing), box-shadow 0.25s var(--spring-easing), border-color 0.2s ease; box-shadow: var(--shadow); position: relative; overflow: hidden; animation: cardSlideIn 0.35s var(--spring-easing) both; contain: layout paint; content-visibility: auto; contain-intrinsic-size: 0 110px; transform: translate3d(0, 0, 0); backface-visibility: hidden; -webkit-backface-visibility: hidden; }
         .lesson-card:active { transform: scale(0.985) translate3d(0, 0, 0); }
         .lesson-card-inner { display: flex; gap: 16px; width: 100%; }
         .schedule-list .lesson-card:nth-child(1){animation-delay:0.03s} .schedule-list .lesson-card:nth-child(2){animation-delay:0.07s} .schedule-list .lesson-card:nth-child(3){animation-delay:0.11s} .schedule-list .lesson-card:nth-child(4){animation-delay:0.15s} .schedule-list .lesson-card:nth-child(5){animation-delay:0.19s} .schedule-list .lesson-card:nth-child(6){animation-delay:0.23s}
         @keyframes cardSlideIn { from{opacity:0;transform:translate3d(0, 12px, 0) scale(0.985)} to{opacity:1;transform:translate3d(0, 0, 0) scale(1)} }
         .lesson-card::before { content:''; position:absolute; top:0; left:-100%; width:60%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.05),transparent); transform:skewX(-15deg); transition:left 0.5s ease; pointer-events:none; }
-        .lesson-card:hover::before { left: 160%; }
-        .lesson-card:hover { transform: translate3d(0, -2px, 0); box-shadow: var(--shadow-hover); }
+        @media (hover: hover) and (pointer: fine) {
+            .lesson-card:hover::before { left: 160%; }
+            .lesson-card:hover { transform: translate3d(0, -2px, 0); box-shadow: var(--shadow-hover); }
+        }
         .lesson-card.current-lesson { border-color: var(--accent-green); border-width: 2px; box-shadow: 0 10px 28px -4px rgba(16,185,129,0.22), 0 0 1px 1px var(--accent-green) inset; animation: cardSlideIn 0.35s var(--spring-easing) both, auraPulse 4s ease-in-out infinite alternate; }
         @keyframes auraPulse { 0% { box-shadow: 0 6px 20px -4px rgba(16,185,129,0.2), 0 0 1px 1px var(--accent-green) inset; } 100% { box-shadow: 0 14px 32px -2px rgba(16,185,129,0.32), 0 0 2px 1px var(--accent-green) inset; } }
         .skeleton-wrap { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
@@ -725,16 +770,29 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         #pwa-android-install-btn.visible { display:flex; }
 
         
-        .offline-banner { position:fixed; top:0; left:50%; transform:translateX(-50%) translateY(-100%); width:100%; max-width:600px; background:linear-gradient(135deg,#1e293b,#0f172a); border-bottom:2px solid #f59e0b; padding:12px 20px; display:flex; align-items:center; gap:12px; z-index:500; transition:transform 0.4s cubic-bezier(0.175,0.885,0.32,1.275); box-shadow:0 8px 24px rgba(0,0,0,0.4); will-change:transform; }
+        /* Modern, Safe-Area aware Offline UI */
+        .offline-banner { position:fixed; top:0; left:50%; transform:translateX(-50%) translateY(-110%); width:100%; max-width:600px; background:linear-gradient(135deg,rgba(15,23,42,0.97),rgba(30,41,59,0.97)); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-bottom:2px solid #f59e0b; padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px 16px; display:flex; align-items:center; gap:12px; z-index:9999; transition:transform 0.35s cubic-bezier(0.16,1,0.3,1); box-shadow:0 12px 32px rgba(0,0,0,0.45); box-sizing:border-box; }
         .offline-banner.show { transform:translateX(-50%) translateY(0); }
-        .offline-banner-icon { font-size:20px; flex-shrink:0; }
-        .offline-banner-text { flex:1; }
-        .offline-banner-text strong { display:block; font-size:14px; font-weight:700; color:#f8fafc; }
-        .offline-banner-text span { font-size:12px; color:#94a3b8; }
-        .offline-banner-close { background:none; border:none; color:#94a3b8; font-size:18px; cursor:pointer; padding:4px; line-height:1; flex-shrink:0; }
+        .offline-banner-icon { width:36px; height:36px; border-radius:10px; background:rgba(245,158,11,0.15); color:#f59e0b; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; border:1px solid rgba(245,158,11,0.3); }
+        .offline-banner-text { flex:1; min-width:0; }
+        .offline-banner-text strong { display:block; font-size:13.5px; font-weight:700; color:#f8fafc; line-height:1.25; }
+        .offline-banner-text span { display:block; font-size:11.5px; color:#94a3b8; margin-top:2px; line-height:1.3; }
+        .offline-banner-retry { background:#f59e0b; color:#0f172a; border:none; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; flex-shrink:0; font-family:inherit; transition:transform 0.15s, opacity 0.15s; }
+        .offline-banner-retry:active { transform:scale(0.94); opacity:0.85; }
+        .offline-banner-close { background:none; border:none; color:#94a3b8; font-size:18px; cursor:pointer; padding:6px; line-height:1; flex-shrink:0; border-radius:6px; }
         .offline-banner-close:hover { color:#f8fafc; }
-        .online-toast { position:fixed; top:20px; left:50%; transform:translateX(-50%) scale(0.9); background:#10b981; color:#fff; padding:10px 20px; border-radius:40px; font-size:14px; font-weight:700; z-index:501; opacity:0; pointer-events:none; transition:opacity 0.3s ease, transform 0.3s ease; display:flex; align-items:center; gap:8px; box-shadow:0 4px 20px rgba(16,185,129,0.4); white-space:nowrap; will-change:transform,opacity; }
-        .online-toast.show { opacity:1; transform:translateX(-50%) scale(1); }
+        
+        .header-offline-pill { display:none; align-items:center; gap:6px; padding:4px 10px; border-radius:9999px; background:rgba(245,158,11,0.14); border:1px solid rgba(245,158,11,0.32); color:#f59e0b; font-size:11px; font-weight:700; cursor:pointer; user-select:none; -webkit-user-select:none; animation:fadeIn 0.25s ease; }
+        .header-offline-pill:active { transform:scale(0.95); }
+        .header-offline-dot { width:6px; height:6px; border-radius:50%; background:#f59e0b; box-shadow:0 0 6px rgba(245,158,11,0.8); animation:pulse 2s infinite; }
+
+        .offline-schedule-bar { background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); border-radius:14px; padding:9px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; color:#f59e0b; font-weight:600; animation:fadeIn 0.25s ease; }
+        .offline-schedule-bar span { display:flex; align-items:center; gap:6px; }
+        .offline-schedule-bar button { background:rgba(245,158,11,0.18); color:inherit; border:1px solid rgba(245,158,11,0.3); padding:4px 10px; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:inherit; }
+        .offline-schedule-bar button:active { transform:scale(0.95); }
+
+        .online-toast { position:fixed; top:calc(16px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%) translateY(-20px) scale(0.92); background:#10b981; color:#fff; padding:10px 18px; border-radius:40px; font-size:13px; font-weight:700; z-index:10000; opacity:0; pointer-events:none; transition:opacity 0.3s cubic-bezier(0.16,1,0.3,1), transform 0.3s cubic-bezier(0.16,1,0.3,1); display:flex; align-items:center; gap:8px; box-shadow:0 8px 24px rgba(16,185,129,0.35); white-space:nowrap; will-change:transform,opacity; }
+        .online-toast.show { opacity:1; transform:translateX(-50%) translateY(0) scale(1); }
         @media (max-width:380px) { .useful-grid { grid-template-columns:1fr; } }
         .useful-card { background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:20px; display:flex; flex-direction:column; gap:14px; text-decoration:none; transition:border-color 0.2s, transform 0.2s, box-shadow 0.2s; box-shadow:var(--shadow); cursor:pointer; text-align:left; }
         .useful-card:hover { border-color:var(--primary); transform:translateY(-3px); box-shadow:var(--shadow-hover); }
@@ -2356,8 +2414,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
         .grades-stats-row {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 8px;
+        }
+        @media (max-width: 440px) {
+            .grades-stats-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
         .grades-stat-box {
             background: var(--bg-body);
@@ -2373,6 +2436,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             font-weight: 800;
             color: var(--text-main);
             letter-spacing: -0.6px;
+        }
+        .grades-stat-val.has-absences {
+            color: #ef4444;
         }
         .grades-stat-label {
             display: block;
@@ -2677,6 +2743,135 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             color: #10b981;
         }
 
+        /* Apple Absence Analytics Card & Chart */
+        .grades-absences-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            margin-bottom: 14px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+        .grades-absences-header {
+            padding: 13px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.02);
+            flex-wrap: wrap;
+        }
+        .grades-absences-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+        }
+        .grades-absences-icon {
+            font-size: 17px;
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .grades-absences-title {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.2px;
+            line-height: 1.25;
+        }
+        .grades-absences-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-top: 2px;
+        }
+        .grades-absences-period-tabs {
+            display: inline-flex;
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 3px;
+            gap: 3px;
+            flex-shrink: 0;
+        }
+        .absences-tab-btn {
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .absences-tab-btn.active {
+            background: var(--bg-card);
+            color: var(--text-main);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+            font-weight: 700;
+        }
+        .grades-absences-chart-wrap {
+            padding: 14px 16px 16px;
+            position: relative;
+            height: 175px;
+            box-sizing: border-box;
+        }
+        .grades-absences-empty {
+            text-align: center;
+            padding: 22px 16px;
+            color: var(--text-muted);
+            font-size: 12.5px;
+            font-weight: 600;
+        }
+        .grades-absences-empty-icon {
+            font-size: 26px;
+            margin-bottom: 6px;
+        }
+        .subject-absence-badge {
+            padding: 4px 8px;
+            border-radius: 10px;
+            font-size: 11.5px;
+            font-weight: 800;
+            letter-spacing: -0.2px;
+            background: rgba(239, 68, 68, 0.14);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .grade-event-row.absence-event {
+            background: rgba(239, 68, 68, 0.05);
+            border-color: rgba(239, 68, 68, 0.25);
+        }
+        .grade-val-absence {
+            color: #ef4444 !important;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .cat-chip-absence {
+            background: rgba(239, 68, 68, 0.15) !important;
+            color: #ef4444 !important;
+            border: 1px solid rgba(239, 68, 68, 0.3) !important;
+        }
+
         /* Subject Cards */
         .grades-subjects-wrap {
             display: flex;
@@ -2873,6 +3068,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                         <h1 id="app-title">Розклад</h1>
                     </div>
                     <div class="header-actions-wrap">
+                        <div id="header-offline-pill" class="header-offline-pill" style="display:none;" title="Офлайн режим (дані з кешу)">
+                            <span class="header-offline-dot"></span>Офлайн
+                        </div>
                         <button type="button" id="header-group-chip" class="header-group-chip" title="Швидка зміна групи" aria-label="Швидка зміна групи">
                             <span>🎓</span>
                             <span id="header-group-name">Група</span>
@@ -3569,6 +3767,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                             <span class="grades-stat-label">Предметів</span>
                         </div>
                         <div class="grades-stat-box">
+                            <span class="grades-stat-val" id="grades-stat-absences">0</span>
+                            <span class="grades-stat-label">Пропусків (Н)</span>
+                        </div>
+                        <div class="grades-stat-box">
                             <span class="grades-stat-val stat-text-val" id="grades-stat-sync">Щойно</span>
                             <span class="grades-stat-label">Оновлено</span>
                         </div>
@@ -3665,6 +3867,30 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                     </button>
                     <div class="grades-notif-chip" id="grades-notif-status">
                         <span>🔔 Сповіщення: <strong>Активні</strong></span>
+                    </div>
+                </div>
+
+                <!-- ABSENCES ANALYTICS & CHART CARD -->
+                <div class="grades-absences-card" id="grades-absences-card" style="display:none;">
+                    <div class="grades-absences-header">
+                        <div class="grades-absences-title-wrap">
+                            <div class="grades-absences-icon">🚫</div>
+                            <div>
+                                <div class="grades-absences-title">Графік пропусків (Н-ок)</div>
+                                <div class="grades-absences-subtitle" id="grades-absences-summary">0 пропусків за семестр</div>
+                            </div>
+                        </div>
+                        <div class="grades-absences-period-tabs">
+                            <button type="button" class="absences-tab-btn active" data-period="month" id="btn-absences-month">По місяцях</button>
+                            <button type="button" class="absences-tab-btn" data-period="week" id="btn-absences-week">По тижнях</button>
+                        </div>
+                    </div>
+                    <div class="grades-absences-chart-wrap" id="grades-absences-chart-wrap">
+                        <canvas id="grades-absences-canvas" height="145"></canvas>
+                    </div>
+                    <div class="grades-absences-empty" id="grades-absences-empty" style="display:none;">
+                        <div class="grades-absences-empty-icon">🎉</div>
+                        <div>Жодного пропуску не зафіксовано! Чудова відвідуваність.</div>
                     </div>
                 </div>
 
@@ -4516,11 +4742,13 @@ const CloudSync = {
 
     async pull() {
         const uid = this._getUid();
-        if (!uid || this._isSyncing) return;
+        if (!uid || this._isSyncing || !navigator.onLine) return;
         this._isSyncing = true;
         this.updateStatusUi('Завантаження...');
         try {
-            const res = await fetch(`${this._workerUrl()}/user-sync?uid=${encodeURIComponent(uid)}`);
+            const res = await fetch(`${this._workerUrl()}/user-sync?uid=${encodeURIComponent(uid)}`, {
+                signal: AbortSignal.timeout(3500)
+            });
             if (!res.ok) { this.updateStatusUi('Готово'); return; }
             const json = await res.json();
             if (!json.ok || !json.data) { this.updateStatusUi('Готово'); return; }
@@ -4604,7 +4832,7 @@ const CloudSync = {
     },
 
     async _doPush(uid) {
-        if (!uid || this._isSyncing) return;
+        if (!uid || this._isSyncing || !navigator.onLine) return;
         this.updateStatusUi('Збереження...');
         try {
             const activeGroup = storage.get(APP_ACTIVE_GROUP_KEY, 'ФЕП-13с');
@@ -4643,7 +4871,8 @@ const CloudSync = {
             const res = await fetch(`${this._workerUrl()}/user-sync`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uid, data: payload })
+                body: JSON.stringify({ uid, data: payload }),
+                signal: AbortSignal.timeout(3500)
             });
 
             if (res.ok) {
@@ -4760,8 +4989,7 @@ function initAnnouncement() {
         const cachedImage = gget(state.scheduleGroup,'ann_cache_image','');
         showText(cachedTopic, cachedText, cachedTs, cachedImage);
         
-        const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
-        await waitForFirebase();
+        if (window.waitForFirebase) await window.waitForFirebase(1200);
         const data = await window.fbGetAnnouncement(state.scheduleGroup);
         if (data) {
             showText(data.topic, data.text, data.updatedAt, data.imageUrl);
@@ -4797,8 +5025,7 @@ function initAnnouncement() {
         historyModal.classList.add('active');
         historyList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Завантаження історії...</div>';
         
-        const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
-        await waitForFirebase();
+        if (window.waitForFirebase) await window.waitForFirebase(1200);
         
         const data = await window.fbGetAnnouncement(state.scheduleGroup);
         if(data && data.history && data.history.length > 0) {
@@ -5006,26 +5233,59 @@ function updateFallbackBanner(isFallback, cachedAt) {
     }
 }
 
+window.getScheduleCacheInfo = function() {
+    return readScheduleCache(state.groupName);
+};
+
 async function fetchGroupSchedule(groupName, force = false) {
     const cached = readScheduleCache(groupName);
-    if (cached && !force && Date.now() - cached.ts < SCHEDULE_CACHE_TTL) {
+    const isOnline = navigator.onLine;
+
+    // 1. If definitely offline, immediately return cached data
+    if (!isOnline) {
+        if (cached && cached.data) {
+            if (window.setOfflineUI) window.setOfflineUI(true, cached.ts);
+            updateFallbackBanner(false);
+            return cached.data;
+        }
+    }
+
+    // 2. If fresh cache is available and refresh not forced, return it
+    if (cached && !force && Date.now() - cached.ts < SCHEDULE_CACHE_TTL && isOnline) {
+        if (window.setOfflineUI) window.setOfflineUI(false);
         updateFallbackBanner(!!cached.data?._isStaleFallback, cached.data?._cachedAt || cached.ts);
         return cached.data;
     }
-    const fresh = await window.getSchedule(groupName);
-    if (fresh && Array.isArray(fresh.days)) {
-        if (fresh.days.length > 0) {
-            writeScheduleCache(groupName, fresh);
-        }
+
+    // 3. Try network fetch with safety catch
+    let fresh = null;
+    try {
+        fresh = await window.getSchedule(groupName);
+    } catch (e) {
+        console.warn('[Schedule] Network fetch error:', e.message);
+    }
+
+    if (fresh && Array.isArray(fresh.days) && fresh.days.length > 0) {
+        writeScheduleCache(groupName, fresh);
+        if (window.setOfflineUI) window.setOfflineUI(false);
         updateFallbackBanner(!!fresh._isStaleFallback, fresh._cachedAt);
         return fresh;
     }
-    if (cached) {
-        updateFallbackBanner(true, cached.ts);
+
+    // 4. Network failed or offline: fall back to cached data (even if older than TTL)
+    if (cached && cached.data) {
+        if (window.setOfflineUI) window.setOfflineUI(true, cached.ts);
+        if (fresh && fresh._isStaleFallback) {
+            updateFallbackBanner(true, fresh._cachedAt || cached.ts);
+        } else {
+            updateFallbackBanner(false);
+        }
         return cached.data;
     }
+
+    if (window.setOfflineUI) window.setOfflineUI(true);
     updateFallbackBanner(false);
-    const errDetails = window.getSchedule?.lastError || 'Не вдалося завантажити розклад';
+    const errDetails = window.getSchedule?.lastError || 'Не вдалося завантажити розклад. Перевірте підключення до інтернету.';
     throw new Error(errDetails);
 }
 
@@ -5044,11 +5304,17 @@ function applySchedule(raw) {
 
 async function refreshSchedule(force = false) {
     const cached = readScheduleCache(state.groupName);
-    if (cached && !gSchedule) { applySchedule(cached.data); render(); }
-    if (cached && !force && Date.now() - cached.ts < SCHEDULE_CACHE_TTL) return gSchedule;
+    if (cached && cached.data && !gSchedule) {
+        applySchedule(cached.data);
+        render();
+    }
+    if (cached && !force && Date.now() - cached.ts < SCHEDULE_CACHE_TTL && navigator.onLine) {
+        return gSchedule;
+    }
     if (!gSchedule) render(); 
     try {
-        applySchedule(await fetchGroupSchedule(state.groupName, true));
+        const freshData = await fetchGroupSchedule(state.groupName, force);
+        applySchedule(freshData);
     } catch (e) {
         if (!gSchedule) gScheduleError = e.message || 'Не вдалося завантажити розклад';
     }
@@ -5884,9 +6150,29 @@ function render() {
     else if(state.tab==='this_week'){html=renderWeek(getLocalMonday(nowKyiv));}
     else if(state.tab==='next_week'){const nm=getLocalMonday(nowKyiv);nm.setDate(nm.getDate()+7);html=renderWeek(nm);}
     
+    const isOff = (!navigator.onLine) || (document.getElementById('offline-banner') && document.getElementById('offline-banner').classList.contains('show'));
+    let offlineNotice = '';
+    if (isOff) {
+        const cachedInfo = window.getScheduleCacheInfo ? window.getScheduleCacheInfo() : null;
+        let savedLabel = '';
+        if (cachedInfo && cachedInfo.ts) {
+            try {
+                const cd = new Date(cachedInfo.ts);
+                const isToday = cd.toDateString() === (new Date()).toDateString();
+                const timeStr = cd.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+                savedLabel = isToday ? `сьогодні о ${timeStr}` : `${cd.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })} о ${timeStr}`;
+            } catch(e) {}
+        }
+        offlineNotice = `
+            <div class="offline-schedule-bar">
+                <span>📶 Офлайн режим: розклад з пам'яті ${savedLabel ? '(' + savedLabel + ')' : ''}</span>
+                <button type="button" onclick="refreshSchedule(true)">Оновити</button>
+            </div>`;
+    }
+
     const emptyMsg = (gSchedule.raw && gSchedule.raw.error) ? gSchedule.raw.error : `Деканат ще не опублікував розклад для групи ${state.groupName} на цей період`;
     const notice = gSchedule.totalLessons===0 ? `<div class="empty-state" style="margin-bottom:12px"><span>📭</span><p>${emptyMsg}</p></div>` : '';
-    els.scheduleContainer.innerHTML=notice+html;
+    els.scheduleContainer.innerHTML=offlineNotice+notice+html;
     updateLiveTimers();
     renderDeadlines();
 }
@@ -5971,19 +6257,8 @@ function applyPinnedMsg(text) {
     else{el.classList.remove('active');}
 }
 
-const waitForFirebase = (timeoutMs = 6000) => new Promise(resolve => {
-    if (window.firebaseReady) return resolve(true);
-    let timer;
-    const handler = () => { clearTimeout(timer); resolve(true); };
-    timer = setTimeout(() => {
-        window.removeEventListener('firebase-ready', handler);
-        resolve(false);
-    }, timeoutMs);
-    window.addEventListener('firebase-ready', handler, { once: true });
-});
-
 async function saveAdminField(updates) {
-    await waitForFirebase();
+    if (window.waitForFirebase) await window.waitForFirebase(1200);
     try {
         const current = (typeof window.fbGetAdmin === 'function')
             ? await window.fbGetAdmin(state.scheduleGroup)
@@ -6004,26 +6279,42 @@ async function saveAdminField(updates) {
 window.saveAdminField = saveAdminField;
 
 window.loadAdminData = async function loadAdminData() {
-    await waitForFirebase();
+    if (window.waitForFirebase) await window.waitForFirebase(1200);
     const countedKey = `${state.scheduleGroup}_counted`;
-    if(!sessionStorage.getItem(countedKey)){sessionStorage.setItem(countedKey,'1');window.fbIncrementView(state.scheduleGroup);}
-    const data=await window.fbGetAdmin(state.scheduleGroup);
-    if(!data) return;
-    applyWarningBanner(data.warningTitle,data.warningText);
-    applyQuickLink(data.quicklinkName,data.quicklinkUrl);
-    applyHolidayTheme(data.holidayMode);
-    applyPinnedMsg(data.pinnedText);
-    gAdminCustomLessons = data.customLessons || [];
-    gset(state.scheduleGroup,'admin_cache',JSON.stringify(data));
+    if(!sessionStorage.getItem(countedKey)){
+        sessionStorage.setItem(countedKey,'1');
+        if (typeof window.fbIncrementView === 'function') window.fbIncrementView(state.scheduleGroup);
+    }
+    const data = (typeof window.fbGetAdmin === 'function') ? await window.fbGetAdmin(state.scheduleGroup) : null;
+    if(data) {
+        applyWarningBanner(data.warningTitle,data.warningText);
+        applyQuickLink(data.quicklinkName,data.quicklinkUrl);
+        applyHolidayTheme(data.holidayMode);
+        applyPinnedMsg(data.pinnedText);
+        gAdminCustomLessons = data.customLessons || [];
+        gset(state.scheduleGroup,'admin_cache',JSON.stringify(data));
+        gDeadlines = data.deadlines || [];
+    }
 
-    const [modsData, lannData] = await Promise.all([window.fbGetScheduleMods(state.scheduleGroup), window.fbGetLessonAnnouncements(state.scheduleGroup)]);
-    gScheduleMods = (modsData.mods || []).filter(m => m.date >= new Date().toISOString().slice(0,10));
-    gLessonAnns = lannData.items || [];
-    gDeadlines = data.deadlines || [];
+    try {
+        const [modsData, lannData] = await Promise.all([
+            (typeof window.fbGetScheduleMods === 'function' ? window.fbGetScheduleMods(state.scheduleGroup) : Promise.resolve({mods:[]})),
+            (typeof window.fbGetLessonAnnouncements === 'function' ? window.fbGetLessonAnnouncements(state.scheduleGroup) : Promise.resolve({items:[]}))
+        ]);
+        if (modsData && modsData.mods) {
+            gScheduleMods = (modsData.mods || []).filter(m => m.date >= new Date().toISOString().slice(0,10));
+            try { localStorage.setItem(`${state.scheduleGroup}_sched_mods`, JSON.stringify(modsData.mods)); } catch(e) {}
+        }
+        if (lannData && lannData.items) {
+            gLessonAnns = lannData.items || [];
+            try { localStorage.setItem(`${state.scheduleGroup}_lesson_anns`, JSON.stringify(lannData.items)); } catch(e) {}
+        }
+    } catch(e) {}
+
     renderAdminCustomLessons();
     render();
     renderDeadlines();
-}
+};
 
 try {
     const cached=JSON.parse(gget(state.scheduleGroup,'admin_cache','{}') || '{}');
@@ -6032,6 +6323,16 @@ try {
     if(cached.holidayMode) applyHolidayTheme(cached.holidayMode);
     if(cached.pinnedText) applyPinnedMsg(cached.pinnedText);
     if(cached.customLessons) gAdminCustomLessons = cached.customLessons;
+    if(cached.deadlines) gDeadlines = cached.deadlines;
+
+    const cachedMods = JSON.parse(localStorage.getItem(`${state.scheduleGroup}_sched_mods`) || '[]');
+    if (Array.isArray(cachedMods) && cachedMods.length > 0) {
+        gScheduleMods = cachedMods.filter(m => m.date >= new Date().toISOString().slice(0,10));
+    }
+    const cachedAnns = JSON.parse(localStorage.getItem(`${state.scheduleGroup}_lesson_anns`) || '[]');
+    if (Array.isArray(cachedAnns) && cachedAnns.length > 0) {
+        gLessonAnns = cachedAnns;
+    }
 } catch(e) {}
 
 let statsChartInstance = null;
@@ -6148,13 +6449,12 @@ function initAdminPanel() {
         renderAdminAnnHistory();
         
         (async () => {
-            const waitFB = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
-            await waitFB();
+            if (window.waitForFirebase) await window.waitForFirebase(1200);
             try {
                 const [freshAdmin, modsData, lannData] = await Promise.all([
-                    window.fbGetAdmin(state.scheduleGroup),
-                    window.fbGetScheduleMods(state.scheduleGroup),
-                    window.fbGetLessonAnnouncements(state.scheduleGroup)
+                    (typeof window.fbGetAdmin === 'function' ? window.fbGetAdmin(state.scheduleGroup) : Promise.resolve(null)),
+                    (typeof window.fbGetScheduleMods === 'function' ? window.fbGetScheduleMods(state.scheduleGroup) : Promise.resolve({mods:[]})),
+                    (typeof window.fbGetLessonAnnouncements === 'function' ? window.fbGetLessonAnnouncements(state.scheduleGroup) : Promise.resolve({items:[]}))
                 ]);
                 if (freshAdmin) {
                     document.getElementById('warning-title-input').value = freshAdmin.warningTitle||'';
@@ -6184,8 +6484,7 @@ function initAdminPanel() {
         
         list.innerHTML = '<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:10px;">Завантаження...</div>';
         
-        const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
-        await waitForFirebase();
+        if (window.waitForFirebase) await window.waitForFirebase(1200);
         
         const data = await window.fbGetAnnouncement(state.scheduleGroup);
         if (!data || !data.history || data.history.length === 0) {
@@ -6421,9 +6720,8 @@ function initAdminPanel() {
             newMod.newRoom=document.getElementById('mod-new-room').value.trim();
             newMod.note=document.getElementById('mod-note').value.trim();
         }
-        const waitForFirebase=()=>new Promise(r=>{if(window.firebaseReady)r();else window.addEventListener('firebase-ready',r,{once:true});});
-        await waitForFirebase();
-        const current=await window.fbGetScheduleMods(state.scheduleGroup);
+        if (window.waitForFirebase) await window.waitForFirebase(1500);
+        const current = (typeof window.fbGetScheduleMods === 'function') ? await window.fbGetScheduleMods(state.scheduleGroup) : { mods: [] };
         const mods=[...(current.mods||[]),newMod];
         const ok=await window.fbSetScheduleMods(state.scheduleGroup, {mods});
         btn.disabled=false;
@@ -6440,9 +6738,8 @@ function initAdminPanel() {
     });
 
     async function deleteMod(id) {
-        const waitForFirebase=()=>new Promise(r=>{if(window.firebaseReady)r();else window.addEventListener('firebase-ready',r,{once:true});});
-        await waitForFirebase();
-        const current=await window.fbGetScheduleMods(state.scheduleGroup);
+        if (window.waitForFirebase) await window.waitForFirebase(1500);
+        const current = (typeof window.fbGetScheduleMods === 'function') ? await window.fbGetScheduleMods(state.scheduleGroup) : { mods: [] };
         const mods=(current.mods||[]).filter(m=>m.id!==id);
         const ok=await window.fbSetScheduleMods(state.scheduleGroup, {mods});
         if(ok){gScheduleMods=mods.filter(m=>m.date>=new Date().toISOString().slice(0,10));renderModList();render();}
@@ -6467,9 +6764,8 @@ function initAdminPanel() {
         const btn=document.getElementById('lann-add-btn');
         btn.textContent='…';btn.disabled=true;
         const newAnn={id:Date.now().toString(),subject,text};
-        const waitForFirebase=()=>new Promise(r=>{if(window.firebaseReady)r();else window.addEventListener('firebase-ready',r,{once:true});});
-        await waitForFirebase();
-        const current=await window.fbGetLessonAnnouncements(state.scheduleGroup);
+        if (window.waitForFirebase) await window.waitForFirebase(1500);
+        const current = (typeof window.fbGetLessonAnnouncements === 'function') ? await window.fbGetLessonAnnouncements(state.scheduleGroup) : { items: [] };
         const items=[...(current.items||[]),newAnn];
         const ok=await window.fbSetLessonAnnouncements(state.scheduleGroup, {items});
         btn.disabled=false;
@@ -6482,9 +6778,8 @@ function initAdminPanel() {
     });
 
     async function deleteLann(id) {
-        const waitForFirebase=()=>new Promise(r=>{if(window.firebaseReady)r();else window.addEventListener('firebase-ready',r,{once:true});});
-        await waitForFirebase();
-        const current=await window.fbGetLessonAnnouncements(state.scheduleGroup);
+        if (window.waitForFirebase) await window.waitForFirebase(1500);
+        const current = (typeof window.fbGetLessonAnnouncements === 'function') ? await window.fbGetLessonAnnouncements(state.scheduleGroup) : { items: [] };
         const items=(current.items||[]).filter(a=>a.id!==id);
         const ok=await window.fbSetLessonAnnouncements(state.scheduleGroup, {items});
         if(ok){gLessonAnns=items;renderLannList();render();}
@@ -7445,10 +7740,28 @@ function renderSubjectCard(s, idx = 0) {
     const progressColor = total >= 90 ? 'linear-gradient(90deg, #10b981, #059669)' : total >= 71 ? 'linear-gradient(90deg, #3b82f6, #2563eb)' : total >= 51 ? 'linear-gradient(90deg, #f59e0b, #d97706)' : 'linear-gradient(90deg, #ef4444, #dc2626)';
     const progressWidth = Math.min(Math.max(total, 0), 100);
 
+    const absencesCount = s.absencesCount ?? (s.grades || []).filter(g => g.isAbsence || g.value === 'Н' || g.value === 'н' || String(g.value).toUpperCase() === 'Н').length;
+    const absenceBadgeHtml = absencesCount > 0 ? `<span class="subject-absence-badge" title="${absencesCount} ${pluralizeAbsences(absencesCount)} (Н)">🚫 ${absencesCount} Н</span>` : '';
+
     const gradesHtml = (s.grades && s.grades.length > 0)
         ? s.grades.map(g => {
+            const isAbs = !!(g.isAbsence || g.value === 'Н' || g.value === 'н' || String(g.value).toUpperCase() === 'Н');
             const cat = DEKANAT_CATEGORIES_MAP[g.category] || { label: g.category, color: '#64748b', bg: 'rgba(100,116,139,0.15)', icon: '📌' };
             const noteText = g.note && g.note !== g.categoryLabel ? `<span class="grade-event-note" title="${escapeHtml(g.note)}">(${escapeHtml(g.note)})</span>` : '';
+
+            if (isAbs) {
+                return `
+                    <div class="grade-event-row absence-event">
+                        <div class="grade-event-left">
+                            <span class="grade-cat-chip cat-chip-absence">🚫 ${escapeHtml(g.category || 'Н')}</span>
+                            ${g.date ? `<span class="grade-event-date">${escapeHtml(g.date)}</span>` : ''}
+                            ${noteText || '<span class="grade-event-note">(Пропуск заняття)</span>'}
+                        </div>
+                        <span class="grade-event-val grade-val-absence">Пропуск (Н)</span>
+                    </div>
+                `;
+            }
+
             return `
                 <div class="grade-event-row">
                     <div class="grade-event-left">
@@ -7460,7 +7773,7 @@ function renderSubjectCard(s, idx = 0) {
                 </div>
             `;
         }).join('')
-        : '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px;">Балів за поточний контроль ще не виставлено</div>';
+        : '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px;">Балів та пропусків ще не зафіксовано</div>';
 
     return `
         <div class="subject-grade-card" data-subject="${escapeHtml(s.subject)}">
@@ -7470,6 +7783,7 @@ function renderSubjectCard(s, idx = 0) {
                     ${s.teacher ? `<div class="subject-grade-teacher">👨‍🏫 ${escapeHtml(s.teacher)}</div>` : ''}
                 </div>
                 <div class="subject-grade-score-wrap">
+                    ${absenceBadgeHtml}
                     <span class="subject-score-badge ${scoreClass}">${total} / 100 ${s.ects ? `[${escapeHtml(s.ects)}]` : ''}</span>
                     <svg class="subject-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
                 </div>
@@ -7478,7 +7792,7 @@ function renderSubjectCard(s, idx = 0) {
                 <div class="subject-progress-fill" style="width:${progressWidth}%;background:${progressColor};"></div>
             </div>
             <div class="subject-grade-details">
-                <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Оцінки за заняття:</div>
+                <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Журнал оцінок та відвідування:</div>
                 <div class="grade-events-timeline">
                     ${gradesHtml}
                 </div>
@@ -7490,7 +7804,15 @@ function renderSubjectCard(s, idx = 0) {
 function initGradesLegend() {
     const container = document.getElementById('grades-legend-content');
     if (!container) return;
-    container.innerHTML = Object.entries(DEKANAT_CATEGORIES_MAP).map(([code, meta]) => `
+    const absenceRow = `
+        <div class="legend-item-row">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span class="legend-badge cat-chip-absence">🚫 Н</span>
+                <span style="font-weight:600;color:var(--text-main);">Пропуск заняття (відсутність)</span>
+            </div>
+        </div>
+    `;
+    const catRows = Object.entries(DEKANAT_CATEGORIES_MAP).map(([code, meta]) => `
         <div class="legend-item-row">
             <div style="display:flex;align-items:center;gap:10px;">
                 <span class="legend-badge" style="background:${meta.bg};color:${meta.color};">${meta.icon} ${code}</span>
@@ -7498,6 +7820,253 @@ function initGradesLegend() {
             </div>
         </div>
     `).join('');
+    container.innerHTML = absenceRow + catRows;
+}
+
+let dekanatAbsencesChartInstance = null;
+let currentAbsencesPeriod = 'month';
+let currentAbsencesAnalytics = null;
+
+const UA_MONTH_NAMES = [
+    '', 'Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
+    'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'
+];
+const UA_MONTH_SHORT = [
+    '', 'Січ', 'Лют', 'Бер', 'Кві', 'Тра', 'Чер',
+    'Лип', 'Сер', 'Вер', 'Жов', 'Лис', 'Гру'
+];
+
+function parseDekanatDate(dateStr) {
+    if (!dateStr || typeof dateStr !== 'string') return null;
+    const parts = dateStr.trim().split('.');
+    if (parts.length < 2) return null;
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    if (isNaN(day) || isNaN(month) || month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+    let year;
+    if (parts.length >= 3 && parts[2].length >= 2) {
+        year = parts[2].length === 2 ? 2000 + parseInt(parts[2], 10) : parseInt(parts[2], 10);
+    } else {
+        const now = new Date();
+        const curYear = now.getFullYear();
+        const curMonth = now.getMonth() + 1;
+        if (curMonth >= 8) {
+            year = month >= 8 ? curYear : curYear + 1;
+        } else {
+            year = month >= 8 ? curYear - 1 : curYear;
+        }
+    }
+    return new Date(year, month - 1, day);
+}
+
+function pluralizeAbsences(n) {
+    const abs = Math.abs(Number(n) || 0) % 100;
+    const d = abs % 10;
+    if (abs > 10 && abs < 20) return 'пропусків';
+    if (d > 1 && d < 5) return 'пропуски';
+    if (d === 1) return 'пропуск';
+    return 'пропусків';
+}
+
+function computeAbsencesAnalytics(subjects) {
+    let totalAbsences = 0;
+    const allAbsences = [];
+
+    (subjects || []).forEach(s => {
+        (s.grades || []).forEach(g => {
+            const isAbs = !!(g.isAbsence || g.value === 'Н' || g.value === 'н' || String(g.value).toUpperCase() === 'Н');
+            if (isAbs) {
+                totalAbsences++;
+                const dateObj = parseDekanatDate(g.date);
+                allAbsences.push({
+                    subject: s.subject,
+                    dateStr: g.date,
+                    dateObj,
+                    category: g.category
+                });
+            }
+        });
+    });
+
+    const monthMap = new Map();
+    const weekMap = new Map();
+
+    allAbsences.forEach(item => {
+        if (item.dateObj) {
+            const y = item.dateObj.getFullYear();
+            const m = item.dateObj.getMonth() + 1;
+            const monthKey = `${y}-${String(m).padStart(2, '0')}`;
+            if (!monthMap.has(monthKey)) {
+                monthMap.set(monthKey, {
+                    label: `${UA_MONTH_NAMES[m]} ${y}`,
+                    shortLabel: UA_MONTH_SHORT[m],
+                    year: y,
+                    month: m,
+                    count: 0
+                });
+            }
+            monthMap.get(monthKey).count++;
+
+            const d = new Date(item.dateObj);
+            const dayOfWeek = d.getDay();
+            const diffToMon = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+            const monday = new Date(d);
+            monday.setDate(d.getDate() + diffToMon);
+            monday.setHours(0, 0, 0, 0);
+
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+
+            const pad = num => String(num).padStart(2, '0');
+            const weekKey = `${monday.getFullYear()}-${pad(monday.getMonth()+1)}-${pad(monday.getDate())}`;
+            const weekLabel = `${pad(monday.getDate())}.${pad(monday.getMonth()+1)}–${pad(sunday.getDate())}.${pad(sunday.getMonth()+1)}`;
+
+            if (!weekMap.has(weekKey)) {
+                weekMap.set(weekKey, {
+                    label: weekLabel,
+                    ts: monday.getTime(),
+                    count: 0
+                });
+            }
+            weekMap.get(weekKey).count++;
+        } else {
+            const noDateKey = 'undated';
+            if (!monthMap.has(noDateKey)) {
+                monthMap.set(noDateKey, {
+                    label: 'Без дати',
+                    shortLabel: 'Без дати',
+                    year: 9999,
+                    month: 99,
+                    count: 0
+                });
+            }
+            monthMap.get(noDateKey).count++;
+
+            if (!weekMap.has(noDateKey)) {
+                weekMap.set(noDateKey, {
+                    label: 'Без дати',
+                    ts: 9999999999999,
+                    count: 0
+                });
+            }
+            weekMap.get(noDateKey).count++;
+        }
+    });
+
+    const sortedMonthKeys = Array.from(monthMap.keys()).sort();
+    const monthLabels = sortedMonthKeys.map(k => monthMap.get(k).label);
+    const monthCounts = sortedMonthKeys.map(k => monthMap.get(k).count);
+
+    const sortedWeekKeys = Array.from(weekMap.keys()).sort((a, b) => (weekMap.get(a).ts || 0) - (weekMap.get(b).ts || 0));
+    const weekLabels = sortedWeekKeys.map(k => weekMap.get(k).label);
+    const weekCounts = sortedWeekKeys.map(k => weekMap.get(k).count);
+
+    return {
+        totalAbsences,
+        byMonth: { labels: monthLabels, counts: monthCounts },
+        byWeek: { labels: weekLabels, counts: weekCounts }
+    };
+}
+
+function renderDekanatAbsencesChart(analytics, period = 'month') {
+    const card = document.getElementById('grades-absences-card');
+    const canvas = document.getElementById('grades-absences-canvas');
+    const chartWrap = document.getElementById('grades-absences-chart-wrap');
+    const emptyEl = document.getElementById('grades-absences-empty');
+    const summaryEl = document.getElementById('grades-absences-summary');
+
+    if (!card || !canvas) return;
+    card.style.display = 'block';
+
+    const total = (analytics && analytics.totalAbsences) || 0;
+    if (summaryEl) {
+        summaryEl.textContent = `${total} ${pluralizeAbsences(total)} за семестр`;
+    }
+
+    if (total === 0) {
+        if (chartWrap) chartWrap.style.display = 'none';
+        if (emptyEl) emptyEl.style.display = 'block';
+        if (dekanatAbsencesChartInstance) {
+            dekanatAbsencesChartInstance.destroy();
+            dekanatAbsencesChartInstance = null;
+        }
+        return;
+    }
+
+    if (chartWrap) chartWrap.style.display = 'block';
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    const dataGroup = period === 'week' ? analytics.byWeek : analytics.byMonth;
+    const labels = dataGroup.labels;
+    const counts = dataGroup.counts;
+
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
+    const textColor = isDark ? '#94a3b8' : '#64748b';
+
+    if (dekanatAbsencesChartInstance) {
+        dekanatAbsencesChartInstance.destroy();
+        dekanatAbsencesChartInstance = null;
+    }
+
+    const maxVal = Math.max(...counts, 2);
+
+    dekanatAbsencesChartInstance = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Пропуски (Н)',
+                data: counts,
+                backgroundColor: 'rgba(239, 68, 68, 0.72)',
+                borderColor: '#ef4444',
+                borderWidth: 1.5,
+                borderRadius: 7,
+                hoverBackgroundColor: '#ef4444',
+                maxBarThickness: 38
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 400,
+                easing: 'easeOutQuart'
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: items => items[0]?.label || '',
+                        label: item => ` ${item.raw} ${pluralizeAbsences(item.raw)}`
+                    },
+                    padding: 10,
+                    cornerRadius: 10
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: gridColor },
+                    ticks: {
+                        color: textColor,
+                        font: { size: 11, weight: '600' }
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    suggestedMax: maxVal + 1,
+                    grid: { color: gridColor },
+                    ticks: {
+                        color: textColor,
+                        font: { size: 11, weight: '600' },
+                        stepSize: 1,
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
 }
 
 function initDekanatGrades() {
@@ -7524,9 +8093,13 @@ function initDekanatGrades() {
     const studentGroupEl = document.getElementById('grades-student-group');
     const statGpaEl = document.getElementById('grades-stat-gpa');
     const statCountEl = document.getElementById('grades-stat-count');
+    const statAbsencesEl = document.getElementById('grades-stat-absences');
     const statSyncEl = document.getElementById('grades-stat-sync');
     const offlineBanner = document.getElementById('grades-offline-banner');
     const subjectsListEl = document.getElementById('grades-subjects-list');
+    const absencesCard = document.getElementById('grades-absences-card');
+    const btnAbsencesMonth = document.getElementById('btn-absences-month');
+    const btnAbsencesWeek = document.getElementById('btn-absences-week');
     const refreshBtn = document.getElementById('btn-grades-refresh');
     const refreshIcon = document.getElementById('grades-refresh-icon');
     const logoutBtn = document.getElementById('btn-grades-logout');
@@ -7878,12 +8451,51 @@ function initDekanatGrades() {
 
     initGradesLegend();
 
+    if (btnAbsencesMonth) {
+        btnAbsencesMonth.addEventListener('click', () => {
+            if (currentAbsencesPeriod === 'month') return;
+            currentAbsencesPeriod = 'month';
+            btnAbsencesMonth.classList.add('active');
+            if (btnAbsencesWeek) btnAbsencesWeek.classList.remove('active');
+            haptic('selection');
+            if (currentAbsencesAnalytics) {
+                renderDekanatAbsencesChart(currentAbsencesAnalytics, 'month');
+            }
+        });
+    }
+    if (btnAbsencesWeek) {
+        btnAbsencesWeek.addEventListener('click', () => {
+            if (currentAbsencesPeriod === 'week') return;
+            currentAbsencesPeriod = 'week';
+            btnAbsencesWeek.classList.add('active');
+            if (btnAbsencesMonth) btnAbsencesMonth.classList.remove('active');
+            haptic('selection');
+            if (currentAbsencesAnalytics) {
+                renderDekanatAbsencesChart(currentAbsencesAnalytics, 'week');
+            }
+        });
+    }
+
+    try {
+        new MutationObserver(mutations => {
+            for (const m of mutations) {
+                if (m.attributeName === 'data-theme' && currentAbsencesAnalytics) {
+                    renderDekanatAbsencesChart(currentAbsencesAnalytics, currentAbsencesPeriod);
+                }
+            }
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    } catch(e) {}
+
     function updateCardPreview() {
         try {
             const cached = JSON.parse(localStorage.getItem('dekanat_grades_cache') || 'null');
             if (cached && cached.subjects && cached.subjects.length > 0) {
                 if (cardSubEl) {
-                    cardSubEl.textContent = `Сер. бал: ${cached.average || '—'} • ${cached.subjects.length} предм.`;
+                    const absCount = (typeof cached.totalAbsences === 'number')
+                        ? cached.totalAbsences
+                        : (cached.subjects.reduce((sum, s) => sum + (s.absencesCount || (s.grades || []).filter(g => g.isAbsence || g.value === 'Н' || g.value === 'н').length), 0));
+                    const absPart = absCount > 0 ? ` • 🚫 ${absCount} Н` : '';
+                    cardSubEl.textContent = `Сер. бал: ${cached.average || '—'} • ${cached.subjects.length} предм.${absPart}`;
                 }
             } else {
                 if (cardSubEl) cardSubEl.textContent = 'Журнал успішності Деканату ЛНУ';
@@ -7934,6 +8546,20 @@ function initDekanatGrades() {
         if (statCountEl) statCountEl.textContent = String((data.subjects && data.subjects.length) || 0);
         if (statSyncEl) statSyncEl.textContent = formatRelativeSyncTime(lastSync);
         if (offlineBanner) offlineBanner.style.display = isOffline ? 'block' : 'none';
+
+        // Compute and render Absences Analytics & Chart
+        const absencesAnalytics = computeAbsencesAnalytics(data.subjects || []);
+        currentAbsencesAnalytics = absencesAnalytics;
+        const totalAbsences = (typeof data.totalAbsences === 'number') ? data.totalAbsences : absencesAnalytics.totalAbsences;
+        if (statAbsencesEl) {
+            statAbsencesEl.textContent = String(totalAbsences);
+            if (totalAbsences > 0) {
+                statAbsencesEl.classList.add('has-absences');
+            } else {
+                statAbsencesEl.classList.remove('has-absences');
+            }
+        }
+        renderDekanatAbsencesChart(absencesAnalytics, currentAbsencesPeriod);
 
         // Apple Academic Dossier Populate
         const dossier = enrichStudentDossier(data.dossier, data.group || (typeof state !== 'undefined' && state && state.groupName), resolvedName);
@@ -8549,14 +9175,15 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
 <div class="offline-banner" id="offline-banner">
     <div class="offline-banner-icon">📶</div>
     <div class="offline-banner-text">
-        <strong>Немає інтернету</strong>
-        <span>Розклад доступний з кешу — дані можуть бути застарілими</span>
+        <strong>Офлайн режим</strong>
+        <span id="offline-banner-desc">Розклад доступний з кешу — дані збережено на пристрої</span>
     </div>
-    <button class="offline-banner-close" id="offline-banner-close">✕</button>
+    <button class="offline-banner-retry" id="offline-banner-retry" type="button">Оновити</button>
+    <button class="offline-banner-close" id="offline-banner-close" aria-label="Закрити">✕</button>
 </div>
 <div class="online-toast" id="online-toast">
     <svg style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-    Підключення відновлено!
+    <span id="online-toast-text">Підключення відновлено!</span>
 </div>
 
 <script>
@@ -8697,8 +9324,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
                 if (directRow) directRow.style.display = 'block';
             }
             
-            const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
-            await waitForFirebase();
+            if (window.waitForFirebase) await window.waitForFirebase(1200);
             
             if (window.fbUpdateUserLastSeen) window.fbUpdateUserLastSeen(tgUser.id, ACTIVE_GROUP);
             const fbUser = await loadUserFromFirebase(tgUser.id);
@@ -9036,24 +9662,20 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
         const btn = document.getElementById('users-refresh-btn');
         if (!grid) return;
         grid.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">⏳ Завантаження...</div>';
-        if (btn) { btn.textContent = '⏳ Завантаження...'; btn.disabled = true; }
-        const waitForFirebase = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
-        await waitForFirebase();
+        if (window.waitForFirebase) await window.waitForFirebase(1200);
 
         try {
             const workerBase = localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
             await fetch(`${workerBase}/sync-bot-groups`, { signal: AbortSignal.timeout(4000) });
         } catch (e) {}
 
-        allUsers = await window.fbGetUsers();
+        allUsers = (typeof window.fbGetUsers === 'function') ? await window.fbGetUsers() : [];
         renderUsers();
         if (btn) { btn.textContent = '🔄 Оновити список'; btn.disabled = false; }
     }
 
     
     document.getElementById('admin-users-grid')?.addEventListener('click', async (e) => {
-        const waitFB = () => new Promise(r => { if (window.firebaseReady) r(); else window.addEventListener('firebase-ready', r, {once:true}); });
-
         
         const fullUnlink = e.target.closest('.admin-unlink-btn');
         if (fullUnlink) {
@@ -9063,7 +9685,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             if (!confirm(`Повністю відв'язати Telegram у «${name}»?\nЦе видалить весь обліковий запис і всі девайси.`)) return;
             const orig = fullUnlink.textContent;
             fullUnlink.textContent = '⏳…'; fullUnlink.disabled = true;
-            await waitFB();
+            if (window.waitForFirebase) await window.waitForFirebase(1200);
             const ok = await window.fbUnlinkUser(uid);
             if (ok) {
                 allUsers = allUsers.filter(u => String(u.id) !== String(uid));
@@ -9152,11 +9774,7 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
     async function doRefresh() {
         indicator.classList.add('ptr-refreshing');
         try {
-            const waitFB = () => new Promise(r => {
-                if (window.firebaseReady) r();
-                else window.addEventListener('firebase-ready', r, {once: true});
-            });
-            await waitFB();
+            if (window.waitForFirebase) await window.waitForFirebase(800);
             if (window.refreshSchedule) await window.refreshSchedule(true);
             await window.loadAdminData ? window.loadAdminData() : Promise.resolve();
             if (window.render) window.render();
@@ -9554,38 +10172,106 @@ if ('serviceWorker' in navigator) {
 }
 
 (function() {
-    const banner  = document.getElementById('offline-banner');
-    const closeBtn= document.getElementById('offline-banner-close');
-    const toast   = document.getElementById('online-toast');
+    const banner     = document.getElementById('offline-banner');
+    const bannerDesc = document.getElementById('offline-banner-desc');
+    const closeBtn   = document.getElementById('offline-banner-close');
+    const retryBtn   = document.getElementById('offline-banner-retry');
+    const toast      = document.getElementById('online-toast');
+    const toastText  = document.getElementById('online-toast-text');
+    const headerPill = document.getElementById('header-offline-pill');
     let toastTimer = null;
-    let wasOffline = false;
+    let isCurrentlyOffline = !navigator.onLine;
 
-    function showOffline() {
-        if (!banner) return;
-        wasOffline = true;
-        banner.classList.add('show');
+    function formatSavedTime(ts) {
+        if (!ts) return '';
+        try {
+            const d = new Date(ts);
+            const now = new Date();
+            const isToday = d.toDateString() === now.toDateString();
+            const timeStr = d.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+            if (isToday) return `сьогодні о ${timeStr}`;
+            return `${d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })} о ${timeStr}`;
+        } catch(e) { return ''; }
     }
 
-    function showOnline() {
-        if (!banner) return;
-        banner.classList.remove('show');
-        if (wasOffline) {
-            wasOffline = false;
-            if (toast) {
+    window.setOfflineUI = function(offline, cacheTs = null) {
+        const wasOff = isCurrentlyOffline;
+        isCurrentlyOffline = !!offline;
+
+        if (offline) {
+            if (headerPill) headerPill.style.display = 'inline-flex';
+            if (banner) {
+                if (bannerDesc) {
+                    const savedText = cacheTs ? ` (збережено ${formatSavedTime(cacheTs)})` : '';
+                    bannerDesc.textContent = `Розклад доступний з кешу${savedText} — немає з'єднання з мережею`;
+                }
+                banner.classList.add('show');
+            }
+        } else {
+            if (headerPill) headerPill.style.display = 'none';
+            if (banner) banner.classList.remove('show');
+            if (wasOff && toast) {
+                if (toastText) toastText.textContent = 'Підключення відновлено!';
                 toast.classList.add('show');
                 clearTimeout(toastTimer);
-                toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+                toastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
             }
         }
+    };
+
+    if (closeBtn && banner) {
+        closeBtn.addEventListener('click', () => {
+            banner.classList.remove('show');
+        });
     }
 
-    if (closeBtn) closeBtn.addEventListener('click', () => banner.classList.remove('show'));
+    if (retryBtn) {
+        retryBtn.addEventListener('click', async () => {
+            retryBtn.textContent = '⏳...';
+            retryBtn.disabled = true;
+            try {
+                if (window.refreshSchedule) await window.refreshSchedule(true);
+                if (window.loadAdminData) await window.loadAdminData();
+            } finally {
+                retryBtn.textContent = 'Оновити';
+                retryBtn.disabled = false;
+            }
+        });
+    }
 
-    window.addEventListener('offline', showOffline);
-    window.addEventListener('online',  showOnline);
+    if (headerPill) {
+        headerPill.addEventListener('click', () => {
+            if (banner) banner.classList.add('show');
+        });
+    }
 
-    
-    if (!navigator.onLine) showOffline();
+    window.addEventListener('offline', () => {
+        const cached = window.getScheduleCacheInfo ? window.getScheduleCacheInfo() : null;
+        window.setOfflineUI(true, cached ? cached.ts : null);
+    });
+
+    window.addEventListener('online', async () => {
+        window.setOfflineUI(false);
+        try {
+            if (window.refreshSchedule) await window.refreshSchedule(true);
+            if (window.loadAdminData) await window.loadAdminData();
+        } catch(e) {}
+    });
+
+    window.addEventListener('app-network-status', (e) => {
+        if (!e.detail) return;
+        if (!e.detail.isOnline) {
+            const cached = window.getScheduleCacheInfo ? window.getScheduleCacheInfo() : null;
+            window.setOfflineUI(true, cached ? cached.ts : null);
+        } else if (isCurrentlyOffline) {
+            window.setOfflineUI(false);
+        }
+    });
+
+    if (!navigator.onLine) {
+        const cached = window.getScheduleCacheInfo ? window.getScheduleCacheInfo() : null;
+        window.setOfflineUI(true, cached ? cached.ts : null);
+    }
 })();
 </script>
 

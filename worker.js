@@ -814,8 +814,9 @@ function parseDekanatGrades(html, fallbackUserName = "") {
       const isTeacherCol = /викладач|прізвище\s*вик|вчитель/i.test(text) || /викладач/i.test(title);
       const isBal = /бал|всього|разом|підсумок/i.test(text) || /class=["\x27][^"\x27]*bal/i.test(m[0]);
       const isEcts = /ects/i.test(text) || /class=["\x27][^"\x27]*ects/i.test(m[0]);
+      const isAbsencesSummaryCol = /пропуск|невиправд/i.test(text) || /пропуск|невиправд/i.test(title);
 
-      return { idx, text, title, date, category, isNumCol, isSubjectCol, isTeacherCol, isBal, isEcts };
+      return { idx, text, title, date, category, isNumCol, isSubjectCol, isTeacherCol, isBal, isEcts, isAbsencesSummaryCol };
     });
 
     let subjectColIdx = headers.findIndex(h => h.isSubjectCol);
@@ -863,6 +864,7 @@ function parseDekanatGrades(html, fallbackUserName = "") {
 
       let total = 0;
       let ects = "";
+      let summaryAbsences = 0;
       const grades = [];
 
       tdMatches.forEach((td, colIdx) => {
@@ -870,7 +872,7 @@ function parseDekanatGrades(html, fallbackUserName = "") {
           return;
         }
         const colHeader = headers[colIdx];
-        const tdContent = stripTags(td[1]);
+        const tdContent = stripTags(td[1]).trim();
         const tdTitle = (td[0].match(/title=["\x27]([^"\x27]*)["\x27]/i) || [])[1] || "";
 
         if (colHeader?.isBal) {
@@ -878,22 +880,41 @@ function parseDekanatGrades(html, fallbackUserName = "") {
           if (!isNaN(num)) total = num;
         } else if (colHeader?.isEcts) {
           ects = tdContent.replace(/[^A-Za-z]/g, "").toUpperCase();
+        } else if (colHeader?.isAbsencesSummaryCol) {
+          const absNum = parseInt(tdContent, 10);
+          if (!isNaN(absNum)) summaryAbsences = absNum;
         } else {
           if (tdContent && tdContent !== "-" && tdContent !== "0" && tdContent !== "&nbsp;" && tdContent !== "—") {
+            const isAbsence = /^(?:[нnНN]|[нnНN]\/[бbБB]|[нnНN][бbБB]|не\s*був)$/i.test(tdContent) ||
+                              /пропуск|не\s*був/i.test(tdContent) ||
+                              /пропуск|не\s*був/i.test(tdTitle);
             const numVal = parseFloat(tdContent.replace(",", "."));
             const cat = colHeader?.category || "Інше";
-            grades.push({
-              category: cat,
-              categoryLabel: GRADE_CATEGORIES[cat]?.label || colHeader?.title || cat,
-              date: colHeader?.date || "",
-              value: isNaN(numVal) ? tdContent : numVal,
-              note: tdTitle
-            });
+
+            if (isAbsence) {
+              grades.push({
+                category: cat,
+                categoryLabel: GRADE_CATEGORIES[cat]?.label || colHeader?.title || cat,
+                date: colHeader?.date || "",
+                value: "Н",
+                isAbsence: true,
+                note: tdTitle || "Пропуск заняття"
+              });
+            } else if (!isNaN(numVal)) {
+              grades.push({
+                category: cat,
+                categoryLabel: GRADE_CATEGORIES[cat]?.label || colHeader?.title || cat,
+                date: colHeader?.date || "",
+                value: numVal,
+                isAbsence: false,
+                note: tdTitle
+              });
+            }
           }
         }
       });
 
-      const currentGradeSum = grades.reduce((sum, g) => typeof g.value === 'number' ? sum + g.value : sum, 0);
+      const currentGradeSum = grades.reduce((sum, g) => (!g.isAbsence && typeof g.value === 'number') ? sum + g.value : sum, 0);
       if (total === 0 && currentGradeSum > 0) {
         total = Math.round(currentGradeSum * 10) / 10;
       }
@@ -908,7 +929,10 @@ function parseDekanatGrades(html, fallbackUserName = "") {
         else ects = "F";
       }
 
-      const item = { subject, teacher, total, ects, grades };
+      const calculatedAbsences = grades.filter(g => g.isAbsence || g.value === 'Н' || g.value === 'н').length;
+      const absencesCount = Math.max(summaryAbsences, calculatedAbsences);
+
+      const item = { subject, teacher, total, ects, grades, absencesCount };
       const existing = subjectMap.get(subject);
       if (!existing || (item.total > existing.total) || (item.grades.length > existing.grades.length)) {
         subjectMap.set(subject, item);
@@ -918,12 +942,14 @@ function parseDekanatGrades(html, fallbackUserName = "") {
 
   const subjects = [...subjectMap.values()];
   const average = subjects.length ? (subjects.reduce((sum, s) => sum + s.total, 0) / subjects.length).toFixed(1) : "0";
+  const totalAbsences = subjects.reduce((sum, s) => sum + (s.absencesCount || 0), 0);
   return {
     studentName,
     group: dossier.group || group,
     dossier,
     subjects,
-    average
+    average,
+    totalAbsences
   };
 }
 
@@ -1240,7 +1266,7 @@ async function fetchDekanatGrades(user_name, user_pwd) {
 
         for (const td of tdCells) {
           const attrs = td[1];
-          const content = stripTags(td[2]);
+          const content = stripTags(td[2]).trim();
 
           if (attrs.includes("f f1")) {
             const num = parseFloat(content.replace(',', '.'));
@@ -1250,21 +1276,36 @@ async function fetchDekanatGrades(user_name, user_pwd) {
           } else if (attrs.includes("data-history") || attrs.includes("data-item")) {
             const itemIdx = parseInt((attrs.match(/data-item=["\x27](\d+)["\x27]/i) || [])[1] || "0", 10);
             const numVal = parseFloat(content.replace(',', '.'));
-            if (!isNaN(numVal) && numVal > 0) {
-              const date = dateHeaders[itemIdx - 1]?.date || "";
-              const cat = catList[itemIdx - 1] || "Лаб";
+            const date = dateHeaders[itemIdx - 1]?.date || "";
+            const cat = catList[itemIdx - 1] || "Лаб";
+            const note = dateHeaders[itemIdx - 1]?.title || "";
+            const isAbsence = /^(?:[нnНN]|[нnНN]\/[бbБB]|[нnНN][бbБB]|не\s*був)$/i.test(content) ||
+                              /пропуск|не\s*був/i.test(content) ||
+                              /пропуск|не\s*був/i.test(attrs);
+
+            if (isAbsence) {
+              grades.push({
+                category: cat,
+                categoryLabel: GRADE_CATEGORIES[cat]?.label || (cat === "Лек" ? "Контроль на лекції" : (cat === "Лаб" ? "Лабораторні роб." : "Практич./Семін. зан.")),
+                date,
+                value: "Н",
+                isAbsence: true,
+                note: note || "Пропуск заняття"
+              });
+            } else if (!isNaN(numVal) && numVal > 0) {
               grades.push({
                 category: cat,
                 categoryLabel: GRADE_CATEGORIES[cat]?.label || (cat === "Лек" ? "Контроль на лекції" : (cat === "Лаб" ? "Лабораторні роб." : "Практич./Семін. зан.")),
                 date,
                 value: numVal,
-                note: dateHeaders[itemIdx - 1]?.title || ""
+                isAbsence: false,
+                note
               });
             }
           }
         }
 
-        const sumGrades = grades.reduce((acc, g) => typeof g.value === 'number' ? acc + g.value : acc, 0);
+        const sumGrades = grades.reduce((acc, g) => (!g.isAbsence && typeof g.value === 'number') ? acc + g.value : acc, 0);
         if (total === 0 && sumGrades > 0) {
           total = Math.round(sumGrades * 10) / 10;
         }
@@ -1277,6 +1318,8 @@ async function fetchDekanatGrades(user_name, user_pwd) {
         else if (total >= 51) ects = "E";
         else if (total >= 35) ects = "FX";
         else if (total > 0) ects = "F";
+
+        const absencesCount = grades.filter(g => g.isAbsence || g.value === 'Н' || g.value === 'н').length;
 
         // Match existing subject from study plan or add new
         let matchedKey = null;
@@ -1295,7 +1338,8 @@ async function fetchDekanatGrades(user_name, user_pwd) {
           teacher: teacher || existing.teacher || "—",
           total,
           ects,
-          grades
+          grades,
+          absencesCount
         });
       }
     }
@@ -1316,12 +1360,15 @@ async function fetchDekanatGrades(user_name, user_pwd) {
     homeDossier.studentName = studentName;
   }
 
+  const totalAbsences = subjects.reduce((sum, s) => sum + (s.absencesCount || 0), 0);
+
   return {
     studentName: homeDossier.studentName || studentName,
     group: grp || homeDossier.group || "",
     dossier: homeDossier,
     subjects,
-    average
+    average,
+    totalAbsences
   };
 }
 
@@ -1346,6 +1393,7 @@ function findNewGrades(oldSubjects, newSubjects) {
           categoryLabel: g.categoryLabel || g.category,
           date: g.date,
           value: g.value,
+          isAbsence: !!(g.isAbsence || g.value === 'Н' || g.value === 'н'),
           total: s.total
         });
       }
@@ -1357,16 +1405,29 @@ function findNewGrades(oldSubjects, newSubjects) {
 
 async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
   if (!env.BOT_TOKEN || !tgChatId) return;
-  const { subject, teacher, category, categoryLabel, value, date, total } = newGradeInfo;
+  const { subject, teacher, category, categoryLabel, value, date, total, isAbsence } = newGradeInfo;
 
-  const text =
-    `🎓 *Нова оцінка в Деканаті ЛНУ!*\n\n` +
-    `📖 *Предмет:* ${subject}\n` +
-    (teacher ? `👨‍🏫 *Викладач:* ${teacher}\n` : '') +
-    `📊 *Оцінка:* *+${value} б.* (${category} — ${categoryLabel})\n` +
-    (date ? `📅 *Дата:* ${date}\n` : '') +
-    (total ? `📈 *Поточний бал з предмета:* *${total} / 100*\n` : '') +
-    `\nПереглянути журнал: у додатку в розділі «Корисне» ➡️ «Мої бали» ↗️`;
+  let text;
+  if (isAbsence || value === 'Н' || value === 'н') {
+    text =
+      `⚠️ *Новий пропуск (Н-ка) в Деканаті ЛНУ!*\n\n` +
+      `📖 *Предмет:* ${subject}\n` +
+      (teacher ? `👨‍🏫 *Викладач:* ${teacher}\n` : '') +
+      `🚫 *Зафіксовано:* *Н (пропуск заняття)*\n` +
+      (category ? `📌 *Тип заняття:* ${category}${categoryLabel && categoryLabel !== category ? ` (${categoryLabel})` : ''}\n` : '') +
+      (date ? `📅 *Дата:* ${date}\n` : '') +
+      (total ? `📈 *Поточний бал з предмета:* *${total} / 100*\n` : '') +
+      `\nПереглянути журнал та графік пропусків: у додатку в розділі «Корисне» ➡️ «Мої бали» ↗️`;
+  } else {
+    text =
+      `🎓 *Нова оцінка в Деканаті ЛНУ!*\n\n` +
+      `📖 *Предмет:* ${subject}\n` +
+      (teacher ? `👨‍🏫 *Викладач:* ${teacher}\n` : '') +
+      `📊 *Оцінка:* *+${value} б.* (${category} — ${categoryLabel})\n` +
+      (date ? `📅 *Дата:* ${date}\n` : '') +
+      (total ? `📈 *Поточний бал з предмета:* *${total} / 100*\n` : '') +
+      `\nПереглянути журнал: у додатку в розділі «Корисне» ➡️ «Мої бали» ↗️`;
+  }
 
   try {
     await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
