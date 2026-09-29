@@ -1161,29 +1161,116 @@ async function fetchDekanatGrades(user_name, user_pwd) {
     if (n7GrpMatch && n7GrpMatch[1]) grp = n7GrpMatch[1].trim();
     if (n7CurCourseMatch && n7CurCourseMatch[1]) curCourse = n7CurCourseMatch[1].trim();
 
+    // Extract all hidden inputs from the n=7 form
+    const formInputs = {};
+    for (const im of n7Html.matchAll(/<input\b[^>]*>/gi)) {
+      const tag = im[0];
+      const name = (tag.match(/name=["\x27]([^"\x27]+)["\x27]/i) || [])[1];
+      const val = (tag.match(/value=["\x27]([^"\x27]*)["\x27]/i) || [])[1] || "";
+      const type = ((tag.match(/type=["\x27]([^"\x27]*)["\x27]/i) || [])[1] || "").toLowerCase();
+      if (name && type !== "submit" && type !== "button" && type !== "reset" && name !== "prt") {
+        formInputs[name] = val;
+      }
+    }
+
+    // Determine target form action URL
+    let n7PostUrl = `https://dekanat.lnu.edu.ua/cgi-bin/classman.cgi?sesID=${encodeURIComponent(sesID)}`;
+    const formActionMatch = n7Html.match(/<form\b[^>]*action=["\x27]([^"\x27]+)["\x27]/i);
+    if (formActionMatch && formActionMatch[1]) {
+      let act = formActionMatch[1].replace(/&amp;/g, '&').replace('./', '');
+      if (!act.startsWith('http')) {
+        n7PostUrl = 'https://dekanat.lnu.edu.ua/cgi-bin/' + act;
+      } else {
+        n7PostUrl = act;
+      }
+    }
+    if (sesID && !n7PostUrl.includes('sesID=')) {
+      n7PostUrl += (n7PostUrl.includes('?') ? '&' : '?') + `sesID=${encodeURIComponent(sesID)}`;
+    }
+
+    // 1. Find discipline dropdown (select name="prt")
     const prtSelect = (n7Html.match(/<select\b[^>]*name=["\x27]prt["\x27][\s\S]*?<\/select>/i) || [])[0];
-    const options = [...(prtSelect || "").matchAll(/<option\b[^>]*value=["\x27]([^"\x27]*)["\x27][^>]*>([\s\S]*?)<\/option>/gi)]
-      .map(o => ({ value: o[1], text: stripTags(o[2]) }))
-      .filter(o => o.value && o.value !== "-1");
+    let disciplineOptions = [];
+    if (prtSelect) {
+      disciplineOptions = [...prtSelect.matchAll(/<option\b[^>]*value=["\x27]([^"\x27]*)["\x27][^>]*>([\s\S]*?)<\/option>/gi)]
+        .map(o => ({ value: o[1], text: stripTags(o[2]).trim() }))
+        .filter(o => o.value && o.value !== "-1" && !/оберіть/i.test(o.text));
+    }
+
+    // 2. Find Month/Period dropdown and the option for "за весь період"
+    let monthSelectName = "m";
+    let periodValue = "-1"; // Dekanat uses 0 or -1 for "За весь період"
+    const allSelects = [...n7Html.matchAll(/<select\b[^>]*name=["\x27]([^"\x27]+)["\x27][\s\S]*?<\/select>/gi)];
+    for (const sm of allSelects) {
+      const sName = sm[1];
+      const sHtml = sm[0];
+      if (sName === "prt" || sName === "grp") continue;
+
+      const opts = [...sHtml.matchAll(/<option\b[^>]*value=["\x27]([^"\x27]*)["\x27][^>]*>([\s\S]*?)<\/option>/gi)];
+      const periodOpt = opts.find(o => {
+        const txt = stripTags(o[2]).trim().toLowerCase();
+        return /весь\s*період|за\s*весь|семестр|всі\s*місяці|ввесь/i.test(txt);
+      });
+
+      if (periodOpt) {
+        monthSelectName = sName;
+        periodValue = periodOpt[1];
+        break;
+      }
+
+      const hasMonths = opts.some(o => /вересень|жовтень|листопад|грудень|січень|лютий|березень|квітень|травень|червень/i.test(stripTags(o[2])));
+      if (hasMonths) {
+        monthSelectName = sName;
+        const candidate = opts.find(o => /весь|разом|всі|семестр/i.test(stripTags(o[2])) || o[1] === "0" || o[1] === "-1" || o[1] === "all");
+        if (candidate) {
+          periodValue = candidate[1];
+        } else if (opts[0]) {
+          periodValue = opts[0][1];
+        }
+        break;
+      }
+    }
+
+    // 3. Find the submit button for "Журнал"
+    let journalBtnName = "butsubm";
+    let journalBtnVal = "Журнал";
+    for (const bm of n7Html.matchAll(/<(?:input|button)\b[^>]*>/gi)) {
+      const tag = bm[0];
+      const val = (tag.match(/value=["\x27]([^"\x27]*)["\x27]/i) || [])[1] || "";
+      const name = (tag.match(/name=["\x27]([^"\x27]*)["\x27]/i) || [])[1] || "";
+      if (/журнал/i.test(val) || /журнал/i.test(tag)) {
+        if (name) journalBtnName = name;
+        if (val) journalBtnVal = val;
+        break;
+      }
+    }
 
     // Cap to 35 disciplines to stay safely within Cloudflare subrequest limits (max 50)
-    const optionsToFetch = options.slice(0, 35);
-    const n7PostUrl = `https://dekanat.lnu.edu.ua/cgi-bin/classman.cgi?sesID=${sesID}`;
+    const optionsToFetch = disciplineOptions.slice(0, 35);
     const BATCH_SIZE = 10;
     const surnameClean = String(user_name).trim().split(/\s+/)[0];
-    const escSurname = surnameClean.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const surnameCandidates = [
+      surnameClean,
+      studentName ? studentName.trim().split(/\s+/)[0] : ""
+    ].filter(Boolean);
 
     for (let i = 0; i < optionsToFetch.length; i += BATCH_SIZE) {
       const batch = optionsToFetch.slice(i, i + BATCH_SIZE);
       const batchPromises = batch.map(async (opt) => {
-        const body = encodeForm({
+        const payload = {
+          ...formInputs,
           grp,
           curCourse,
           n: "7",
           sesID,
           prt: opt.value,
-          m: "-1" // За весь період
-        });
+          [monthSelectName]: periodValue,
+          [journalBtnName]: journalBtnVal
+        };
+        if (!payload.m) payload.m = periodValue;
+        if (!payload.butsubm) payload.butsubm = "Журнал";
+
+        const body = encodeForm(payload);
 
         try {
           const res = await fetch(n7PostUrl, {
@@ -1208,28 +1295,43 @@ async function fetchDekanatGrades(user_name, user_pwd) {
 
       const batchResults = await Promise.all(batchPromises);
       for (const item of batchResults) {
-        if (!item || !item.html || !item.html.includes('id="mMarks"')) continue;
-
+        if (!item || !item.html) continue;
         const { opt, html } = item;
 
         // Check if our student is enrolled in this group/discipline
-        const rowMatch = html.match(new RegExp('<tr[^>]*data-fst=["\x27][^"\x27]*' + escSurname + '[\\s\\S]*?</tr>', 'i'))
-                         || html.match(new RegExp('<tr[^>]*>[\\s\\S]*?' + escSurname + '[\\s\\S]*?</tr>', 'i'));
-        if (!rowMatch) continue;
+        let rowHtml = "";
+        for (const sn of surnameCandidates) {
+          const esc = sn.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const m = html.match(new RegExp('<tr[^>]*data-fst=["\x27][^"\x27]*' + esc + '[\\s\\S]*?</tr>', 'i'))
+                 || html.match(new RegExp('<tr[^>]*>[\\s\\S]*?' + esc + '[\\s\\S]*?</tr>', 'i'));
+          if (m) {
+            rowHtml = m[0];
+            break;
+          }
+        }
+        if (!rowHtml) continue;
 
-        const rowHtml = rowMatch[0];
-
-        // Parse lesson dates and teachers from thead
-        const theadMatch = html.match(/<thead[\s\S]*?<\/thead>/i);
-        const theadHtml = theadMatch ? theadMatch[0] : "";
-        const trMatches = [...theadHtml.matchAll(/<tr[\s\S]*?<\/tr>/gi)];
+        // Parse lesson dates, teachers, and absence summary column from table header
+        let theadHtml = (html.match(/<thead[\s\S]*?<\/thead>/i) || [])[0] || "";
+        let trMatches = [];
+        if (theadHtml) {
+          trMatches = [...theadHtml.matchAll(/<tr[\s\S]*?<\/tr>/gi)];
+        }
+        if (!trMatches.length) {
+          const tableMatch = html.match(/<table\b[\s\S]*?<\/table>/i);
+          if (tableMatch) {
+            trMatches = [...tableMatch[0].matchAll(/<tr[\s\S]*?<\/tr>/gi)].slice(0, 3);
+          }
+        }
 
         let teacher = "";
         const dateHeaders = [];
+        let absenceSummaryColIdx = -1;
+
         if (trMatches.length >= 1) {
           const r0 = trMatches[0][0];
-          const thCols = [...r0.matchAll(/<th\b[^>]*>([\s\S]*?)<\/th>/gi)];
-          for (const th of thCols) {
+          const thCols = [...r0.matchAll(/<(?:th|td)\b[^>]*>([\s\S]*?)<\/(?:th|td)>/gi)];
+          thCols.forEach((th, thIdx) => {
             const hth = (th[0].match(/data-hth=["\x27]([^"\x27]*)["\x27]/i) || [])[1] || "";
             const title = (th[0].match(/title=["\x27]([^"\x27]*)["\x27]/i) || [])[1] || "";
             if (!teacher && (title || hth)) {
@@ -1239,19 +1341,24 @@ async function fetchDekanatGrades(user_name, user_pwd) {
             const dateMatch = text.match(/(\d{2}\.\d{2}(?:\.\d{4})?)/);
             if (dateMatch) {
               dateHeaders.push({
+                thIdx,
                 date: dateMatch[1],
                 hth,
                 title
               });
             }
-          }
+
+            if (/невиправд|пропуск|н-к|пропущен/i.test(text) || /невиправд|пропуск|н-к|пропущен/i.test(title)) {
+              absenceSummaryColIdx = thIdx;
+            }
+          });
         }
 
         // Lesson category types (Лек, Лаб, ПрСем, etc.)
         const catList = [];
-        if (trMatches.length >= 3) {
-          const r2 = trMatches[2][0];
-          const thCols = [...r2.matchAll(/<th\b[^>]*>([\s\S]*?)<\/th>/gi)];
+        if (trMatches.length >= 2) {
+          const lastHeadRow = trMatches[trMatches.length - 1][0];
+          const thCols = [...lastHeadRow.matchAll(/<(?:th|td)\b[^>]*>([\s\S]*?)<\/(?:th|td)>/gi)];
           for (const th of thCols) {
             const text = stripTags(th[1]);
             if (text && !text.includes("ПТК") && !text.includes("Підсум") && !text.includes("Всього") && !text.includes("Невиправд")) {
@@ -1263,47 +1370,83 @@ async function fetchDekanatGrades(user_name, user_pwd) {
         const tdCells = [...rowHtml.matchAll(/<td\b([^>]*)>([\s\S]*?)<\/td>/gi)];
         const grades = [];
         let total = 0;
+        let summaryAbsences = 0;
 
-        for (const td of tdCells) {
+        tdCells.forEach((td, cellIdx) => {
           const attrs = td[1];
           const content = stripTags(td[2]).trim();
 
-          if (attrs.includes("f f1")) {
+          // 1. Check if this is the summary absence column
+          if (cellIdx === absenceSummaryColIdx || /невиправд|пропуск/i.test(attrs)) {
+            const absVal = parseInt(content, 10);
+            if (!isNaN(absVal) && absVal > 0) {
+              summaryAbsences = Math.max(summaryAbsences, absVal);
+            }
+            return;
+          }
+
+          // 2. Total score column
+          if (attrs.includes("f f1") || /class=["\x27][^"\x27]*bal/i.test(attrs)) {
             const num = parseFloat(content.replace(',', '.'));
             if (!isNaN(num) && num > total) {
               total = num;
             }
-          } else if (attrs.includes("data-history") || attrs.includes("data-item")) {
-            const itemIdx = parseInt((attrs.match(/data-item=["\x27](\d+)["\x27]/i) || [])[1] || "0", 10);
-            const numVal = parseFloat(content.replace(',', '.'));
-            const date = dateHeaders[itemIdx - 1]?.date || "";
-            const cat = catList[itemIdx - 1] || "Лаб";
-            const note = dateHeaders[itemIdx - 1]?.title || "";
-            const isAbsence = /^(?:[нnНN]|[нnНN]\/[бbБB]|[нnНN][бbБB]|не\s*був)$/i.test(content) ||
-                              /пропуск|не\s*був/i.test(content) ||
-                              /пропуск|не\s*був/i.test(attrs);
-
-            if (isAbsence) {
-              grades.push({
-                category: cat,
-                categoryLabel: GRADE_CATEGORIES[cat]?.label || (cat === "Лек" ? "Контроль на лекції" : (cat === "Лаб" ? "Лабораторні роб." : "Практич./Семін. зан.")),
-                date,
-                value: "Н",
-                isAbsence: true,
-                note: note || "Пропуск заняття"
-              });
-            } else if (!isNaN(numVal) && numVal > 0) {
-              grades.push({
-                category: cat,
-                categoryLabel: GRADE_CATEGORIES[cat]?.label || (cat === "Лек" ? "Контроль на лекції" : (cat === "Лаб" ? "Лабораторні роб." : "Практич./Семін. зан.")),
-                date,
-                value: numVal,
-                isAbsence: false,
-                note
-              });
-            }
+            return;
           }
-        }
+
+          // 3. Skip student row index or student name cell
+          if (cellIdx === 0 && /^\d+$/.test(content)) return;
+          if (cellIdx <= 1 && surnameCandidates.some(sn => content.includes(sn))) return;
+
+          // 4. Identify lesson item index and date/category info
+          const itemIdxMatch = (attrs.match(/data-item=["\x27](\d+)["\x27]/i) || [])[1];
+          const itemIdx = itemIdxMatch ? parseInt(itemIdxMatch, 10) : 0;
+
+          let date = "";
+          let cat = "Лаб";
+          let note = "";
+
+          if (itemIdx > 0 && dateHeaders[itemIdx - 1]) {
+            date = dateHeaders[itemIdx - 1].date || "";
+            cat = catList[itemIdx - 1] || cat;
+            note = dateHeaders[itemIdx - 1].title || "";
+          } else if (cellIdx >= 2 && dateHeaders[cellIdx - 2]) {
+            date = dateHeaders[cellIdx - 2].date || "";
+            cat = catList[cellIdx - 2] || cat;
+            note = dateHeaders[cellIdx - 2].title || "";
+          }
+
+          // 5. Check if this cell is an absence ("Н-ка")
+          const isAbsence = /^(?:[нnНN]|[нnНN]\.|\.?[нnНN]|[нnНN]\/[бbБB]|[нnНN][бbБB]|не\s*був|не\s*була|п|пр)$/i.test(content) ||
+                            /пропуск|не\s*був|не\s*була/i.test(content) ||
+                            /пропуск|не\s*був|propusk|\bnb\b/i.test(attrs) ||
+                            /^[нnНN]\/\d+|\d+\/[нnНN]$/i.test(content);
+
+          if (isAbsence) {
+            grades.push({
+              category: cat,
+              categoryLabel: GRADE_CATEGORIES[cat]?.label || (cat === "Лек" ? "Контроль на лекції" : (cat === "Лаб" ? "Лабораторні роб." : "Практич./Семін. зан.")),
+              date,
+              value: "Н",
+              isAbsence: true,
+              note: note || "Пропуск заняття"
+            });
+          }
+
+          // 6. Check if this cell has a numerical grade
+          const cleanNumStr = content.replace(/^[нnНN]\/|\/[нnНN]$/i, '').replace(',', '.').trim();
+          const numVal = parseFloat(cleanNumStr);
+          if (!isNaN(numVal) && numVal > 0) {
+            grades.push({
+              category: cat,
+              categoryLabel: GRADE_CATEGORIES[cat]?.label || (cat === "Лек" ? "Контроль на лекції" : (cat === "Лаб" ? "Лабораторні роб." : "Практич./Семін. зан.")),
+              date,
+              value: numVal,
+              isAbsence: false,
+              note
+            });
+          }
+        });
 
         const sumGrades = grades.reduce((acc, g) => (!g.isAbsence && typeof g.value === 'number') ? acc + g.value : acc, 0);
         if (total === 0 && sumGrades > 0) {
@@ -1319,7 +1462,23 @@ async function fetchDekanatGrades(user_name, user_pwd) {
         else if (total >= 35) ects = "FX";
         else if (total > 0) ects = "F";
 
-        const absencesCount = grades.filter(g => g.isAbsence || g.value === 'Н' || g.value === 'н').length;
+        const calculatedAbsences = grades.filter(g => g.isAbsence || g.value === 'Н' || g.value === 'н').length;
+        const absencesCount = Math.max(calculatedAbsences, summaryAbsences);
+
+        // If summary column reported more absences than specific 'Н' cells found:
+        if (summaryAbsences > calculatedAbsences) {
+          const diff = summaryAbsences - calculatedAbsences;
+          for (let k = 0; k < diff; k++) {
+            grades.push({
+              category: "Пропуск",
+              categoryLabel: "Невиправданий пропуск",
+              date: "",
+              value: "Н",
+              isAbsence: true,
+              note: "Пропуск заняття"
+            });
+          }
+        }
 
         // Match existing subject from study plan or add new
         let matchedKey = null;
@@ -1336,8 +1495,8 @@ async function fetchDekanatGrades(user_name, user_pwd) {
         subjectMap.set(targetKey, {
           subject: targetKey,
           teacher: teacher || existing.teacher || "—",
-          total,
-          ects,
+          total: total > 0 ? total : (existing.total || 0),
+          ects: ects || existing.ects || "",
           grades,
           absencesCount
         });
