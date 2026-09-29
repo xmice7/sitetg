@@ -1410,7 +1410,7 @@ async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
   let text;
   if (isAbsence || value === 'Н' || value === 'н') {
     text =
-      `⚠️ *Новий пропуск (Н-ка) в Деканаті ЛНУ!*\n\n` +
+      `⚠️ *Новий пропуск (Н-ка) з предмета «${subject}»!*\n\n` +
       `📖 *Предмет:* ${subject}\n` +
       (teacher ? `👨‍🏫 *Викладач:* ${teacher}\n` : '') +
       `🚫 *Зафіксовано:* *Н (пропуск заняття)*\n` +
@@ -1420,7 +1420,7 @@ async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
       `\nПереглянути журнал та графік пропусків: у додатку в розділі «Корисне» ➡️ «Мої бали» ↗️`;
   } else {
     text =
-      `🎓 *Нова оцінка в Деканаті ЛНУ!*\n\n` +
+      `🎓 *Нова оцінка з предмета «${subject}»!*\n\n` +
       `📖 *Предмет:* ${subject}\n` +
       (teacher ? `👨‍🏫 *Викладач:* ${teacher}\n` : '') +
       `📊 *Оцінка:* *+${value} б.* (${category} — ${categoryLabel})\n` +
