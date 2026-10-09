@@ -1908,6 +1908,13 @@ async function handleDekanatRoutes(request, env, ctx) {
     return json({ ok: true, notifsEnabled: enabled });
   }
 
+  // 6. POST/GET /dekanat/cron-run (manual or scheduled trigger)
+  if (url.pathname === '/dekanat/cron-run' && (request.method === 'POST' || request.method === 'GET')) {
+    const force = url.searchParams.get('force') !== '0';
+    const res = await runDekanatAutoCheck(env, ctx, { force });
+    return json(res);
+  }
+
   return json({ error: 'Not found' }, 404);
 }
 
@@ -5429,76 +5436,143 @@ if (data === "link:site") {
 
   // ─── CRON: auto-check Dekanat grades for all users ─────────────────────────
   async scheduled(event, env, ctx) {
-    if (checkKvBlocked()) return; // Skip if KV quota is currently exceeded
-    const kv = env.PREFS_KV;
-    if (!kv || !env.BOT_TOKEN) return;
+    return await runDekanatAutoCheck(env, ctx, { force: false });
+  },
+};
 
-    // ── Night mode: Kyiv time = UTC+3 ────────────────────────────────────────
-    // Daytime  07:00–23:59 → check
-    // Nighttime 00:00–06:59 → check only at 00, 03, 06
-    const kyivHour = (new Date().getUTCHours() + 3) % 24;
-    const isNight = kyivHour >= 0 && kyivHour < 7;
-    if (isNight && kyivHour % 3 !== 0) {
-      return;
+async function runDekanatAutoCheck(env, ctx, options = {}) {
+  if (checkKvBlocked()) return { ok: false, reason: "KV blocked" };
+  const kv = env?.PREFS_KV;
+  if (!kv) return { ok: false, reason: "No PREFS_KV binding" };
+
+  // ── Kyiv time: UTC+2 (winter) or UTC+3 (summer) ──
+  const now = new Date();
+  const tzOffset = Math.round((Number(env.TZ_OFFSET_MIN) || 180) / 60);
+  const kyivHour = (now.getUTCHours() + tzOffset) % 24;
+  const kyivMin = now.getUTCMinutes();
+  const isNight = kyivHour >= 0 && kyivHour < 7;
+
+  // At night (00:00–06:59): run only once every 2 hours on the hour (e.g. 00:00, 02:00, 04:00, 06:00)
+  if (!options.force && isNight) {
+    if (kyivMin > 14 || kyivHour % 2 !== 0) {
+      return { ok: true, skipped: 'night_throttled', kyivHour };
+    }
+  }
+
+  // Skip if user was checked within last 20 min
+  const SKIP_IF_NEWER_MS = (options.skipMs !== undefined) ? options.skipMs : (20 * 60 * 1000);
+
+  // Cloudflare subrequest safety limit: max 50 subrequests per invocation.
+  // Each student takes ~12-14 fetches. 2-3 students = ~26-38 subrequests.
+  const BATCH_SIZE = 2;
+  const adminId = env.ADMIN_USER_ID || "918235475";
+
+  let checkedCount = 0;
+  let newGradesTotal = 0;
+  const userResults = [];
+
+  try {
+    const listed = await kv.list({ prefix: 'dekanat_creds:' });
+    const allKeys = listed.keys || [];
+    if (allKeys.length === 0) {
+      return { ok: true, checkedCount: 0, users: [] };
     }
 
-    // Skip if cache was updated within last 50 min (user opened app themselves)
-    const SKIP_IF_NEWER_MS = 50 * 60 * 1000;
-    const MAX_PER_RUN = 10;
-
+    // Get current cursor
+    let cursor = 0;
     try {
-      const listed = await kv.list({ prefix: 'dekanat_creds:' });
-      const keys = (listed.keys || []).slice(0, MAX_PER_RUN);
+      const rawCursor = await globalSafeKvGet(kv, 'cron_dekanat_cursor');
+      if (rawCursor) cursor = parseInt(rawCursor, 10) || 0;
+    } catch {}
 
-      for (const key of keys) {
-        const userId = key.name.replace('dekanat_creds:', '');
+    if (cursor >= allKeys.length) cursor = 0;
+
+    // Pick rotating users (exact batch size to stay safely within subrequest limits)
+    const selectedKeys = [];
+    for (let i = 0; i < BATCH_SIZE; i++) {
+      const idx = (cursor + i) % allKeys.length;
+      selectedKeys.push(allKeys[idx]);
+    }
+    const nextCursor = (cursor + BATCH_SIZE) % allKeys.length;
+    await globalSafeKvPut(kv, 'cron_dekanat_cursor', String(nextCursor));
+
+    for (const key of selectedKeys) {
+      const userId = key.name.replace('dekanat_creds:', '');
+      try {
+        const rawCreds = await globalSafeKvGet(kv, key.name);
+        if (!rawCreds) continue;
+        const { user_name, user_pwd } = JSON.parse(rawCreds);
+        if (!user_name || !user_pwd) continue;
+
+        // Load cached grades
+        const rawCache = await globalSafeKvGet(kv, `dekanat_cache:${userId}`);
+        const cached = rawCache ? JSON.parse(rawCache) : null;
+
+        // Skip if recently synced
+        if (!options.force && cached && cached.ts && (Date.now() - cached.ts) < SKIP_IF_NEWER_MS) {
+          userResults.push({ userId, user_name, skipped: 'recently_synced', ts: cached.ts });
+          continue;
+        }
+
+        // Fetch fresh data from Dekanat
+        let freshData;
         try {
-          // Load credentials
-          const rawCreds = await globalSafeKvGet(kv, key.name);
-          if (!rawCreds) continue;
-          const { user_name, user_pwd } = JSON.parse(rawCreds);
-          if (!user_name || !user_pwd) continue;
+          freshData = await fetchDekanatGrades(user_name, user_pwd);
+        } catch (fetchErr) {
+          userResults.push({ userId, user_name, error: fetchErr.message });
+          continue;
+        }
 
-          // Load cached grades
-          const rawCache = await globalSafeKvGet(kv, `dekanat_cache:${userId}`);
-          const cached = rawCache ? JSON.parse(rawCache) : null;
+        checkedCount++;
+        let hasNewGrades = false;
 
-          // Skip if recently synced
-          if (cached && cached.ts && (Date.now() - cached.ts) < SKIP_IF_NEWER_MS) {
-            continue;
-          }
-
-          // Fetch fresh data from Dekanat
-          let freshData;
-          try {
-            freshData = await fetchDekanatGrades(user_name, user_pwd);
-          } catch (fetchErr) {
-            continue;
-          }
-
-          let hasNewGrades = false;
-          // Compare with cached — find new grades
-          if (cached && cached.data && Array.isArray(cached.data.subjects)) {
-            const newGrades = findNewGrades(cached.data.subjects, freshData.subjects);
-            if (newGrades.length > 0) {
-              hasNewGrades = true;
-              for (const ng of newGrades) {
+        // Compare with cached — find new grades & absences
+        if (cached && cached.data && Array.isArray(cached.data.subjects)) {
+          const newGrades = findNewGrades(cached.data.subjects, freshData.subjects);
+          if (newGrades.length > 0) {
+            hasNewGrades = true;
+            newGradesTotal += newGrades.length;
+            for (const ng of newGrades) {
+              if (ctx && ctx.waitUntil) {
+                ctx.waitUntil(notifyTelegramNewGrade(env, userId, ng));
+              } else {
                 await notifyTelegramNewGrade(env, userId, ng);
               }
             }
           }
-
-          // Save fresh cache ONLY if grades changed or first time
-          if (hasNewGrades || !cached) {
-            await globalSafeKvPut(kv, `dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: freshData }));
-          }
-
-        } catch (userErr) {
-          console.error(`[cron:dekanat] userId=${userId} error:`, userErr.message);
         }
+
+        // Update in-memory runtime cache & KV cache with fresh data & timestamp
+        const sUid = String(userId);
+        memoryDekanatCache.set(sUid, { ts: Date.now(), data: freshData });
+        if (!checkKvBlocked()) {
+          await globalSafeKvPut(kv, `dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: freshData }));
+        }
+
+        userResults.push({
+          userId,
+          user_name,
+          hasNewGrades,
+          totalAbsences: freshData.totalAbsences || 0,
+          subjectsCount: (freshData.subjects || []).length
+        });
+
+      } catch (userErr) {
+        console.error(`[cron:dekanat] userId=${userId} error:`, userErr.message);
+        userResults.push({ userId, error: userErr.message });
       }
-    } catch (err) {
-      console.error('[cron:dekanat] Fatal error:', err);
     }
-  },
-};
+  } catch (err) {
+    console.error('[cron:dekanat] Fatal error:', err);
+    return { ok: false, error: err.message };
+  }
+
+  return {
+    ok: true,
+    kyivHour,
+    isNight,
+    checkedCount,
+    newGradesTotal,
+    users: userResults
+  };
+}
