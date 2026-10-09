@@ -2798,6 +2798,198 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             color: #10b981;
         }
 
+        /* --- GRADES PUSH MODAL (APPLE GLASS SHEET) --- */
+        #grades-push-modal {
+            transition: opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+        #grades-push-modal .modal-content {
+            border-radius: 26px;
+            background: var(--modal-bg);
+            border: 1px solid rgba(255,255,255,0.18);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.38);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            overflow: hidden;
+            font-family: var(--apple-font);
+        }
+        .push-status-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: var(--shadow);
+        }
+        .push-status-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+            flex: 1;
+        }
+        .push-status-beacon {
+            position: relative;
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .push-status-beacon.inactive {
+            background: rgba(148, 163, 184, 0.12);
+            border-color: rgba(148, 163, 184, 0.25);
+        }
+        .beacon-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #10b981;
+            z-index: 2;
+        }
+        .push-status-beacon.inactive .beacon-dot {
+            background: #94a3b8;
+        }
+        .beacon-pulse {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(16, 185, 129, 0.35);
+            animation: pushBeaconPulse 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+            z-index: 1;
+        }
+        .push-status-beacon.inactive .beacon-pulse {
+            display: none;
+        }
+        @keyframes pushBeaconPulse {
+            0% { transform: scale(0.6); opacity: 0.9; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+        .push-status-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.2px;
+        }
+        .push-status-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+            line-height: 1.35;
+        }
+        .push-guide-card {
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.22);
+            border-radius: 18px;
+            padding: 14px 16px;
+        }
+        .push-guide-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13.5px;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        .push-guide-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .push-step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 12.5px;
+            line-height: 1.45;
+            color: var(--text-main);
+        }
+        .push-step-num {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .btn-push-action {
+            width: 100%;
+            border-radius: 14px;
+            padding: 12px 18px;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            user-select: none;
+            -webkit-user-select: none;
+            border: none;
+        }
+        .btn-push-action:active {
+            transform: scale(0.97);
+        }
+        .btn-push-primary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.32);
+        }
+        .btn-push-primary:hover {
+            box-shadow: 0 6px 18px rgba(16, 185, 129, 0.42);
+        }
+        .btn-push-accent {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.32);
+        }
+        .btn-push-accent:hover {
+            box-shadow: 0 6px 18px rgba(59, 130, 246, 0.42);
+        }
+        .btn-push-secondary {
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+        .btn-push-secondary:hover {
+            color: #ef4444;
+            border-color: rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.05);
+        }
+        .push-info-box {
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 11.5px;
+            color: var(--text-muted);
+            line-height: 1.45;
+        }
+        .push-info-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
         /* Apple Absence Analytics Card & Chart */
         .grades-absences-card {
             background: var(--bg-card);
@@ -3975,6 +4167,85 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             <button class="close-btn" id="close-grades-legend">×</button>
         </div>
         <div class="modal-body" style="padding:10px 18px 20px;max-height:70vh;overflow-y:auto;" id="grades-legend-content"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="grades-push-modal" style="z-index:9250;">
+    <div class="modal-content grades-push-modal-content" style="max-width:460px;">
+        <div class="modal-header" style="padding:16px 20px 12px;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:24px;">🔔</span>
+                <div>
+                    <h2 style="margin:0;font-size:17px;font-weight:700;line-height:1.2;">Сповіщення на iPhone</h2>
+                    <span style="font-size:11px;color:var(--text-muted);font-weight:500;">Apple Web Push & Деканат ЛНУ</span>
+                </div>
+            </div>
+            <button class="close-btn" id="close-grades-push">×</button>
+        </div>
+        <div class="modal-body" style="padding:18px 20px 24px;display:flex;flex-direction:column;gap:14px;">
+            <!-- Status Card -->
+            <div id="push-status-card" class="push-status-card">
+                <div class="push-status-row">
+                    <div class="push-status-beacon" id="push-status-beacon">
+                        <span class="beacon-dot"></span>
+                        <span class="beacon-pulse"></span>
+                    </div>
+                    <div class="push-status-info">
+                        <div class="push-status-title" id="push-status-title">Статус сповіщень</div>
+                        <div class="push-status-desc" id="push-status-desc">Перевірка стану пристрою...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Safari PWA Instructions (shown only if iOS and not installed as standalone PWA) -->
+            <div id="push-ios-install-guide" class="push-guide-card" style="display:none;">
+                <div class="push-guide-title">
+                    <span>📲</span>
+                    <strong>Як увімкнути на iPhone</strong>
+                </div>
+                <div class="push-guide-steps">
+                    <div class="push-step-item">
+                        <span class="push-step-num">1</span>
+                        <span>Натисніть кнопку <strong>«Поділитися»</strong> (квадрат зі стрілкою ⬆️ внизу Safari).</span>
+                    </div>
+                    <div class="push-step-item">
+                        <span class="push-step-num">2</span>
+                        <span>Виберіть пункт <strong>«На початковий екран»</strong> 📲.</span>
+                    </div>
+                    <div class="push-step-item">
+                        <span class="push-step-num">3</span>
+                        <span>Відкрийте додаток з нової іконки та увімкніть сповіщення.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions row -->
+            <div id="push-actions-wrap" style="display:flex;flex-direction:column;gap:10px;">
+                <!-- Button: Enable Push -->
+                <button type="button" id="btn-push-enable" class="btn-push-action btn-push-primary" style="display:none;">
+                    <span>🔔 Увімкнути сповіщення на iPhone</span>
+                </button>
+
+                <!-- Button: Send Test Push -->
+                <button type="button" id="btn-push-test" class="btn-push-action btn-push-accent" style="display:none;">
+                    <span id="btn-push-test-text">⚡ Надіслати тестовий пуш на екран</span>
+                    <div id="btn-push-test-spinner" class="grades-spinner" style="display:none;width:16px;height:16px;border-width:2px;border-top-color:#fff;"></div>
+                </button>
+
+                <!-- Button: Disable Push -->
+                <button type="button" id="btn-push-disable" class="btn-push-action btn-push-secondary" style="display:none;">
+                    <span>🔕 Вимкнути на цьому пристрої</span>
+                </button>
+            </div>
+
+            <!-- Auto-checker Info Banner -->
+            <div class="push-info-box">
+                <span class="push-info-icon">⏱️</span>
+                <span class="push-info-text">
+                    <strong>Фонова перевірка:</strong> сервер перевіряє Деканат автоматично кожні 1–2 години. Якщо викладач виставить бал чи пропуск, ви отримаєте сповіщення на екран.
+                </span>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -5275,11 +5546,20 @@ function updateFallbackBanner(isFallback, cachedAt) {
     if (isFallback) {
         el.style.display = 'flex';
         const desc = document.getElementById('dekanat-fallback-desc');
-        if (desc && cachedAt) {
-            const d = new Date(cachedAt);
-            const timeStr = d.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
-            const dateStr = d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' });
-            desc.textContent = `Сервер деканату ЛНУ тимчасово не відповідає. Працює збережена резервна копія від ${dateStr} ${timeStr}.`;
+        if (desc) {
+            const isOnline = navigator.onLine;
+            let timeInfo = '';
+            if (cachedAt) {
+                const d = new Date(cachedAt);
+                const timeStr = d.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+                const dateStr = d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' });
+                timeInfo = ` від ${dateStr} ${timeStr}`;
+            }
+            if (!isOnline) {
+                desc.textContent = `Немає підключення до інтернету. Працює збережена резервна копія${timeInfo}.`;
+            } else {
+                desc.textContent = `Сервер деканату ЛНУ тимчасово не відповідає. Працює збережена резервна копія${timeInfo}.`;
+            }
         }
     } else {
         el.style.display = 'none';
@@ -5301,6 +5581,9 @@ async function fetchGroupSchedule(groupName, force = false) {
             updateFallbackBanner(false);
             return cached.data;
         }
+        if (window.setOfflineUI) window.setOfflineUI(true);
+        updateFallbackBanner(false);
+        throw new Error('Немає підключення до інтернету. Перевірте зʼєднання з мережею.');
     }
 
     // 2. If fresh cache is available and refresh not forced, return it
@@ -5312,9 +5595,11 @@ async function fetchGroupSchedule(groupName, force = false) {
 
     // 3. Try network fetch with safety catch
     let fresh = null;
+    let fetchError = null;
     try {
         fresh = await window.getSchedule(groupName);
     } catch (e) {
+        fetchError = e;
         console.warn('[Schedule] Network fetch error:', e.message);
     }
 
@@ -5331,14 +5616,14 @@ async function fetchGroupSchedule(groupName, force = false) {
         if (fresh && fresh._isStaleFallback) {
             updateFallbackBanner(true, fresh._cachedAt || cached.ts);
         } else {
-            updateFallbackBanner(false);
+            updateFallbackBanner(isOnline, cached.ts);
         }
         return cached.data;
     }
 
     if (window.setOfflineUI) window.setOfflineUI(true);
     updateFallbackBanner(false);
-    const errDetails = window.getSchedule?.lastError || 'Не вдалося завантажити розклад. Перевірте підключення до інтернету.';
+    const errDetails = (fetchError && fetchError.message) || window.getSchedule?.lastError || (isOnline ? 'Сервер Деканату ЛНУ тимчасово не відповідає' : 'Немає підключення до інтернету');
     throw new Error(errDetails);
 }
 
@@ -8146,6 +8431,53 @@ function renderDekanatAbsencesChart(analytics, period = 'month') {
     });
 }
 
+function showGlobalToast(message, icon = '✓', duration = 3000, theme = 'success') {
+    const toast = document.getElementById('online-toast');
+    const toastText = document.getElementById('online-toast-text');
+    if (!toast) return;
+    if (toastText) toastText.textContent = message;
+
+    if (theme === 'success') {
+        toast.style.background = '#10b981';
+        toast.style.boxShadow = '0 8px 24px rgba(16,185,129,0.35)';
+    } else if (theme === 'info') {
+        toast.style.background = '#3b82f6';
+        toast.style.boxShadow = '0 8px 24px rgba(59,130,246,0.35)';
+    } else if (theme === 'warning') {
+        toast.style.background = '#f59e0b';
+        toast.style.boxShadow = '0 8px 24px rgba(245,158,11,0.35)';
+    } else if (theme === 'error') {
+        toast.style.background = '#ef4444';
+        toast.style.boxShadow = '0 8px 24px rgba(239,68,68,0.35)';
+    }
+
+    const svg = toast.querySelector('svg');
+    let iconSpan = toast.querySelector('.toast-custom-icon');
+    if (!iconSpan) {
+        iconSpan = document.createElement('span');
+        iconSpan.className = 'toast-custom-icon';
+        iconSpan.style.fontSize = '15px';
+        iconSpan.style.display = 'inline-flex';
+        iconSpan.style.alignItems = 'center';
+        toast.insertBefore(iconSpan, toastText);
+    }
+    if (icon && icon !== '✓') {
+        if (svg) svg.style.display = 'none';
+        iconSpan.style.display = 'inline-flex';
+        iconSpan.textContent = icon;
+    } else {
+        if (svg) svg.style.display = '';
+        iconSpan.style.display = 'none';
+    }
+
+    toast.classList.add('show');
+    if (window._globalToastTimer) clearTimeout(window._globalToastTimer);
+    window._globalToastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+    }, duration);
+}
+window.showGlobalToast = showGlobalToast;
+
 function initDekanatGrades() {
     const openCard = document.getElementById('open-grades');
     const modal = document.getElementById('grades-modal');
@@ -8153,6 +8485,18 @@ function initDekanatGrades() {
     const legendModal = document.getElementById('grades-legend-modal');
     const legendOpenBtn = document.getElementById('btn-grades-legend');
     const legendCloseBtn = document.getElementById('close-grades-legend');
+
+    const pushModal = document.getElementById('grades-push-modal');
+    const closePushBtn = document.getElementById('close-grades-push');
+    const pushStatusBeacon = document.getElementById('push-status-beacon');
+    const pushStatusTitle = document.getElementById('push-status-title');
+    const pushStatusDesc = document.getElementById('push-status-desc');
+    const pushIosGuide = document.getElementById('push-ios-install-guide');
+    const btnPushEnable = document.getElementById('btn-push-enable');
+    const btnPushTest = document.getElementById('btn-push-test');
+    const btnPushTestText = document.getElementById('btn-push-test-text');
+    const btnPushTestSpinner = document.getElementById('btn-push-test-spinner');
+    const btnPushDisable = document.getElementById('btn-push-disable');
 
     const authView = document.getElementById('grades-auth-view');
     const dashboardView = document.getElementById('grades-dashboard-view');
@@ -8811,7 +9155,7 @@ function initDekanatGrades() {
                 if (cached) {
                     renderGradesData(cached, true, Number(localStorage.getItem('dekanat_last_sync') || '0'));
                 } else {
-                    alert(json.error || 'Не вдалося завантажити журнал Деканату. Спробуйте пізніше.');
+                    showGlobalToast(json.error || 'Не вдалося завантажити журнал Деканату. Спробуйте пізніше.', '⚠️', 3500, 'warning');
                     showView('auth');
                 }
             }
@@ -9077,6 +9421,12 @@ function initDekanatGrades() {
             localStorage.setItem('dekanat_notifs_enabled', notifsEnabled ? '1' : '0');
             updateNotifToggleUI(notifsEnabled);
 
+            if (notifsEnabled) {
+                showGlobalToast('Сповіщення для профілю активовано', '🔔', 2500, 'success');
+            } else {
+                showGlobalToast('Сповіщення для профілю вимкнено', '🔕', 2500, 'warning');
+            }
+
             const uid = getTelegramUserId();
             if (uid) {
                 try {
@@ -9093,74 +9443,120 @@ function initDekanatGrades() {
         });
     }
 
+    async function updatePushModalState() {
+        const isPushSupported = ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window);
+        const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+
+        if (!isPushSupported) {
+            if (pushStatusBeacon) pushStatusBeacon.classList.add('inactive');
+            if (pushStatusTitle) pushStatusTitle.textContent = 'Сповіщення не підтримуються';
+            if (pushStatusDesc) pushStatusDesc.textContent = isIOS && !isStandalone
+                ? 'Для активації сповіщень на iPhone додаток має бути збережений на початковий екран.'
+                : 'Ваш поточний браузер не підтримує Web Push API (потрібна iOS 16.4+).';
+            if (pushIosGuide) pushIosGuide.style.display = (isIOS && !isStandalone) ? 'block' : 'none';
+            if (btnPushEnable) btnPushEnable.style.display = 'none';
+            if (btnPushTest) btnPushTest.style.display = 'none';
+            if (btnPushDisable) btnPushDisable.style.display = 'none';
+            return;
+        }
+
+        if (Notification.permission === 'denied') {
+            if (pushStatusBeacon) pushStatusBeacon.classList.add('inactive');
+            if (pushStatusTitle) pushStatusTitle.textContent = 'Доступ заборонено';
+            if (pushStatusDesc) pushStatusDesc.textContent = 'Сповіщення вимкнено в налаштуваннях пристрою. Увімкніть їх у Параметри ➡️ Сповіщення.';
+            if (pushIosGuide) pushIosGuide.style.display = 'none';
+            if (btnPushEnable) btnPushEnable.style.display = 'none';
+            if (btnPushTest) btnPushTest.style.display = 'none';
+            if (btnPushDisable) btnPushDisable.style.display = 'none';
+            return;
+        }
+
+        let sub = null;
+        try {
+            const reg = await navigator.serviceWorker.ready;
+            sub = await reg.pushManager.getSubscription();
+        } catch(e) {}
+
+        const isSubscribed = !!sub && Notification.permission === 'granted';
+
+        if (isSubscribed) {
+            if (pushStatusBeacon) pushStatusBeacon.classList.remove('inactive');
+            if (pushStatusTitle) pushStatusTitle.textContent = '🟢 Сповіщення активні';
+            if (pushStatusDesc) pushStatusDesc.textContent = 'Ваш пристрій підключено до Apple Push Service (APNs). Нові оцінки та пропуски надходять миттєво.';
+            if (pushIosGuide) pushIosGuide.style.display = 'none';
+            if (btnPushEnable) btnPushEnable.style.display = 'none';
+            if (btnPushTest) btnPushTest.style.display = 'flex';
+            if (btnPushDisable) btnPushDisable.style.display = 'flex';
+
+            if (iphonePushBtn && iphonePushTextEl) {
+                iphonePushBtn.classList.add('active');
+                iphonePushTextEl.textContent = '📱 Пуш: Увімкнено';
+            }
+        } else {
+            if (pushStatusBeacon) pushStatusBeacon.classList.add('inactive');
+            if (pushStatusTitle) pushStatusTitle.textContent = '⚪ Сповіщення не підключені';
+            if (pushStatusDesc) pushStatusDesc.textContent = 'Увімкніть пуш, щоб отримувати сповіщення на заблокований екран при оновленні оцінок у Деканаті.';
+            if (pushIosGuide) pushIosGuide.style.display = (isIOS && !isStandalone) ? 'block' : 'none';
+            if (btnPushEnable) btnPushEnable.style.display = (isIOS && !isStandalone) ? 'none' : 'flex';
+            if (btnPushTest) btnPushTest.style.display = 'none';
+            if (btnPushDisable) btnPushDisable.style.display = 'none';
+
+            if (iphonePushBtn && iphonePushTextEl) {
+                iphonePushBtn.classList.remove('active');
+                iphonePushTextEl.textContent = '📱 Пуш на iPhone';
+            }
+        }
+    }
+
     // Check existing Web Push status on load
     if ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window) {
-        navigator.serviceWorker.ready.then(async (reg) => {
-            try {
-                const sub = await reg.pushManager.getSubscription();
-                if (sub && Notification.permission === 'granted') {
-                    if (iphonePushBtn && iphonePushTextEl) {
-                        iphonePushBtn.classList.add('active');
-                        iphonePushTextEl.textContent = '📱 Пуш: Увімкнено';
-                    }
-                }
-            } catch(e) {}
-        });
+        updatePushModalState().catch(() => {});
     }
 
     if (iphonePushBtn) {
-        iphonePushBtn.addEventListener('click', async () => {
+        iphonePushBtn.addEventListener('click', () => {
             haptic('impact');
-            const isPushSupported = ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window);
-            const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
-            const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-
-            if (!isPushSupported) {
-                if (isIOS && !isStandalone) {
-                    alert('💡 Щоб отримувати системні сповіщення на iPhone:\n\n1. Натисніть кнопку «Поділитися» (квадрат зі стрілкою ⬆️) внизу Safari.\n2. Виберіть пункт «На початковий екран» 📲.\n3. Відкрийте збережений додаток з іконки та увімкніть сповіщення тут!');
-                } else {
-                    alert('Ваш браузер або версія iOS не підтримує нативні Web Push сповіщення (потрібна iOS 16.4+).');
-                }
-                return;
+            updatePushModalState();
+            if (pushModal) {
+                pushModal.classList.add('active');
             }
+        });
+    }
+
+    if (closePushBtn && pushModal) {
+        closePushBtn.addEventListener('click', () => {
+            pushModal.classList.remove('active');
+        });
+    }
+
+    if (pushModal) {
+        pushModal.addEventListener('click', (e) => {
+            if (e.target === pushModal) pushModal.classList.remove('active');
+        });
+    }
+
+    if (btnPushEnable) {
+        btnPushEnable.addEventListener('click', async () => {
+            haptic('selection');
+            btnPushEnable.disabled = true;
+            btnPushEnable.innerHTML = '<span>⏳ Налаштування...</span>';
 
             try {
                 const reg = await navigator.serviceWorker.ready;
-                let sub = await reg.pushManager.getSubscription();
-
-                if (sub && Notification.permission === 'granted') {
-                    const doTest = confirm('Сповіщення на iPhone вже активні! 📲\n\nВідправити тестовий пуш на твій екран блокування зараз?');
-                    if (doTest) {
-                        const uid = getTelegramUserId() || 'anon';
-                        const uName = localStorage.getItem('dekanat_user_name') || '';
-                        const workerUrl = getDekanatWorkerUrl();
-                        await fetch(`${workerUrl}/push/test`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ userId: uid, userName: uName, subscription: sub })
-                        });
-                        alert('✅ Тестове сповіщення відправлено на екран iPhone!');
-                    }
-                    return;
-                }
-
-                if (Notification.permission === 'denied') {
-                    alert('⚠️ Сповіщення заблоковано в налаштуваннях iPhone.\nВідкрийте Параметри ➡️ Сповіщення ➡️ знайдіть цей додаток та дозвольте показ сповіщень.');
-                    return;
-                }
-
                 const permission = await Notification.requestPermission();
                 if (permission !== 'granted') {
-                    alert('⚠️ Дозвіл на сповіщення не надано.');
+                    showGlobalToast('Дозвіл на сповіщення не надано', '⚠️', 3500, 'warning');
+                    btnPushEnable.disabled = false;
+                    btnPushEnable.innerHTML = '<span>🔔 Увімкнути сповіщення на iPhone</span>';
+                    updatePushModalState();
                     return;
                 }
-
-                if (iphonePushTextEl) iphonePushTextEl.textContent = '⏳ Підключення...';
 
                 const VAPID_KEY = 'BIGiiNJ-SzM7gdMnFLPIpySCGC_RvIJftGtL7VovBhE3o9cTozfwE74_4Vuq466d6sYV7orJPgMYqrdo90dAyMw';
                 const convertedKey = urlB64ToUint8Array(VAPID_KEY);
 
-                sub = await reg.pushManager.subscribe({
+                const sub = await reg.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: convertedKey
                 });
@@ -9182,17 +9578,99 @@ function initDekanatGrades() {
                     body: JSON.stringify({ userId: uid, userName: uName, subscription: sub })
                 }).catch(() => {});
 
-                if (iphonePushBtn && iphonePushTextEl) {
-                    iphonePushBtn.classList.add('active');
-                    iphonePushTextEl.textContent = '📱 Пуш: Увімкнено';
-                }
-                alert('🎉 Нативні сповіщення на iPhone успішно активовано!\nМи щойно відправили тестовий пуш на твій екран.');
-            } catch (err) {
+                haptic('success');
+                showGlobalToast('Сповіщення на iPhone активовано!', '🎉', 3500, 'success');
+                updatePushModalState();
+            } catch(err) {
                 console.error('[push] Subscription error:', err);
-                if (iphonePushTextEl) iphonePushTextEl.textContent = '📱 Пуш на iPhone';
-                alert('Не вдалося увімкнути сповіщення: ' + (err.message || err));
+                showGlobalToast('Помилка підключення сповіщень: ' + (err.message || err), '❌', 4000, 'error');
+                updatePushModalState();
+            } finally {
+                btnPushEnable.disabled = false;
+                btnPushEnable.innerHTML = '<span>🔔 Увімкнути сповіщення на iPhone</span>';
             }
         });
+    }
+
+    if (btnPushTest) {
+        btnPushTest.addEventListener('click', async () => {
+            haptic('selection');
+            btnPushTest.disabled = true;
+            if (btnPushTestText) btnPushTestText.textContent = 'Відправка...';
+            if (btnPushTestSpinner) btnPushTestSpinner.style.display = 'inline-block';
+
+            try {
+                const reg = await navigator.serviceWorker.ready;
+                const sub = await reg.pushManager.getSubscription();
+                const uid = getTelegramUserId() || 'anon';
+                const uName = localStorage.getItem('dekanat_user_name') || '';
+                const workerUrl = getDekanatWorkerUrl();
+
+                const res = await fetch(`${workerUrl}/push/test`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: uid, userName: uName, subscription: sub })
+                });
+                const data = await res.json().catch(() => ({}));
+
+                if (data.ok) {
+                    haptic('success');
+                    if (btnPushTestText) btnPushTestText.textContent = '✅ Надіслано!';
+                    showGlobalToast('Тестовий пуш надіслано на екран iPhone!', '📲', 3500, 'success');
+                } else {
+                    showGlobalToast('Не вдалося відправити тестовий пуш', '⚠️', 3500, 'warning');
+                }
+            } catch(err) {
+                showGlobalToast('Помилка мережі при відправці тесту', '❌', 3500, 'error');
+            } finally {
+                setTimeout(() => {
+                    btnPushTest.disabled = false;
+                    if (btnPushTestText) btnPushTestText.textContent = '⚡ Надіслати тестовий пуш на екран';
+                    if (btnPushTestSpinner) btnPushTestSpinner.style.display = 'none';
+                }, 1800);
+            }
+        });
+    }
+
+    if (btnPushDisable) {
+        btnPushDisable.addEventListener('click', async () => {
+            haptic('impact');
+            btnPushDisable.disabled = true;
+
+            try {
+                const reg = await navigator.serviceWorker.ready;
+                const sub = await reg.pushManager.getSubscription();
+                if (sub) {
+                    await sub.unsubscribe();
+                }
+
+                const uid = getTelegramUserId() || 'anon';
+                const uName = localStorage.getItem('dekanat_user_name') || '';
+                const workerUrl = getDekanatWorkerUrl();
+
+                await fetch(`${workerUrl}/push/unsubscribe`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: uid, userName: uName })
+                }).catch(() => {});
+
+                showGlobalToast('Сповіщення на цьому пристрої вимкнено', '🔕', 3000, 'info');
+                updatePushModalState();
+            } catch(err) {
+                console.error('[push] Unsubscribe error:', err);
+                showGlobalToast('Помилка при вимкненні сповіщень', '❌', 3000, 'error');
+            } finally {
+                btnPushDisable.disabled = false;
+            }
+        });
+    }
+
+    function clearGradesHash() {
+        if (window.location.hash === '#grades') {
+            try {
+                history.replaceState(null, '', window.location.pathname + window.location.search);
+            } catch(e) {}
+        }
     }
 
     openCard.addEventListener('click', () => {
@@ -9206,6 +9684,11 @@ function initDekanatGrades() {
             }
         } catch(e) {}
         loadDashboard();
+        try {
+            if (window.location.hash !== '#grades') {
+                history.replaceState(null, '', '#grades');
+            }
+        } catch(e) {}
         requestAnimationFrame(() => {
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -9215,14 +9698,26 @@ function initDekanatGrades() {
     closeBtn.addEventListener('click', () => {
         modal.classList.remove('active');
         document.body.style.overflow = '';
+        clearGradesHash();
     });
 
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
             modal.classList.remove('active');
             document.body.style.overflow = '';
+            clearGradesHash();
         }
     });
+
+    function checkGradesHash() {
+        if (window.location.hash === '#grades') {
+            if (!modal.classList.contains('active')) {
+                openCard.click();
+            }
+        }
+    }
+    window.addEventListener('hashchange', checkGradesHash);
+    setTimeout(checkGradesHash, 350);
 
     if (legendOpenBtn && legendModal) {
         legendOpenBtn.addEventListener('click', () => {

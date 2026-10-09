@@ -12,7 +12,7 @@
       ╚═════════╝               
 */
 
-const CACHE_NAME = 'fep-schedule-v15-ios-push-safe';
+const CACHE_NAME = 'fep-schedule-v16-ios-push-pro';
 const OFFLINE_PAGE = './index.html';
 
 const PRECACHE_URLS = [

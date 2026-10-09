@@ -313,6 +313,21 @@ async function handleScheduleRoutes(request, env, ctx) {
         dekanatReachable = false;
       }
 
+      // If Dekanat was reachable and responded with 0 days (e.g. holidays or group has no published schedule):
+      if (dekanatReachable && (!fresh || !Array.isArray(fresh.days) || fresh.days.length === 0)) {
+        return json({
+          group: cleanGroup,
+          days: [],
+          notPublished: true,
+          empty: true,
+          message: `У Деканаті наразі немає опублікованого розкладу для групи ${cleanGroup} на цей період`
+        }, 200, {
+          'Cache-Control': 'public, max-age=300',
+          'X-Cache-Status': 'NOT-PUBLISHED'
+        });
+      }
+
+      // If Dekanat is unreachable (failed network/timeout), fall back to cached copy:
       if (cachedEntry && cachedEntry.schedule && cachedEntry.schedule.days?.length > 0) {
         return json({
           ...cachedEntry.schedule,
@@ -357,20 +372,11 @@ async function handleScheduleRoutes(request, env, ctx) {
         } catch {}
       }
 
-      // If Dekanat was reachable and returned empty timetable for this group:
-      if (dekanatReachable) {
-        return json({
-          group: cleanGroup,
-          days: [],
-          notPublished: true,
-          error: `Деканат ще не опублікував розклад для групи ${cleanGroup} на цей період`
-        }, 200, {
-          'Cache-Control': 'public, max-age=180',
-          'X-Cache-Status': 'EMPTY'
-        });
-      }
-
-      return json({ error: 'Сервер деканату тимчасово недоступний, резервна копія для цієї групи ще не збережена', details: lastErr?.message || null }, 502);
+      return json({
+        error: 'Сервер Деканату ЛНУ тимчасово не відповідає, резервна копія для цієї групи ще не збережена',
+        dekanatDown: true,
+        details: lastErr?.message || null
+      }, 502);
     }
   } catch (error) {
     return json({ error: error.message }, 502);
@@ -1581,7 +1587,7 @@ async function encryptWebPushPayload(clientP256dhB64, clientAuthB64, payloadText
   return concatBufs(salt, rs, idlen, serverPubRaw, ciphertext);
 }
 
-async function sendWebPushNotification(env, subscription, payload) {
+async function sendWebPushNotification(env, subscription, payload, subKeys = []) {
   if (!subscription || !subscription.endpoint) return { ok: false, error: 'No endpoint' };
   try {
     const endpointUrl = new URL(subscription.endpoint);
@@ -1609,6 +1615,16 @@ async function sendWebPushNotification(env, subscription, payload) {
     });
 
     const resText = await res.text();
+
+    // Auto-cleanup expired or invalid push subscriptions (410 Gone / 404 Not Found)
+    if ((res.status === 410 || res.status === 404) && env?.PREFS_KV) {
+      const keys = Array.isArray(subKeys) ? subKeys : [subKeys].filter(Boolean);
+      for (const k of keys) {
+        console.log(`[push] Subscription expired (${res.status}), deleting dead key: ${k}`);
+        await globalSafeKvDelete(env.PREFS_KV, k);
+      }
+    }
+
     return {
       ok: res.ok,
       status: res.status,
@@ -1731,12 +1747,15 @@ async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
           : ((isAbsence || value === 'Н' || value === 'н')
             ? `Зафіксовано Н (${category}${date ? ` від ${date}` : ''})`
             : `+${value} б. (${category} — ${categoryLabel}${date ? `, ${date}` : ''})`);
+        const keysToClean = [];
+        if (tgChatId) keysToClean.push(`push_sub:${tgChatId}`);
+        if (newGradeInfo?.userName) keysToClean.push(`push_sub:${String(newGradeInfo.userName).trim().toLowerCase()}`);
         await sendWebPushNotification(env, sub, {
           title: pushTitle,
           body: pushBody,
           url: './#grades',
           tag: `grade-${subject}-${date}-${value}`
-        });
+        }, keysToClean);
       }
     } catch (pushErr) {
       console.warn("[push] WebPush error:", pushErr.message);
@@ -2016,11 +2035,14 @@ async function handlePushRoutes(request, env, ctx) {
     }
     if (!sub) return json({ ok: false, error: 'No subscription found' }, 404);
 
+    const keysToClean = [];
+    if (userId) keysToClean.push(`push_sub:${userId}`);
+    if (userName) keysToClean.push(`push_sub:${String(userName).trim().toLowerCase()}`);
     const pushResult = await sendWebPushNotification(env, sub, {
       title: 'Розклад ФЕП | Деканат',
       body: '🔔 Тестове сповіщення успішно налаштовано на твоєму iPhone!',
       url: './#grades'
-    });
+    }, keysToClean);
     return json({ ok: pushResult.ok, pushResult, endpoint: sub.endpoint });
   }
 
@@ -5574,6 +5596,7 @@ async function runDekanatAutoCheck(env, ctx, options = {}) {
             hasNewGrades = true;
             newGradesTotal += newGrades.length;
             for (const ng of newGrades) {
+              ng.userName = user_name;
               if (ctx && ctx.waitUntil) {
                 ctx.waitUntil(notifyTelegramNewGrade(env, userId, ng));
               } else {
