@@ -1641,7 +1641,7 @@ async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
   }
 
   // 2. Global 24-hour deduplication to prevent duplicate messages across cron/requests
-  if (env.PREFS_KV) {
+  if (env.PREFS_KV && !newGradeInfo.isTest) {
     const dedupeKey = `notif_sent:${tgChatId}:${subject}:${category}:${date}:${value}`;
     try {
       const alreadySent = await globalSafeKvGet(env.PREFS_KV, dedupeKey);
@@ -1654,7 +1654,18 @@ async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
   }
 
   let text;
-  if (isAbsence || value === 'Н' || value === 'н') {
+  if (newGradeInfo.isTest) {
+    text =
+      `🔔 *Тестове сповіщення від додатку «Розклад ФЕП»!*\n\n` +
+      `✅ Система сповіщень успішно активна та перевірена.\n` +
+      `⏱ Фонове оновлення працює кожні 1–2 години.\n\n` +
+      `🎓 *Зразок сповіщення про оцінку:*\n` +
+      `📖 *Предмет:* Фізика напівпровідників\n` +
+      `👨‍🏫 *Викладач:* проф. Корж\n` +
+      `📊 *Оцінка:* *+5 б.* (Лаб — Лабораторні роб.)\n` +
+      `📈 *Поточний бал:* *95 / 100*\n\n` +
+      `Переглянути журнал: у додатку в розділі «Корисне» ➡️ «Мої бали» ↗️`;
+  } else if (isAbsence || value === 'Н' || value === 'н') {
     text =
       `⚠️ *Новий пропуск (Н-ка) з предмета «${subject}»!*\n\n` +
       `📖 *Предмет:* ${subject}\n` +
@@ -1913,6 +1924,23 @@ async function handleDekanatRoutes(request, env, ctx) {
     const force = url.searchParams.get('force') !== '0';
     const res = await runDekanatAutoCheck(env, ctx, { force });
     return json(res);
+  }
+
+  // 7. POST/GET /dekanat/test-notify
+  if (url.pathname === '/dekanat/test-notify' && (request.method === 'POST' || request.method === 'GET')) {
+    const targetId = url.searchParams.get('userId') || '918235475';
+    await notifyTelegramNewGrade(env, targetId, {
+      subject: 'Фізика напівпровідників',
+      teacher: 'проф. Корж',
+      category: 'Лаб',
+      categoryLabel: 'Лабораторні роб.',
+      value: '5',
+      date: new Date().toLocaleDateString('uk-UA'),
+      total: 95,
+      isAbsence: false,
+      isTest: true
+    });
+    return json({ ok: true, sentTo: targetId });
   }
 
   return json({ error: 'Not found' }, 404);
