@@ -1547,13 +1547,13 @@ async function encryptWebPushPayload(clientP256dhB64, clientAuthB64, payloadText
     serverPubRaw
   );
 
-  const authKey = await crypto.subtle.importKey('raw', clientAuth, 'HKDF', false, ['deriveBits']);
+  const sharedKey = await crypto.subtle.importKey('raw', sharedSecret, 'HKDF', false, ['deriveBits']);
   const ikm = new Uint8Array(await crypto.subtle.deriveBits({
     name: 'HKDF',
     hash: 'SHA-256',
-    salt: sharedSecret,
+    salt: clientAuth,
     info: authInfo
-  }, authKey, 256));
+  }, sharedKey, 256));
 
   const salt = crypto.getRandomValues(new Uint8Array(16));
 
