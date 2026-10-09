@@ -1721,10 +1721,14 @@ async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
       }
       if (rawSub) {
         const sub = JSON.parse(rawSub);
-        const pushTitle = (isAbsence || value === 'Н' || value === 'н') ? `⚠️ Пропуск: ${subject}` : `🎓 Нова оцінка: ${subject}`;
-        const pushBody = (isAbsence || value === 'Н' || value === 'н')
-          ? `Зафіксовано Н (${category}${date ? ` від ${date}` : ''})`
-          : `+${value} б. (${category} — ${categoryLabel}${date ? `, ${date}` : ''})`;
+        const pushTitle = newGradeInfo.isTest
+          ? '🔔 Розклад ФЕП | Додаток'
+          : ((isAbsence || value === 'Н' || value === 'н') ? `⚠️ Пропуск: ${subject}` : `🎓 Нова оцінка: ${subject}`);
+        const pushBody = newGradeInfo.isTest
+          ? '✅ Тестове сповіщення від PWA додатку успішно працює на твоєму iPhone!'
+          : ((isAbsence || value === 'Н' || value === 'н')
+            ? `Зафіксовано Н (${category}${date ? ` від ${date}` : ''})`
+            : `+${value} б. (${category} — ${categoryLabel}${date ? `, ${date}` : ''})`);
         await sendWebPushNotification(env, sub, {
           title: pushTitle,
           body: pushBody,
@@ -2016,6 +2020,13 @@ async function handlePushRoutes(request, env, ctx) {
       url: './#grades'
     });
     return json({ ok: success });
+  }
+
+  // GET /push/list
+  if (url.pathname === '/push/list' && request.method === 'GET') {
+    if (!kv) return json({ keys: [] });
+    const listed = await kv.list({ prefix: 'push_sub:' });
+    return json({ keys: (listed.keys || []).map(k => k.name) });
   }
 
   return json({ error: 'Not found' }, 404);
