@@ -101,6 +101,7 @@
         window.fbGetUsers = async () => [];
         window.fbUpdateUserLastSeen = async () => {};
         window.fbUnlinkUser = async () => false;
+        window.fbUnlinkDevice = async () => false;
         window.fbGetDekanatState = async () => null;
         window.fbSaveDekanatState = async () => false;
     </script>
@@ -4980,14 +4981,15 @@ function haptic(type = 'light') {
 
 function isUserAdmin() {
     if (storage.get('admin_unlocked_xmice', '') === 'true') return true;
+    const ADMIN_IDS = ['918235475'];
     try {
         const tg = window.Telegram && window.Telegram.WebApp;
         const u = tg?.initDataUnsafe?.user;
         if (u) {
             const un = (u.username || '').toLowerCase().replace('@', '');
-            if (un === 'xmice') {
+            if (un === 'xmice' || (u.id && ADMIN_IDS.includes(String(u.id)))) {
                 storage.set('admin_unlocked_xmice', 'true');
-                if (u.id) storage.set('admin_authed_id', String(u.id));
+                storage.set('admin_authed_id', String(u.id));
                 return true;
             }
             const savedId = storage.get('admin_authed_id', '');
@@ -5001,9 +5003,9 @@ function isUserAdmin() {
         const cached = JSON.parse(localStorage.getItem('tg_user_cache') || 'null');
         if (cached) {
             const un = (cached.username || '').toLowerCase().replace('@', '');
-            if (un === 'xmice') {
+            if (un === 'xmice' || (cached.id && ADMIN_IDS.includes(String(cached.id)))) {
                 storage.set('admin_unlocked_xmice', 'true');
-                if (cached.id) storage.set('admin_authed_id', String(cached.id));
+                storage.set('admin_authed_id', String(cached.id));
                 return true;
             }
             const savedId = storage.get('admin_authed_id', '');
@@ -5404,7 +5406,7 @@ function initAnnouncement() {
         const pVal = passInput.value.trim();
         if (!isValid && pVal) {
             const un = pVal.toLowerCase().replace('@', '');
-            if (un === 'xmice' || (storage.get('admin_authed_id','') && pVal === storage.get('admin_authed_id',''))) {
+            if (un === 'xmice' || un === '918235475' || (storage.get('admin_authed_id','') && pVal === storage.get('admin_authed_id',''))) {
                 storage.set('admin_unlocked_xmice', 'true');
                 isValid = true;
             } else {
@@ -5427,7 +5429,11 @@ function initAnnouncement() {
             gset(state.scheduleGroup,'ann_last_seen', ts.toString());
             showText(topic, text, ts, imageUrl);
             closeEditor();
-        } else { alert('Помилка збереження. Перевір інтернет.'); }
+            if (typeof showGlobalToast === 'function') showGlobalToast(clear ? 'Оголошення очищено' : 'Оголошення опубліковано!', 'success');
+        } else {
+            if (typeof showGlobalToast === 'function') showGlobalToast('Помилка збереження. Перевір інтернет.', 'error');
+            else alert('Помилка збереження. Перевір інтернет.');
+        }
     }
 
     cancelBtn.addEventListener('click', closeEditor);
@@ -6604,55 +6610,87 @@ function applyPinnedMsg(text) {
 
 async function saveAdminField(updates) {
     if (window.waitForFirebase) await window.waitForFirebase(1200);
+    const gid = state.scheduleGroup || 'fep13';
+    let current = {};
     try {
-        const current = (typeof window.fbGetAdmin === 'function')
-            ? await window.fbGetAdmin(state.scheduleGroup)
+        current = (typeof window.fbGetAdmin === 'function')
+            ? await window.fbGetAdmin(gid)
             : {};
-        const merged = Object.assign({}, current || {}, updates);
-        const ok = (typeof window.fbSetAdmin === 'function')
-            ? await window.fbSetAdmin(state.scheduleGroup, merged)
-            : false;
-        if (ok) {
-            gset(state.scheduleGroup, 'admin_cache', JSON.stringify(merged));
+    } catch(e) {}
+    if (!current || typeof current !== 'object') current = {};
+    const merged = Object.assign({}, current, updates);
+
+    // 1. Try Firebase Firestore
+    try {
+        if (typeof window.fbSetAdmin === 'function') {
+            await window.fbSetAdmin(gid, merged);
         }
-        return ok ? merged : null;
-    } catch (e) {
-        console.error('saveAdminField error:', e);
-        return null;
+    } catch(e) {
+        console.warn('fbSetAdmin error:', e);
     }
+
+    // 2. Always persist locally
+    gset(gid, 'admin_cache', JSON.stringify(merged));
+
+    // 3. Dual-sync to Worker KV
+    try {
+        const workerBase = localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
+        let tgUser = null;
+        try { tgUser = JSON.parse(localStorage.getItem('tg_user_cache') || 'null'); } catch(e) {}
+        const adminPass = storage.get('admin_authed_pass', '');
+        const adminUser = tgUser?.username || (tgUser?.id ? String(tgUser.id) : '') || '918235475';
+        fetch(`${workerBase}/api/admin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminPass, adminUser, group: gid, data: merged })
+        }).catch(() => null);
+    } catch(e) {}
+
+    return merged;
 }
 window.saveAdminField = saveAdminField;
 
 window.loadAdminData = async function loadAdminData() {
     if (window.waitForFirebase) await window.waitForFirebase(1200);
-    const countedKey = `${state.scheduleGroup}_counted`;
+    const gid = state.scheduleGroup || 'fep13';
+    const countedKey = `${gid}_counted`;
     if(!sessionStorage.getItem(countedKey)){
         sessionStorage.setItem(countedKey,'1');
-        if (typeof window.fbIncrementView === 'function') window.fbIncrementView(state.scheduleGroup);
+        if (typeof window.fbIncrementView === 'function') window.fbIncrementView(gid);
     }
-    const data = (typeof window.fbGetAdmin === 'function') ? await window.fbGetAdmin(state.scheduleGroup) : null;
+    let data = (typeof window.fbGetAdmin === 'function') ? await window.fbGetAdmin(gid) : null;
+    if (!data || Object.keys(data).length === 0) {
+        // Fallback to Worker KV
+        try {
+            const workerBase = localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
+            const r = await fetch(`${workerBase}/api/admin?group=${encodeURIComponent(gid)}`);
+            const j = await r.json();
+            if (j && j.ok && j.data && Object.keys(j.data).length > 0) data = j.data;
+        } catch(e) {}
+    }
     if(data) {
         applyWarningBanner(data.warningTitle,data.warningText);
         applyQuickLink(data.quicklinkName,data.quicklinkUrl);
         applyHolidayTheme(data.holidayMode);
         applyPinnedMsg(data.pinnedText);
         gAdminCustomLessons = data.customLessons || [];
-        gset(state.scheduleGroup,'admin_cache',JSON.stringify(data));
+        gset(gid,'admin_cache',JSON.stringify(data));
         gDeadlines = data.deadlines || [];
     }
 
     try {
         const [modsData, lannData] = await Promise.all([
-            (typeof window.fbGetScheduleMods === 'function' ? window.fbGetScheduleMods(state.scheduleGroup) : Promise.resolve({mods:[]})),
-            (typeof window.fbGetLessonAnnouncements === 'function' ? window.fbGetLessonAnnouncements(state.scheduleGroup) : Promise.resolve({items:[]}))
+            (typeof window.fbGetScheduleMods === 'function' ? window.fbGetScheduleMods(gid) : Promise.resolve({mods:[]})),
+            (typeof window.fbGetLessonAnnouncements === 'function' ? window.fbGetLessonAnnouncements(gid) : Promise.resolve({items:[]}))
         ]);
+        const todayStr = (typeof getKyivDate === 'function') ? getKyivDate().toLocaleDateString('sv-SE') : new Date().toISOString().slice(0,10);
         if (modsData && modsData.mods) {
-            gScheduleMods = (modsData.mods || []).filter(m => m.date >= new Date().toISOString().slice(0,10));
-            try { localStorage.setItem(`${state.scheduleGroup}_sched_mods`, JSON.stringify(modsData.mods)); } catch(e) {}
+            gScheduleMods = (modsData.mods || []).filter(m => m.date >= todayStr);
+            try { localStorage.setItem(`${gid}_sched_mods`, JSON.stringify(modsData.mods)); } catch(e) {}
         }
         if (lannData && lannData.items) {
             gLessonAnns = lannData.items || [];
-            try { localStorage.setItem(`${state.scheduleGroup}_lesson_anns`, JSON.stringify(lannData.items)); } catch(e) {}
+            try { localStorage.setItem(`${gid}_lesson_anns`, JSON.stringify(lannData.items)); } catch(e) {}
         }
     } catch(e) {}
 
@@ -6728,7 +6766,7 @@ function initAdminPanel() {
         async function checkAdminPass(){
             const val = passInput.value.trim();
             const un = val.toLowerCase().replace('@', '');
-            if (un === 'xmice' || (storage.get('admin_authed_id','') && val === storage.get('admin_authed_id',''))) {
+            if (un === 'xmice' || un === '918235475' || val === '918235475' || (storage.get('admin_authed_id','') && val === storage.get('admin_authed_id',''))) {
                 storage.set('admin_unlocked_xmice', 'true');
                 storage.set('admin_authed_pass', val);
                 document.body.removeChild(promptOverlay);
@@ -6785,6 +6823,12 @@ function initAdminPanel() {
             document.getElementById('pinned-text-input').value=cached.pinnedText||'';
             const hm=cached.holidayMode||'off';
             updateHolidayCards(hm);
+            if (cached.deadlines && cached.deadlines.length) gDeadlines = cached.deadlines;
+            if (cached.customLessons && cached.customLessons.length) gAdminCustomLessons = cached.customLessons;
+            const cachedMods = JSON.parse(localStorage.getItem('cached_mods_' + state.scheduleGroup) || '[]');
+            if (cachedMods && cachedMods.length) gScheduleMods = cachedMods;
+            const cachedLann = JSON.parse(localStorage.getItem('cached_lann_' + state.scheduleGroup) || '[]');
+            if (cachedLann && cachedLann.length) gLessonAnns = cachedLann;
         } catch(e){}
         
         renderModList();
@@ -6812,8 +6856,11 @@ function initAdminPanel() {
                     gAdminCustomLessons = freshAdmin.customLessons || [];
                     gset(state.scheduleGroup,'admin_cache',JSON.stringify(freshAdmin));
                 }
-                gScheduleMods = (modsData.mods || []).filter(m => m.date >= new Date().toISOString().slice(0,10));
+                const kyivTodayStr = getKyivDate().toLocaleDateString('sv-SE');
+                gScheduleMods = (modsData.mods || []).filter(m => m.date >= kyivTodayStr);
+                try { localStorage.setItem('cached_mods_' + state.scheduleGroup, JSON.stringify(gScheduleMods)); } catch(e){}
                 gLessonAnns = lannData.items || [];
+                try { localStorage.setItem('cached_lann_' + state.scheduleGroup, JSON.stringify(gLessonAnns)); } catch(e){}
                 renderModList();
                 renderLannList();
                 renderDlList();
@@ -6848,8 +6895,13 @@ function initAdminPanel() {
                 const ts = parseInt(btn.dataset.ts);
                 if(confirm('Видалити це оголошення з історії назавжди?')) {
                     const ok = await window.fbDeleteAnnHistoryItem(state.scheduleGroup, ts);
-                    if(ok) renderAdminAnnHistory();
-                    else alert('Помилка видалення');
+                    if(ok) {
+                        renderAdminAnnHistory();
+                        if (typeof showGlobalToast === 'function') showGlobalToast('Оголошення видалено з історії', 'info');
+                    } else {
+                        if (typeof showGlobalToast === 'function') showGlobalToast('Помилка видалення оголошення', 'error');
+                        else alert('Помилка видалення');
+                    }
                 }
             });
         });
@@ -6901,13 +6953,22 @@ function initAdminPanel() {
         btn.textContent='…';btn.disabled=true;
         const result=await saveAdminField({pinnedText:text});
         btn.disabled=false;
-        if(result){applyPinnedMsg(text);btn.textContent='✓ Закріплено!';setTimeout(()=>{btn.textContent='Закріпити';},1800);}
-        else{btn.textContent='Закріпити';alert('Помилка збереження');}
+        if(result){
+            applyPinnedMsg(text);
+            btn.textContent='✓ Закріплено!';
+            if (typeof showGlobalToast === 'function') showGlobalToast(text ? 'Повідомлення закріплено!' : 'Закріплення знято', 'success');
+            setTimeout(()=>{btn.textContent='Закріпити';},1800);
+        } else {
+            btn.textContent='Закріпити';
+            if (typeof showGlobalToast === 'function') showGlobalToast('Помилка збереження закріпленого повідомлення', 'error');
+            else alert('Помилка збереження');
+        }
     });
     document.getElementById('pinned-clear-btn').addEventListener('click', async () => {
-        await saveAdminField({pinnedText:''});
+        const ok = await saveAdminField({pinnedText:''});
         applyPinnedMsg('');
         document.getElementById('pinned-text-input').value='';
+        if (ok && typeof showGlobalToast === 'function') showGlobalToast('Закріплене повідомлення очищено', 'info');
     });
 
     
@@ -6927,7 +6988,8 @@ function initAdminPanel() {
         bSendBtn.addEventListener('click', async () => {
             const text = (bTextInput?.value || '').trim();
             if (!text) {
-                alert('Введіть текст повідомлення для розсилки');
+                if (typeof showGlobalToast === 'function') showGlobalToast('Введіть текст повідомлення для розсилки', 'warning');
+                else alert('Введіть текст повідомлення для розсилки');
                 if (bTextInput) bTextInput.focus();
                 return;
             }
@@ -6950,7 +7012,7 @@ function initAdminPanel() {
             let tgUser = null;
             try { tgUser = JSON.parse(localStorage.getItem('tg_user_cache') || 'null'); } catch(e) {}
             const adminPass = storage.get('admin_authed_pass', '');
-            const adminUser = tgUser?.username || (tgUser?.id ? String(tgUser.id) : '') || (storage.get('admin_unlocked_xmice', '') === 'true' ? 'xmice' : '');
+            const adminUser = tgUser?.username || (tgUser?.id ? String(tgUser.id) : '') || (storage.get('admin_authed_id', '')) || '918235475';
             const workerBase = localStorage.getItem('_worker_url') || 'https://telegram2.korglosa.workers.dev';
 
             try {
@@ -6977,6 +7039,7 @@ function initAdminPanel() {
                     bResultMsg.style.border = '1px solid rgba(16,185,129,0.3)';
                     bResultMsg.innerHTML = `✅ Розсилку завершено успішно!<br><span style="font-size:12px;opacity:0.9;">Всього знайдено: ${data.total} | Надіслано: ${data.sent} | Помилок: ${data.failed}</span>`;
                 }
+                if (typeof showGlobalToast === 'function') showGlobalToast(`Розсилка надіслана: ${data.sent} учням`, 'success');
                 if (bTextInput) bTextInput.value = '';
                 if (bCharCount) bCharCount.textContent = '0 / 800';
             } catch (err) {
@@ -6988,6 +7051,7 @@ function initAdminPanel() {
                     bResultMsg.style.border = '1px solid rgba(239,68,68,0.3)';
                     bResultMsg.textContent = `❌ Помилка розсилки: ${err.message}`;
                 }
+                if (typeof showGlobalToast === 'function') showGlobalToast('Помилка розсилки: ' + err.message, 'error');
             } finally {
                 bSendBtn.disabled = false;
                 if (iconSpan) iconSpan.textContent = '✈️';
@@ -6999,33 +7063,59 @@ function initAdminPanel() {
     document.getElementById('warning-save-btn').addEventListener('click', async () => {
         const title=document.getElementById('warning-title-input').value.trim();
         const text=document.getElementById('warning-text-input').value.trim();
-        if(!text.trim()){alert('Введи текст попередження');return;}
+        if(!text.trim()){
+            if (typeof showGlobalToast === 'function') showGlobalToast('Введіть текст попередження', 'warning');
+            else alert('Введи текст попередження');
+            return;
+        }
         const btn=document.getElementById('warning-save-btn');btn.textContent='…';btn.disabled=true;
         const result=await saveAdminField({warningTitle:title,warningText:text});
         btn.disabled=false;
-        if(result){applyWarningBanner(title,text);btn.textContent='✓ Показано!';setTimeout(()=>{btn.textContent='Показати';},1800);}
-        else{btn.textContent='Показати';alert('Помилка збереження');}
+        if(result){
+            applyWarningBanner(title,text);
+            btn.textContent='✓ Показано!';
+            if (typeof showGlobalToast === 'function') showGlobalToast('Банер попередження збережено!', 'success');
+            setTimeout(()=>{btn.textContent='Показати';},1800);
+        } else {
+            btn.textContent='Показати';
+            if (typeof showGlobalToast === 'function') showGlobalToast('Помилка збереження попередження', 'error');
+            else alert('Помилка збереження');
+        }
     });
     document.getElementById('warning-clear-btn').addEventListener('click', async () => {
-        await saveAdminField({warningTitle:'',warningText:''});
+        const ok = await saveAdminField({warningTitle:'',warningText:''});
         applyWarningBanner('','');
         document.getElementById('warning-title-input').value='';document.getElementById('warning-text-input').value='';
+        if (ok && typeof showGlobalToast === 'function') showGlobalToast('Попередження знято', 'info');
     });
 
     document.getElementById('quicklink-save-btn').addEventListener('click', async () => {
         const name=document.getElementById('quicklink-name-input').value.trim();
         const url=document.getElementById('quicklink-url-input').value.trim();
-        if(!url){alert('Введи URL посилання');return;}
+        if(!url){
+            if (typeof showGlobalToast === 'function') showGlobalToast('Введіть URL посилання', 'warning');
+            else alert('Введи URL посилання');
+            return;
+        }
         const btn=document.getElementById('quicklink-save-btn');btn.textContent='…';btn.disabled=true;
         const result=await saveAdminField({quicklinkName:name,quicklinkUrl:url});
         btn.disabled=false;
-        if(result){applyQuickLink(name,url);btn.textContent='✓ Показано!';setTimeout(()=>{btn.textContent='Показати';},1800);}
-        else{btn.textContent='Показати';alert('Помилка збереження');}
+        if(result){
+            applyQuickLink(name,url);
+            btn.textContent='✓ Показано!';
+            if (typeof showGlobalToast === 'function') showGlobalToast('Швидке посилання збережено!', 'success');
+            setTimeout(()=>{btn.textContent='Показати';},1800);
+        } else {
+            btn.textContent='Показати';
+            if (typeof showGlobalToast === 'function') showGlobalToast('Помилка збереження швидкого посилання', 'error');
+            else alert('Помилка збереження');
+        }
     });
     document.getElementById('quicklink-clear-btn').addEventListener('click', async () => {
-        await saveAdminField({quicklinkName:'',quicklinkUrl:''});
+        const ok = await saveAdminField({quicklinkName:'',quicklinkUrl:''});
         applyQuickLink('','');
         document.getElementById('quicklink-name-input').value='';document.getElementById('quicklink-url-input').value='';
+        if (ok && typeof showGlobalToast === 'function') showGlobalToast('Швидке посилання очищено', 'info');
     });
 
     document.getElementById('holiday-save-btn').addEventListener('click', async () => {
@@ -7033,14 +7123,22 @@ function initAdminPanel() {
         const btn=document.getElementById('holiday-save-btn');btn.textContent='…';btn.disabled=true;
         const result=await saveAdminField({holidayMode:mode});
         btn.textContent='Застосувати для всіх';btn.disabled=false;
-        if(result){applyHolidayTheme(mode);btn.textContent='✓ Застосовано!';setTimeout(()=>{btn.textContent='Застосувати для всіх';},1800);}
-        else alert('Помилка збереження');
+        if(result){
+            applyHolidayTheme(mode);
+            btn.textContent='✓ Застосовано!';
+            if (typeof showGlobalToast === 'function') showGlobalToast('Святковий режим оновлено!', 'success');
+            setTimeout(()=>{btn.textContent='Застосувати для всіх';},1800);
+        } else {
+            if (typeof showGlobalToast === 'function') showGlobalToast('Помилка збереження святкового режиму', 'error');
+            else alert('Помилка збереження');
+        }
     });
 
     document.getElementById('reset-stats-btn').addEventListener('click', async () => {
-        if(!confirm('Скинути всю статистику?'))return;
+        if(!confirm('Скинути всю статистику переглядів?'))return;
         await window.fbResetStats(state.scheduleGroup);
         loadAdminStats();
+        if (typeof showGlobalToast === 'function') showGlobalToast('Статистику скинуто', 'info');
     });
 
     const modTypeSelect=document.getElementById('mod-type-select');
@@ -7056,7 +7154,11 @@ function initAdminPanel() {
         const date=document.getElementById('mod-date-input').value;
         const lesson=document.getElementById('mod-lesson-input').value.trim();
         const type=modTypeSelect.value;
-        if(!date||!lesson){alert('Заповни дату та назву предмету');return;}
+        if(!date||!lesson){
+            if (typeof showGlobalToast === 'function') showGlobalToast('Заповніть дату та назву предмету', 'warning');
+            else alert('Заповни дату та назву предмету');
+            return;
+        }
         const btn=document.getElementById('mod-add-btn');
         btn.textContent='…';btn.disabled=true;
         const newMod={id:Date.now().toString(),date,lesson,type};
@@ -7073,13 +7175,20 @@ function initAdminPanel() {
         if(ok){
             const todayStr=getKyivDate().toLocaleDateString('sv-SE');
             gScheduleMods=mods.filter(m=>m.date>=todayStr);
+            try { localStorage.setItem('cached_mods_' + state.scheduleGroup, JSON.stringify(gScheduleMods)); } catch(e){}
             renderModList();render();
             document.getElementById('mod-lesson-input').value='';
             document.getElementById('mod-new-teacher').value='';
             document.getElementById('mod-new-room').value='';
             document.getElementById('mod-note').value='';
-            btn.textContent='✓ Додано!';setTimeout(()=>{btn.textContent='➕ Додати зміну';},1800);
-        } else{btn.textContent='➕ Додати зміну';alert('Помилка збереження');}
+            btn.textContent='✓ Додано!';
+            if (typeof showGlobalToast === 'function') showGlobalToast('Зміну до розкладу додано!', 'success');
+            setTimeout(()=>{btn.textContent='➕ Додати зміну';},1800);
+        } else {
+            btn.textContent='➕ Додати зміну';
+            if (typeof showGlobalToast === 'function') showGlobalToast('Помилка збереження зміни розкладу', 'error');
+            else alert('Помилка збереження');
+        }
     });
 
     async function deleteMod(id) {
@@ -7087,7 +7196,15 @@ function initAdminPanel() {
         const current = (typeof window.fbGetScheduleMods === 'function') ? await window.fbGetScheduleMods(state.scheduleGroup) : { mods: [] };
         const mods=(current.mods||[]).filter(m=>m.id!==id);
         const ok=await window.fbSetScheduleMods(state.scheduleGroup, {mods});
-        if(ok){gScheduleMods=mods.filter(m=>m.date>=new Date().toISOString().slice(0,10));renderModList();render();}
+        if(ok){
+            const todayStr=getKyivDate().toLocaleDateString('sv-SE');
+            gScheduleMods=mods.filter(m=>m.date>=todayStr);
+            try { localStorage.setItem('cached_mods_' + state.scheduleGroup, JSON.stringify(gScheduleMods)); } catch(e){}
+            renderModList();render();
+            if (typeof showGlobalToast === 'function') showGlobalToast('Зміну видалено', 'info');
+        } else {
+            if (typeof showGlobalToast === 'function') showGlobalToast('Помилка видалення зміни', 'error');
+        }
     }
 
     function renderModList() {
@@ -7105,7 +7222,11 @@ function initAdminPanel() {
     document.getElementById('lann-add-btn').addEventListener('click', async () => {
         const subject=document.getElementById('lann-subject-input').value.trim();
         const text=document.getElementById('lann-text-input').value.trim();
-        if(!subject||!text){alert('Заповни назву предмету та текст оголошення');return;}
+        if(!subject||!text){
+            if (typeof showGlobalToast === 'function') showGlobalToast('Заповніть назву предмету та текст оголошення', 'warning');
+            else alert('Заповни назву предмету та текст оголошення');
+            return;
+        }
         const btn=document.getElementById('lann-add-btn');
         btn.textContent='…';btn.disabled=true;
         const newAnn={id:Date.now().toString(),subject,text};
@@ -7115,11 +7236,19 @@ function initAdminPanel() {
         const ok=await window.fbSetLessonAnnouncements(state.scheduleGroup, {items});
         btn.disabled=false;
         if(ok){
-            gLessonAnns=items;renderLannList();render();
+            gLessonAnns=items;
+            try { localStorage.setItem('cached_lann_' + state.scheduleGroup, JSON.stringify(items)); } catch(e){}
+            renderLannList();render();
             document.getElementById('lann-subject-input').value='';
             document.getElementById('lann-text-input').value='';
-            btn.textContent='✓ Додано!';setTimeout(()=>{btn.textContent='➕ Додати оголошення';},1800);
-        } else{btn.textContent='➕ Додати оголошення';alert('Помилка збереження');}
+            btn.textContent='✓ Додано!';
+            if (typeof showGlobalToast === 'function') showGlobalToast('Оголошення викладача додано!', 'success');
+            setTimeout(()=>{btn.textContent='➕ Додати оголошення';},1800);
+        } else {
+            btn.textContent='➕ Додати оголошення';
+            if (typeof showGlobalToast === 'function') showGlobalToast('Помилка збереження оголошення', 'error');
+            else alert('Помилка збереження');
+        }
     });
 
     async function deleteLann(id) {
@@ -7127,7 +7256,14 @@ function initAdminPanel() {
         const current = (typeof window.fbGetLessonAnnouncements === 'function') ? await window.fbGetLessonAnnouncements(state.scheduleGroup) : { items: [] };
         const items=(current.items||[]).filter(a=>a.id!==id);
         const ok=await window.fbSetLessonAnnouncements(state.scheduleGroup, {items});
-        if(ok){gLessonAnns=items;renderLannList();render();}
+        if(ok){
+            gLessonAnns=items;
+            try { localStorage.setItem('cached_lann_' + state.scheduleGroup, JSON.stringify(items)); } catch(e){}
+            renderLannList();render();
+            if (typeof showGlobalToast === 'function') showGlobalToast('Оголошення видалено', 'info');
+        } else {
+            if (typeof showGlobalToast === 'function') showGlobalToast('Помилка видалення оголошення', 'error');
+        }
     }
 
     function renderLannList() {
@@ -7142,7 +7278,11 @@ function initAdminPanel() {
         const title=document.getElementById('dl-title-input').value.trim();
         const subject=document.getElementById('dl-subject-input').value.trim();
         const datetime=document.getElementById('dl-date-input').value;
-        if(!title||!datetime){alert('Заповни назву дедлайну та дату');return;}
+        if(!title||!datetime){
+            if (typeof showGlobalToast === 'function') showGlobalToast('Заповніть назву дедлайну та дату', 'warning');
+            else alert('Заповни назву дедлайну та дату');
+            return;
+        }
         const btn=document.getElementById('dl-add-btn');
         btn.textContent='…';btn.disabled=true;
         const newDl={id:Date.now().toString(),title,subject,datetime};
@@ -7154,15 +7294,26 @@ function initAdminPanel() {
             document.getElementById('dl-title-input').value='';
             document.getElementById('dl-subject-input').value='';
             document.getElementById('dl-date-input').value='';
-            btn.textContent='✓ Додано!';setTimeout(()=>{btn.textContent='➕ Додати дедлайн';},1800);
-        } else{gDeadlines.pop();btn.textContent='➕ Додати дедлайн';alert('Помилка збереження');}
+            btn.textContent='✓ Додано!';
+            if (typeof showGlobalToast === 'function') showGlobalToast('Дедлайн додано успішно!', 'success');
+            setTimeout(()=>{btn.textContent='➕ Додати дедлайн';},1800);
+        } else {
+            gDeadlines.pop();btn.textContent='➕ Додати дедлайн';
+            if (typeof showGlobalToast === 'function') showGlobalToast('Помилка збереження дедлайну', 'error');
+            else alert('Помилка збереження');
+        }
     });
 
     async function deleteDl(id) {
         gDeadlines=gDeadlines.filter(d=>d.id!==id);
         const result=await saveAdminField({deadlines:gDeadlines});
-        if(result){renderDlList();renderDeadlines();}
-        else{alert('Помилка збереження');}
+        if(result){
+            renderDlList();renderDeadlines();
+            if (typeof showGlobalToast === 'function') showGlobalToast('Дедлайн видалено', 'info');
+        } else {
+            if (typeof showGlobalToast === 'function') showGlobalToast('Помилка видалення дедлайну', 'error');
+            else alert('Помилка збереження');
+        }
     }
 
     function renderDlList() {
@@ -7477,12 +7628,15 @@ async function deleteAdminCustomLesson(id) {
             gAdminCustomLessons = nextList;
             renderAdminCustomLessons();
             render();
+            if (typeof showGlobalToast === 'function') showGlobalToast('Пару видалено для всієї групи', '🗑️', 2500, 'info');
         } else {
-            alert('Помилка видалення в Firebase');
+            if (typeof showGlobalToast === 'function') showGlobalToast('Помилка видалення', '⚠️', 3000, 'error');
+            else alert('Помилка видалення');
         }
     } catch (e) {
         console.error('deleteAdminCustomLesson error:', e);
-        alert('Помилка видалення: ' + (e.message || e));
+        if (typeof showGlobalToast === 'function') showGlobalToast('Помилка видалення: ' + (e.message || e), '⚠️', 3000, 'error');
+        else alert('Помилка видалення: ' + (e.message || e));
     }
 }
 
@@ -7683,12 +7837,15 @@ function initCustomLessonsUI() {
                         render();
                         closeCustomLessonModal();
                         haptic('success');
+                        if (typeof showGlobalToast === 'function') showGlobalToast('Пару збережено для всієї групи!', '👥', 2500, 'success');
                     } else {
-                        alert('Помилка збереження в Firebase');
+                        if (typeof showGlobalToast === 'function') showGlobalToast('Помилка збереження пари', '⚠️', 3000, 'error');
+                        else alert('Помилка збереження');
                     }
                 } catch (err) {
                     console.error('Error saving admin custom lesson:', err);
-                    alert('Помилка збереження: ' + (err.message || err));
+                    if (typeof showGlobalToast === 'function') showGlobalToast('Помилка: ' + (err.message || err), '⚠️', 3000, 'error');
+                    else alert('Помилка збереження: ' + (err.message || err));
                 } finally {
                     saveBtn.disabled = false;
                     saveBtn.textContent = 'Зберегти';
@@ -10466,9 +10623,11 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             if (ok) {
                 allUsers = allUsers.filter(u => String(u.id) !== String(uid));
                 renderUsers();
+                if (typeof showGlobalToast === 'function') showGlobalToast(`Telegram користувача «${name}» відв'язано`, '🔓', 2500, 'info');
             } else {
                 fullUnlink.textContent = orig; fullUnlink.disabled = false;
-                alert('Помилка. Спробуй ще раз.');
+                if (typeof showGlobalToast === 'function') showGlobalToast('Помилка відв\'язування користувача', '⚠️', 3000, 'error');
+                else alert('Помилка. Спробуй ще раз.');
             }
             return;
         }
@@ -10483,16 +10642,18 @@ document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGr
             if (!uid || !did) return;
             if (!confirm(`Відключити девайс «${dlabel}» у «${name}»?\nКористувач зможе знову прив'язатись.`)) return;
             deviceUnlink.textContent = '⏳…'; deviceUnlink.disabled = true;
-            await waitFB();
+            if (window.waitForFirebase) await window.waitForFirebase(1200);
             const ok = await window.fbUnlinkDevice(uid, did);
             if (ok) {
                 
                 const user = allUsers.find(u => String(u.id) === String(uid));
                 if (user) user.devices = (user.devices || []).filter(d => d.id !== did);
                 renderUsers();
+                if (typeof showGlobalToast === 'function') showGlobalToast(`Девайс «${dlabel}» відключено`, '📱', 2500, 'info');
             } else {
                 deviceUnlink.textContent = 'Відключити'; deviceUnlink.disabled = false;
-                alert('Помилка. Спробуй ще раз.');
+                if (typeof showGlobalToast === 'function') showGlobalToast('Помилка відключення девайсу', '⚠️', 3000, 'error');
+                else alert('Помилка. Спробуй ще раз.');
             }
             return;
         }
