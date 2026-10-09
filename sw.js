@@ -12,7 +12,7 @@
       ╚═════════╝               
 */
 
-const CACHE_NAME = 'fep-schedule-v14-push-notifs-fixed';
+const CACHE_NAME = 'fep-schedule-v15-ios-push-safe';
 const OFFLINE_PAGE = './index.html';
 
 const PRECACHE_URLS = [
@@ -232,17 +232,30 @@ self.addEventListener('push', (event) => {
     }
 
     const title = data.title || 'Розклад ФЕП | Деканат';
+    let iconUrl;
+    try {
+        iconUrl = new URL('logo.png', self.location.href).href;
+    } catch(e) {
+        iconUrl = './logo.png';
+    }
+
     const options = {
         body: data.body || '',
-        icon: './logo.png',
-        badge: './logo.png',
-        tag: data.tag || 'grade-alert',
+        icon: iconUrl,
+        tag: 'grade-' + Date.now(),
         renotify: true,
-        data: { url: data.url || './' },
-        vibrate: [100, 50, 100]
+        data: { url: data.url || './' }
     };
 
-    event.waitUntil(self.registration.showNotification(title, options));
+    event.waitUntil(
+        self.registration.showNotification(title, options).catch((err) => {
+            console.error('[SW] showNotification error:', err);
+            return self.registration.showNotification(title, {
+                body: data.body || '',
+                data: { url: data.url || './' }
+            });
+        })
+    );
 });
 
 self.addEventListener('notificationclick', (event) => {

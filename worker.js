@@ -1582,7 +1582,7 @@ async function encryptWebPushPayload(clientP256dhB64, clientAuthB64, payloadText
 }
 
 async function sendWebPushNotification(env, subscription, payload) {
-  if (!subscription || !subscription.endpoint) return false;
+  if (!subscription || !subscription.endpoint) return { ok: false, error: 'No endpoint' };
   try {
     const endpointUrl = new URL(subscription.endpoint);
     const audience = endpointUrl.origin;
@@ -1608,14 +1608,16 @@ async function sendWebPushNotification(env, subscription, payload) {
       body: bodyBytes
     });
 
-    if (res.status === 404 || res.status === 410) {
-      console.log('[push] Subscription expired/gone:', subscription.endpoint);
-      return false;
-    }
-    return res.ok;
+    const resText = await res.text();
+    return {
+      ok: res.ok,
+      status: res.status,
+      endpointHost: endpointUrl.host,
+      resText
+    };
   } catch (err) {
     console.warn('[push] sendWebPushNotification error:', err.message);
-    return false;
+    return { ok: false, error: err.message };
   }
 }
 
@@ -2014,12 +2016,12 @@ async function handlePushRoutes(request, env, ctx) {
     }
     if (!sub) return json({ ok: false, error: 'No subscription found' }, 404);
 
-    const success = await sendWebPushNotification(env, sub, {
+    const pushResult = await sendWebPushNotification(env, sub, {
       title: 'Розклад ФЕП | Деканат',
       body: '🔔 Тестове сповіщення успішно налаштовано на твоєму iPhone!',
       url: './#grades'
     });
-    return json({ ok: success });
+    return json({ ok: pushResult.ok, pushResult, endpoint: sub.endpoint });
   }
 
   // GET /push/list
