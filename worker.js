@@ -1271,6 +1271,7 @@ async function fetchDekanatGrades(user_name, user_pwd) {
         let total = 0;
         let summaryAbsences = 0;
         const seenAbsenceItemIdx = new Set();
+        const seenGradeItemIdx = new Set();
 
         for (let cellIdx = 0; cellIdx < tdCells.length; cellIdx++) {
           const td = tdCells[cellIdx];
@@ -1316,14 +1317,18 @@ async function fetchDekanatGrades(user_name, user_pwd) {
                 });
               }
             } else if (!isNaN(numVal) && numVal > 0) {
-              grades.push({
-                category: cat,
-                categoryLabel: GRADE_CATEGORIES[cat]?.label || (cat === "Лек" ? "Контроль на лекції" : (cat === "Лаб" ? "Лабораторні роб." : "Практич./Семін. зан.")),
-                date,
-                value: numVal,
-                isAbsence: false,
-                note
-              });
+              const gradeKey = `${itemIdx}_${numVal}_${date}`;
+              if (!seenGradeItemIdx.has(gradeKey)) {
+                seenGradeItemIdx.add(gradeKey);
+                grades.push({
+                  category: cat,
+                  categoryLabel: GRADE_CATEGORIES[cat]?.label || (cat === "Лек" ? "Контроль на лекції" : (cat === "Лаб" ? "Лабораторні роб." : "Практич./Семін. зан.")),
+                  date,
+                  value: numVal,
+                  isAbsence: false,
+                  note
+                });
+              }
             }
           }
         }
@@ -1415,6 +1420,7 @@ async function fetchDekanatGrades(user_name, user_pwd) {
 function findNewGrades(oldSubjects, newSubjects) {
   const newItems = [];
   const oldGradeKeys = new Set();
+  const seenNewKeys = new Set();
 
   for (const s of oldSubjects || []) {
     for (const g of s.grades || []) {
@@ -1425,7 +1431,8 @@ function findNewGrades(oldSubjects, newSubjects) {
   for (const s of newSubjects || []) {
     for (const g of s.grades || []) {
       const key = `${s.subject}__${g.category}__${g.date}__${g.value}`;
-      if (!oldGradeKeys.has(key)) {
+      if (!oldGradeKeys.has(key) && !seenNewKeys.has(key)) {
+        seenNewKeys.add(key);
         newItems.push({
           subject: s.subject,
           teacher: s.teacher,
@@ -1443,9 +1450,208 @@ function findNewGrades(oldSubjects, newSubjects) {
   return newItems;
 }
 
+const VAPID_PUBLIC_KEY = 'BIGiiNJ-SzM7gdMnFLPIpySCGC_RvIJftGtL7VovBhE3o9cTozfwE74_4Vuq466d6sYV7orJPgMYqrdo90dAyMw';
+const VAPID_PRIVATE_KEY = 'Ec3_zxFzT4DUgczzFz4YuTtGWSsbseUi08L5DIbLw4U';
+const VAPID_SUBJECT = 'mailto:admin@lnu.edu.ua';
+
+function b64uToBuf(s) {
+  const pad = '='.repeat((4 - (s.length % 4)) % 4);
+  const b64 = (s + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function bufToB64u(buf) {
+  let binary = '';
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function concatBufs(...bufs) {
+  const total = bufs.reduce((a, b) => a + b.byteLength, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const b of bufs) {
+    out.set(new Uint8Array(b), offset);
+    offset += b.byteLength;
+  }
+  return out;
+}
+
+async function signVapidJwt(audience, subject = VAPID_SUBJECT) {
+  const pubBytes = b64uToBuf(VAPID_PUBLIC_KEY);
+  const x = bufToB64u(pubBytes.slice(1, 33));
+  const y = bufToB64u(pubBytes.slice(33, 65));
+
+  const jwk = {
+    kty: 'EC',
+    crv: 'P-256',
+    x,
+    y,
+    d: VAPID_PRIVATE_KEY
+  };
+
+  const key = await crypto.subtle.importKey(
+    'jwk',
+    jwk,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['sign']
+  );
+
+  const header = bufToB64u(new TextEncoder().encode(JSON.stringify({ typ: 'JWT', alg: 'ES256' })));
+  const payload = bufToB64u(new TextEncoder().encode(JSON.stringify({
+    aud: audience,
+    exp: Math.floor(Date.now() / 1000) + 86400,
+    sub: subject
+  })));
+
+  const unsignedToken = `${header}.${payload}`;
+  const sigRaw = await crypto.subtle.sign(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    key,
+    new TextEncoder().encode(unsignedToken)
+  );
+
+  const sig = bufToB64u(new Uint8Array(sigRaw));
+  return `${unsignedToken}.${sig}`;
+}
+
+async function encryptWebPushPayload(clientP256dhB64, clientAuthB64, payloadText) {
+  const clientPubRaw = b64uToBuf(clientP256dhB64);
+  const clientAuth = b64uToBuf(clientAuthB64);
+
+  const clientPubKey = await crypto.subtle.importKey(
+    'raw', clientPubRaw, { name: 'ECDH', namedCurve: 'P-256' }, true, []
+  );
+
+  const serverEcdh = await crypto.subtle.generateKey(
+    { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']
+  );
+  const serverPubRaw = new Uint8Array(await crypto.subtle.exportKey('raw', serverEcdh.publicKey));
+
+  const sharedSecret = new Uint8Array(await crypto.subtle.deriveBits(
+    { name: 'ECDH', public: clientPubKey }, serverEcdh.privateKey, 256
+  ));
+
+  const authInfo = concatBufs(
+    new TextEncoder().encode('WebPush: info\0'),
+    clientPubRaw,
+    serverPubRaw
+  );
+
+  const authKey = await crypto.subtle.importKey('raw', clientAuth, 'HKDF', false, ['deriveBits']);
+  const ikm = new Uint8Array(await crypto.subtle.deriveBits({
+    name: 'HKDF',
+    hash: 'SHA-256',
+    salt: sharedSecret,
+    info: authInfo
+  }, authKey, 256));
+
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+
+  const ikmKey = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits']);
+  const cek = new Uint8Array(await crypto.subtle.deriveBits({
+    name: 'HKDF',
+    hash: 'SHA-256',
+    salt: salt,
+    info: new TextEncoder().encode('Content-Encoding: aes128gcm\0')
+  }, ikmKey, 128));
+
+  const nonce = new Uint8Array(await crypto.subtle.deriveBits({
+    name: 'HKDF',
+    hash: 'SHA-256',
+    salt: salt,
+    info: new TextEncoder().encode('Content-Encoding: nonce\0')
+  }, ikmKey, 96));
+
+  const plaintext = concatBufs(new TextEncoder().encode(payloadText), new Uint8Array([2]));
+  const aesKey = await crypto.subtle.importKey('raw', cek, 'AES-GCM', false, ['encrypt']);
+  const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aesKey, plaintext));
+
+  const rs = new Uint8Array([0, 0, 16, 0]);
+  const idlen = new Uint8Array([serverPubRaw.byteLength]);
+  return concatBufs(salt, rs, idlen, serverPubRaw, ciphertext);
+}
+
+async function sendWebPushNotification(env, subscription, payload) {
+  if (!subscription || !subscription.endpoint) return false;
+  try {
+    const endpointUrl = new URL(subscription.endpoint);
+    const audience = endpointUrl.origin;
+    const jwt = await signVapidJwt(audience, VAPID_SUBJECT);
+
+    const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    let bodyBytes = null;
+    let headers = {
+      'TTL': '86400',
+      'Urgency': 'high',
+      'Authorization': `vapid t=${jwt}, k=${VAPID_PUBLIC_KEY}`
+    };
+
+    if (subscription.keys && subscription.keys.p256dh && subscription.keys.auth) {
+      bodyBytes = await encryptWebPushPayload(subscription.keys.p256dh, subscription.keys.auth, payloadStr);
+      headers['Content-Type'] = 'application/octet-stream';
+      headers['Content-Encoding'] = 'aes128gcm';
+    }
+
+    const res = await fetch(subscription.endpoint, {
+      method: 'POST',
+      headers,
+      body: bodyBytes
+    });
+
+    if (res.status === 404 || res.status === 410) {
+      console.log('[push] Subscription expired/gone:', subscription.endpoint);
+      return false;
+    }
+    return res.ok;
+  } catch (err) {
+    console.warn('[push] sendWebPushNotification error:', err.message);
+    return false;
+  }
+}
+
+async function areNotifsEnabled(env, userId) {
+  if (!env?.PREFS_KV || !userId) return true;
+  try {
+    const val = await globalSafeKvGet(env.PREFS_KV, `notifs_enabled:${userId}`);
+    return val !== "0" && val !== "false";
+  } catch {
+    return true;
+  }
+}
+
 async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
-  if (!env.BOT_TOKEN || !tgChatId) return;
+  if (!tgChatId) return;
   const { subject, teacher, category, categoryLabel, value, date, total, isAbsence } = newGradeInfo;
+
+  // 1. Check if user disabled notifications
+  const enabled = await areNotifsEnabled(env, tgChatId);
+  if (!enabled) {
+    console.log(`[notif] Notifications disabled by user ${tgChatId}, skipping`);
+    return;
+  }
+
+  // 2. Global 24-hour deduplication to prevent duplicate messages across cron/requests
+  if (env.PREFS_KV) {
+    const dedupeKey = `notif_sent:${tgChatId}:${subject}:${category}:${date}:${value}`;
+    try {
+      const alreadySent = await globalSafeKvGet(env.PREFS_KV, dedupeKey);
+      if (alreadySent) {
+        console.log("[notif] Skipping duplicate alert:", dedupeKey);
+        return;
+      }
+      await globalSafeKvPut(env.PREFS_KV, dedupeKey, "1", { expirationTtl: 86400 });
+    } catch (e) {}
+  }
 
   let text;
   if (isAbsence || value === 'Н' || value === 'н') {
@@ -1469,18 +1675,55 @@ async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
       `\nПереглянути журнал: у додатку в розділі «Корисне» ➡️ «Мої бали» ↗️`;
   }
 
-  try {
-    await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: tgChatId,
-        text: text,
-        parse_mode: "Markdown"
-      })
-    });
-  } catch (err) {
-    console.error("notifyTelegramNewGrade error:", err);
+  // 3. Send Telegram notification
+  if (env.BOT_TOKEN) {
+    try {
+      await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: tgChatId,
+          text: text,
+          parse_mode: "Markdown"
+        })
+      });
+    } catch (err) {
+      console.error("notifyTelegramNewGrade error:", err);
+    }
+  }
+
+  // 4. Send Web Push to iPhone (PWA)
+  if (env.PREFS_KV) {
+    try {
+      let rawSub = await globalSafeKvGet(env.PREFS_KV, `push_sub:${tgChatId}`);
+      if (!rawSub) {
+        // Fallback: check if dekanat credentials have user_name linked
+        const creds = await globalSafeKvGet(env.PREFS_KV, `dekanat_creds:${tgChatId}`);
+        if (creds) {
+          try {
+            const { user_name } = JSON.parse(creds);
+            if (user_name) {
+              rawSub = await globalSafeKvGet(env.PREFS_KV, `push_sub:${String(user_name).trim().toLowerCase()}`);
+            }
+          } catch(e) {}
+        }
+      }
+      if (rawSub) {
+        const sub = JSON.parse(rawSub);
+        const pushTitle = (isAbsence || value === 'Н' || value === 'н') ? `⚠️ Пропуск: ${subject}` : `🎓 Нова оцінка: ${subject}`;
+        const pushBody = (isAbsence || value === 'Н' || value === 'н')
+          ? `Зафіксовано Н (${category}${date ? ` від ${date}` : ''})`
+          : `+${value} б. (${category} — ${categoryLabel}${date ? `, ${date}` : ''})`;
+        await sendWebPushNotification(env, sub, {
+          title: pushTitle,
+          body: pushBody,
+          url: './#grades',
+          tag: `grade-${subject}-${date}-${value}`
+        });
+      }
+    } catch (pushErr) {
+      console.warn("[push] WebPush error:", pushErr.message);
+    }
   }
 }
 
@@ -1645,6 +1888,99 @@ async function handleDekanatRoutes(request, env, ctx) {
       await globalSafeKvDelete(kv, `dekanat_cache:${userId}`);
     }
     return json({ ok: true });
+  }
+
+  // 4. POST /dekanat/settings
+  if (url.pathname === '/dekanat/settings' && request.method === 'POST') {
+    let body;
+    try { body = await request.json(); } catch { body = {}; }
+    const { userId, notifsEnabled } = body || {};
+    if (userId && kv && !checkKvBlocked()) {
+      await globalSafeKvPut(kv, `notifs_enabled:${userId}`, notifsEnabled ? "1" : "0");
+    }
+    return json({ ok: true, notifsEnabled: !!notifsEnabled });
+  }
+
+  // 5. GET /dekanat/settings
+  if (url.pathname === '/dekanat/settings' && request.method === 'GET') {
+    const userId = url.searchParams.get('userId');
+    const enabled = await areNotifsEnabled(env, userId);
+    return json({ ok: true, notifsEnabled: enabled });
+  }
+
+  return json({ error: 'Not found' }, 404);
+}
+
+async function handlePushRoutes(request, env, ctx) {
+  const url = new URL(request.url);
+  if (!url.pathname.startsWith('/push')) return null;
+
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  const kv = env.PREFS_KV;
+
+  // GET /push/vapid-key
+  if (url.pathname === '/push/vapid-key' && request.method === 'GET') {
+    return json({ publicKey: VAPID_PUBLIC_KEY });
+  }
+
+  // POST /push/subscribe
+  if (url.pathname === '/push/subscribe' && request.method === 'POST') {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: 'Bad JSON' }, 400); }
+    const { userId, userName, subscription } = body || {};
+    if (!subscription || !subscription.endpoint) {
+      return json({ error: 'Missing subscription' }, 400);
+    }
+    const uid = userId ? String(userId) : 'anon';
+    if (kv && !checkKvBlocked()) {
+      await globalSafeKvPut(kv, `push_sub:${uid}`, JSON.stringify(subscription), { expirationTtl: 31536000 });
+      if (userName && String(userName).trim()) {
+        await globalSafeKvPut(kv, `push_sub:${String(userName).trim().toLowerCase()}`, JSON.stringify(subscription), { expirationTtl: 31536000 });
+      }
+    }
+    return json({ ok: true });
+  }
+
+  // POST /push/unsubscribe
+  if (url.pathname === '/push/unsubscribe' && request.method === 'POST') {
+    let body;
+    try { body = await request.json(); } catch { body = {}; }
+    const { userId, userName } = body || {};
+    const uid = userId ? String(userId) : 'anon';
+    if (kv && !checkKvBlocked()) {
+      await globalSafeKvDelete(kv, `push_sub:${uid}`);
+      if (userName && String(userName).trim()) {
+        await globalSafeKvDelete(kv, `push_sub:${String(userName).trim().toLowerCase()}`);
+      }
+    }
+    return json({ ok: true });
+  }
+
+  // POST /push/test
+  if (url.pathname === '/push/test' && request.method === 'POST') {
+    let body;
+    try { body = await request.json(); } catch { body = {}; }
+    const { userId, userName, subscription } = body || {};
+    let sub = subscription;
+    if (!sub && userId && kv) {
+      const raw = await globalSafeKvGet(kv, `push_sub:${userId}`);
+      if (raw) sub = JSON.parse(raw);
+    }
+    if (!sub && userName && kv) {
+      const raw = await globalSafeKvGet(kv, `push_sub:${String(userName).trim().toLowerCase()}`);
+      if (raw) sub = JSON.parse(raw);
+    }
+    if (!sub) return json({ ok: false, error: 'No subscription found' }, 404);
+
+    const success = await sendWebPushNotification(env, sub, {
+      title: 'Розклад ФЕП | Деканат',
+      body: '🔔 Тестове сповіщення успішно налаштовано на твоєму iPhone!',
+      url: './#grades'
+    });
+    return json({ ok: success });
   }
 
   return json({ error: 'Not found' }, 404);
@@ -1980,6 +2316,9 @@ export default {
 
     const dekanatResponse = await handleDekanatRoutes(request, env, ctx);
     if (dekanatResponse) return dekanatResponse;
+
+    const pushResponse = await handlePushRoutes(request, env, ctx);
+    if (pushResponse) return pushResponse;
 
     // --- /auth endpoint for browser URL links (?tg_token=...) ---
     if (url.pathname === "/auth" && request.method === "GET") {

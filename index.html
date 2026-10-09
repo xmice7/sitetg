@@ -2719,35 +2719,82 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .grades-tools-row {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 10px;
+            justify-content: flex-start;
+            gap: 8px;
             margin-bottom: 14px;
+            flex-wrap: wrap;
         }
         .grades-tool-chip {
             background: var(--bg-card);
             border: 1px solid var(--border);
             color: var(--text-main);
-            padding: 7px 14px;
+            padding: 7px 12px;
             border-radius: 20px;
-            font-size: 12px;
+            font-size: 11.5px;
             font-weight: 700;
             cursor: pointer;
             transition: transform 0.2s var(--fm-spring), border-color 0.2s;
             display: flex;
             align-items: center;
             gap: 5px;
+            user-select: none;
+            -webkit-user-select: none;
         }
         .grades-tool-chip:active {
             transform: scale(0.95);
         }
         .grades-notif-chip {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--text-main);
+            padding: 7px 12px;
+            border-radius: 20px;
             font-size: 11.5px;
-            color: var(--text-muted);
-            display: flex;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
+            transition: all 0.2s ease;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .grades-notif-chip:active {
+            transform: scale(0.95);
         }
         .grades-notif-chip strong {
+            color: #10b981;
+        }
+        .grades-notif-chip.disabled {
+            background: var(--bg-card);
+            border-color: var(--border);
+            color: var(--text-muted);
+        }
+        .grades-notif-chip.disabled strong {
+            color: var(--text-muted);
+        }
+        .grades-push-btn {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #3b82f6;
+            padding: 7px 12px;
+            border-radius: 20px;
+            font-size: 11.5px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s ease;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .grades-push-btn:active {
+            transform: scale(0.95);
+        }
+        .grades-push-btn.active {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.3);
             color: #10b981;
         }
 
@@ -3800,9 +3847,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
                     <button type="button" class="grades-tool-chip" id="btn-grades-legend">
                         <span>ℹ️ Умовні позначення</span>
                     </button>
-                    <div class="grades-notif-chip" id="grades-notif-status">
-                        <span>🔔 Сповіщення: <strong>Активні</strong></span>
-                    </div>
+                    <button type="button" class="grades-notif-chip" id="grades-notif-toggle" title="Натисніть для перемикання сповіщень">
+                        <span id="grades-notif-text">🔔 Сповіщення: <strong>Активні</strong></span>
+                    </button>
+                    <button type="button" class="grades-push-btn" id="btn-iphone-push" title="Натисніть для налаштування сповіщень на iPhone">
+                        <span id="iphone-push-text">📱 Пуш на iPhone</span>
+                    </button>
                 </div>
 
                 <!-- ABSENCES ANALYTICS & CHART CARD -->
@@ -5206,7 +5256,7 @@ function normalizeSchedule(raw) {
         byDate[isoFromDekanat(day.date)] = list;
     }
     const totalLessons = Object.values(byDate).reduce((n, list) => n + list.length, 0);
-    return { raw, byDate, engTeachers: [...engSet], hasSubgroups, totalLessons };
+    return { raw, byDate, engTeachers: [...engSet], hasSubgroups, totalLessons, notPublished: !!(raw && (raw.notPublished || raw.empty)) };
 }
 
 let gSchedule = null;       
@@ -5268,7 +5318,7 @@ async function fetchGroupSchedule(groupName, force = false) {
         console.warn('[Schedule] Network fetch error:', e.message);
     }
 
-    if (fresh && Array.isArray(fresh.days) && fresh.days.length > 0) {
+    if (fresh && (fresh.notPublished || Array.isArray(fresh.days))) {
         writeScheduleCache(groupName, fresh);
         if (window.setOfflineUI) window.setOfflineUI(false);
         updateFallbackBanner(!!fresh._isStaleFallback, fresh._cachedAt);
@@ -5277,7 +5327,7 @@ async function fetchGroupSchedule(groupName, force = false) {
 
     // 4. Network failed or offline: fall back to cached data (even if older than TTL)
     if (cached && cached.data) {
-        if (window.setOfflineUI) window.setOfflineUI(true, cached.ts);
+        if (window.setOfflineUI) window.setOfflineUI(!isOnline, cached.ts);
         if (fresh && fresh._isStaleFallback) {
             updateFallbackBanner(true, fresh._cachedAt || cached.ts);
         } else {
@@ -6174,9 +6224,15 @@ function render() {
             </div>`;
     }
 
-    const emptyMsg = (gSchedule.raw && gSchedule.raw.error) ? gSchedule.raw.error : `Деканат ще не опублікував розклад для групи ${state.groupName} на цей період`;
-    const notice = gSchedule.totalLessons===0 ? `<div class="empty-state" style="margin-bottom:12px"><span>📭</span><p>${emptyMsg}</p></div>` : '';
-    els.scheduleContainer.innerHTML=offlineNotice+notice+html;
+    const isOnline = navigator.onLine;
+    const isNotPublished = gSchedule && (gSchedule.notPublished || (gSchedule.totalLessons === 0 && isOnline));
+    const emptyMsg = (gSchedule.raw && (gSchedule.raw.message || gSchedule.raw.error))
+        ? (gSchedule.raw.message || gSchedule.raw.error)
+        : `У Деканаті розклад для групи ${state.groupName} ще не опублікований або відсутній на обраний період`;
+    const notice = (gSchedule.totalLessons === 0 || gSchedule.notPublished)
+        ? `<div class="empty-state" style="margin-bottom:12px"><span>📭</span><p>${emptyMsg}</p></div>`
+        : '';
+    els.scheduleContainer.innerHTML = (isOff && !isNotPublished ? offlineNotice : '') + notice + html;
     updateLiveTimers();
     renderDeadlines();
 }
@@ -8833,6 +8889,9 @@ function initDekanatGrades() {
                     }
 
                     renderGradesData(json.data, false, json.lastSync || Date.now());
+                    if (typeof syncWebPushSubscription === 'function') {
+                        syncWebPushSubscription(userName, userId);
+                    }
                 } else {
                     haptic('error');
                     if (authError) {
@@ -8944,6 +9003,194 @@ function initDekanatGrades() {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 loginBtn && loginBtn.click();
+            }
+        });
+    }
+
+    // --- Notification Toggle & iOS Web Push Settings ---
+    const notifToggleBtn = document.getElementById('grades-notif-toggle');
+    const notifTextEl = document.getElementById('grades-notif-text');
+    const iphonePushBtn = document.getElementById('btn-iphone-push');
+    const iphonePushTextEl = document.getElementById('iphone-push-text');
+
+    function urlB64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+
+    async function syncWebPushSubscription(userName, userId) {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        try {
+            const reg = await navigator.serviceWorker.ready;
+            const sub = await reg.pushManager.getSubscription();
+            if (sub) {
+                const workerUrl = getDekanatWorkerUrl();
+                fetch(`${workerUrl}/push/subscribe`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: userId || 'anon', userName: userName || '', subscription: sub })
+                }).catch(() => {});
+            }
+        } catch(e) {}
+    }
+
+    let notifsEnabled = localStorage.getItem('dekanat_notifs_enabled') !== '0';
+
+    function updateNotifToggleUI(enabled) {
+        if (!notifToggleBtn || !notifTextEl) return;
+        if (enabled) {
+            notifToggleBtn.classList.remove('disabled');
+            notifTextEl.innerHTML = '🔔 Сповіщення: <strong>Активні</strong>';
+        } else {
+            notifToggleBtn.classList.add('disabled');
+            notifTextEl.innerHTML = '🔕 Сповіщення: <strong>Вимкнено</strong>';
+        }
+    }
+    updateNotifToggleUI(notifsEnabled);
+
+    // Sync notification status with worker
+    const uidForNotifs = getTelegramUserId();
+    if (uidForNotifs) {
+        const workerUrl = getDekanatWorkerUrl();
+        fetch(`${workerUrl}/dekanat/settings?userId=${encodeURIComponent(uidForNotifs)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data && typeof data.notifsEnabled === 'boolean') {
+                    notifsEnabled = data.notifsEnabled;
+                    localStorage.setItem('dekanat_notifs_enabled', notifsEnabled ? '1' : '0');
+                    updateNotifToggleUI(notifsEnabled);
+                }
+            })
+            .catch(() => {});
+    }
+
+    if (notifToggleBtn) {
+        notifToggleBtn.addEventListener('click', async () => {
+            haptic('selection');
+            notifsEnabled = !notifsEnabled;
+            localStorage.setItem('dekanat_notifs_enabled', notifsEnabled ? '1' : '0');
+            updateNotifToggleUI(notifsEnabled);
+
+            const uid = getTelegramUserId();
+            if (uid) {
+                try {
+                    const workerUrl = getDekanatWorkerUrl();
+                    await fetch(`${workerUrl}/dekanat/settings`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: uid, notifsEnabled })
+                    });
+                } catch(e) {
+                    console.warn('[notif] Failed to sync notif preference:', e);
+                }
+            }
+        });
+    }
+
+    // Check existing Web Push status on load
+    if ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window) {
+        navigator.serviceWorker.ready.then(async (reg) => {
+            try {
+                const sub = await reg.pushManager.getSubscription();
+                if (sub && Notification.permission === 'granted') {
+                    if (iphonePushBtn && iphonePushTextEl) {
+                        iphonePushBtn.classList.add('active');
+                        iphonePushTextEl.textContent = '📱 Пуш: Увімкнено';
+                    }
+                }
+            } catch(e) {}
+        });
+    }
+
+    if (iphonePushBtn) {
+        iphonePushBtn.addEventListener('click', async () => {
+            haptic('impact');
+            const isPushSupported = ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window);
+            const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
+            const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+
+            if (!isPushSupported) {
+                if (isIOS && !isStandalone) {
+                    alert('💡 Щоб отримувати системні сповіщення на iPhone:\n\n1. Натисніть кнопку «Поділитися» (квадрат зі стрілкою ⬆️) внизу Safari.\n2. Виберіть пункт «На початковий екран» 📲.\n3. Відкрийте збережений додаток з іконки та увімкніть сповіщення тут!');
+                } else {
+                    alert('Ваш браузер або версія iOS не підтримує нативні Web Push сповіщення (потрібна iOS 16.4+).');
+                }
+                return;
+            }
+
+            try {
+                const reg = await navigator.serviceWorker.ready;
+                let sub = await reg.pushManager.getSubscription();
+
+                if (sub && Notification.permission === 'granted') {
+                    const doTest = confirm('Сповіщення на iPhone вже активні! 📲\n\nВідправити тестовий пуш на твій екран блокування зараз?');
+                    if (doTest) {
+                        const uid = getTelegramUserId() || 'anon';
+                        const uName = localStorage.getItem('dekanat_user_name') || '';
+                        const workerUrl = getDekanatWorkerUrl();
+                        await fetch(`${workerUrl}/push/test`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: uid, userName: uName, subscription: sub })
+                        });
+                        alert('✅ Тестове сповіщення відправлено на екран iPhone!');
+                    }
+                    return;
+                }
+
+                if (Notification.permission === 'denied') {
+                    alert('⚠️ Сповіщення заблоковано в налаштуваннях iPhone.\nВідкрийте Параметри ➡️ Сповіщення ➡️ знайдіть цей додаток та дозвольте показ сповіщень.');
+                    return;
+                }
+
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    alert('⚠️ Дозвіл на сповіщення не надано.');
+                    return;
+                }
+
+                if (iphonePushTextEl) iphonePushTextEl.textContent = '⏳ Підключення...';
+
+                const VAPID_KEY = 'BIGiiNJ-SzM7gdMnFLPIpySCGC_RvIJftGtL7VovBhE3o9cTozfwE74_4Vuq466d6sYV7orJPgMYqrdo90dAyMw';
+                const convertedKey = urlB64ToUint8Array(VAPID_KEY);
+
+                sub = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: convertedKey
+                });
+
+                const uid = getTelegramUserId() || 'anon';
+                const uName = localStorage.getItem('dekanat_user_name') || '';
+                const workerUrl = getDekanatWorkerUrl();
+
+                await fetch(`${workerUrl}/push/subscribe`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: uid, userName: uName, subscription: sub })
+                });
+
+                // Immediately trigger test notification banner
+                await fetch(`${workerUrl}/push/test`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: uid, userName: uName, subscription: sub })
+                }).catch(() => {});
+
+                if (iphonePushBtn && iphonePushTextEl) {
+                    iphonePushBtn.classList.add('active');
+                    iphonePushTextEl.textContent = '📱 Пуш: Увімкнено';
+                }
+                alert('🎉 Нативні сповіщення на iPhone успішно активовано!\nМи щойно відправили тестовий пуш на твій екран.');
+            } catch (err) {
+                console.error('[push] Subscription error:', err);
+                if (iphonePushTextEl) iphonePushTextEl.textContent = '📱 Пуш на iPhone';
+                alert('Не вдалося увімкнути сповіщення: ' + (err.message || err));
             }
         });
     }

@@ -12,7 +12,7 @@
       ╚═════════╝               
 */
 
-const CACHE_NAME = 'fep-schedule-v13-card-sub-stacked';
+const CACHE_NAME = 'fep-schedule-v14-push-notifs-fixed';
 const OFFLINE_PAGE = './index.html';
 
 const PRECACHE_URLS = [
@@ -218,3 +218,49 @@ self.addEventListener('message', (event) => {
         event.ports[0].postMessage({ version: CACHE_NAME });
     }
 });
+
+/* =========================================================================
+   WEB PUSH NOTIFICATIONS (iOS PWA / Desktop / Android)
+   ========================================================================= */
+
+self.addEventListener('push', (event) => {
+    let data = {};
+    try {
+        data = event.data ? event.data.json() : {};
+    } catch (e) {
+        data = { title: 'Розклад ФЕП | Деканат', body: event.data ? event.data.text() : '' };
+    }
+
+    const title = data.title || 'Розклад ФЕП | Деканат';
+    const options = {
+        body: data.body || '',
+        icon: './logo.png',
+        badge: './logo.png',
+        tag: data.tag || 'grade-alert',
+        renotify: true,
+        data: { url: data.url || './' },
+        vibrate: [100, 50, 100]
+    };
+
+    event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const targetUrl = (event.notification.data && event.notification.data.url) || './';
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+            for (const client of clientList) {
+                if ('focus' in client) {
+                    client.focus();
+                    if ('navigate' in client && targetUrl !== './') {
+                        client.navigate(targetUrl);
+                    }
+                    return;
+                }
+            }
+            if (clients.openWindow) return clients.openWindow(targetUrl);
+        })
+    );
+});
+
