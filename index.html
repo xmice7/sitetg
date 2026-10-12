@@ -9270,6 +9270,22 @@ function initDekanatGrades() {
 
         if (refreshBtn) refreshBtn.classList.add('spinning');
 
+        let clientKnownKeys = [];
+        try {
+            const localCached = JSON.parse(localStorage.getItem('dekanat_grades_cache') || 'null');
+            if (localCached && Array.isArray(localCached.subjects)) {
+                for (const s of localCached.subjects) {
+                    for (const g of s.grades || []) {
+                        const normS = String(s.subject || '').toLowerCase().replace(/[^a-zа-яіїєґ0-9]/gi, '');
+                        const normC = String(g.category || '').toLowerCase().replace(/[^a-zа-яіїєґ0-9]/gi, '');
+                        const normD = String(g.date || '').trim();
+                        const normV = String(g.value || '').toLowerCase().trim();
+                        clientKnownKeys.push(`${normS}__${normC}__${normD}__${normV}`);
+                    }
+                }
+            }
+        } catch(e) {}
+
         try {
             const workerUrl = getDekanatWorkerUrl();
             const res = await fetch(`${workerUrl}/dekanat/grades`, {
@@ -9279,7 +9295,9 @@ function initDekanatGrades() {
                     user_name: storedName,
                     user_pwd: storedPwd,
                     userId,
-                    forceRefresh
+                    forceRefresh,
+                    isManual: true,
+                    clientKnownKeys
                 })
             });
 

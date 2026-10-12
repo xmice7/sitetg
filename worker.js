@@ -1172,8 +1172,20 @@ async function fetchDekanatGrades(user_name, user_pwd) {
       .map(o => ({ value: o[1], text: stripTags(o[2]) }))
       .filter(o => o.value && o.value !== "-1");
 
-    // Cap to 35 disciplines to stay safely within Cloudflare subrequest limits (max 50)
-    const optionsToFetch = options.slice(0, 35);
+    // Prioritize active semester disciplines from study plan to minimize subrequests & latency
+    let optionsToFetch = [];
+    if (subjectMap.size > 0) {
+      const planSubjNames = [...subjectMap.keys()].map(k => k.toLowerCase().replace(/[^a-zа-яіїєґ0-9]/gi, ''));
+      optionsToFetch = options.filter(opt => {
+        const normOpt = opt.text.toLowerCase().replace(/[^a-zа-яіїєґ0-9]/gi, '');
+        return planSubjNames.some(p => normOpt.includes(p) || p.includes(normOpt));
+      });
+    }
+    if (optionsToFetch.length === 0) {
+      optionsToFetch = options.slice(0, 10);
+    } else if (optionsToFetch.length > 12) {
+      optionsToFetch = optionsToFetch.slice(0, 12);
+    }
     const n7PostUrl = `https://dekanat.lnu.edu.ua/cgi-bin/classman.cgi?sesID=${sesID}`;
     const BATCH_SIZE = 10;
     const surnameClean = String(user_name).trim().split(/\s+/)[0];
@@ -1423,22 +1435,88 @@ async function fetchDekanatGrades(user_name, user_pwd) {
   };
 }
 
-function findNewGrades(oldSubjects, newSubjects) {
+function makeGradeKey(subject, category, date, value) {
+  const normS = String(subject || '').toLowerCase().replace(/[^a-zа-яіїєґ0-9]/gi, '');
+  const normC = String(category || '').toLowerCase().replace(/[^a-zа-яіїєґ0-9]/gi, '');
+  const normD = String(date || '').trim();
+  const normV = String(value || '').toLowerCase().trim();
+  return `${normS}__${normC}__${normD}__${normV}`;
+}
+
+function parseGradeDate(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  const parts = dateStr.trim().split('.');
+  if (parts.length < 2) return null;
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  if (isNaN(day) || isNaN(month) || month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const now = new Date();
+  let year = now.getFullYear();
+  if (parts.length >= 3 && parts[2]) {
+    year = parts[2].length === 2 ? 2000 + parseInt(parts[2], 10) : parseInt(parts[2], 10);
+  } else {
+    const curMonth = now.getMonth() + 1;
+    if (curMonth >= 8) {
+      year = month >= 8 ? now.getFullYear() : now.getFullYear() + 1;
+    } else {
+      year = month >= 8 ? now.getFullYear() - 1 : now.getFullYear();
+    }
+  }
+  return new Date(year, month - 1, day);
+}
+
+function isGradeTooOld(dateStr, maxDays = 10) {
+  const d = parseGradeDate(dateStr);
+  if (!d) return false;
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  return diffMs > (maxDays * 86400 * 1000);
+}
+
+async function getUserKnownGradeKeys(kv, userId) {
+  if (!kv || !userId) return new Set();
+  try {
+    const raw = await globalSafeKvGet(kv, `dekanat_known_grades:${userId}`);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr);
+    }
+  } catch {}
+  return new Set();
+}
+
+async function saveUserKnownGradeKeys(kv, userId, keysSet) {
+  if (!kv || !userId || !keysSet) return;
+  try {
+    const arr = Array.from(keysSet).slice(-600);
+    await globalSafeKvPut(kv, `dekanat_known_grades:${userId}`, JSON.stringify(arr), { expirationTtl: 180 * 86400 });
+  } catch {}
+}
+
+function findNewGrades(oldSubjects, newSubjects, knownKeysSet = null, maxAgeDays = 10) {
   const newItems = [];
-  const oldGradeKeys = new Set();
+  const oldGradeKeys = new Set(knownKeysSet ? Array.from(knownKeysSet) : []);
   const seenNewKeys = new Set();
 
   for (const s of oldSubjects || []) {
     for (const g of s.grades || []) {
-      oldGradeKeys.add(`${s.subject}__${g.category}__${g.date}__${g.value}`);
+      oldGradeKeys.add(makeGradeKey(s.subject, g.category, g.date, g.value));
     }
   }
 
   for (const s of newSubjects || []) {
     for (const g of s.grades || []) {
-      const key = `${s.subject}__${g.category}__${g.date}__${g.value}`;
+      const key = makeGradeKey(s.subject, g.category, g.date, g.value);
       if (!oldGradeKeys.has(key) && !seenNewKeys.has(key)) {
         seenNewKeys.add(key);
+
+        // Date sanity guard: if the grade/absence has a date older than maxAgeDays (e.g. 10 days ago),
+        // it is old historical data (not a new event) — do NOT notify!
+        if (g.date && isGradeTooOld(g.date, maxAgeDays)) {
+          console.log(`[findNewGrades] Suppressing ancient grade alert: ${s.subject} ${g.value} on ${g.date}`);
+          continue;
+        }
+
         newItems.push({
           subject: s.subject,
           teacher: s.teacher,
@@ -1658,16 +1736,23 @@ async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
     return;
   }
 
-  // 2. Global 24-hour deduplication to prevent duplicate messages across cron/requests
+  // 2. Reject notifications for dates older than 10 days (safety guard against historical data)
+  if (!newGradeInfo.isTest && isGradeTooOld(date, 10)) {
+    console.log(`[notif] Grade date too old (${date}), skipping alert:`, subject, value);
+    return;
+  }
+
+  // 3. Global deduplication with semester-long TTL (180 days = ~6 months, NOT 24 hours!)
   if (env.PREFS_KV && !newGradeInfo.isTest) {
-    const dedupeKey = `notif_sent:${tgChatId}:${subject}:${category}:${date}:${value}`;
+    const gradeKey = makeGradeKey(subject, category, date, value);
+    const dedupeKey = `notif_sent:${tgChatId}:${gradeKey}`;
     try {
       const alreadySent = await globalSafeKvGet(env.PREFS_KV, dedupeKey);
       if (alreadySent) {
-        console.log("[notif] Skipping duplicate alert:", dedupeKey);
+        console.log("[notif] Skipping duplicate alert (already sent in KV):", dedupeKey);
         return;
       }
-      await globalSafeKvPut(env.PREFS_KV, dedupeKey, "1", { expirationTtl: 86400 });
+      await globalSafeKvPut(env.PREFS_KV, dedupeKey, "1", { expirationTtl: 180 * 86400 });
     } catch (e) {}
   }
 
@@ -1795,6 +1880,13 @@ async function handleDekanatRoutes(request, env, ctx) {
       if (kv && userId && !checkKvBlocked()) {
         await globalSafeKvPut(kv, `dekanat_creds:${userId}`, JSON.stringify({ user_name, user_pwd }));
         await globalSafeKvPut(kv, `dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: parsedData }));
+        const initialKeys = new Set();
+        for (const s of parsedData.subjects || []) {
+          for (const g of s.grades || []) {
+            initialKeys.add(makeGradeKey(s.subject, g.category, g.date, g.value));
+          }
+        }
+        await saveUserKnownGradeKeys(kv, userId, initialKeys);
       }
 
       return json({
@@ -1814,7 +1906,7 @@ async function handleDekanatRoutes(request, env, ctx) {
   if (url.pathname === '/dekanat/grades' && request.method === 'POST') {
     let body;
     try { body = await request.json(); } catch { return json({ error: 'Bad JSON' }, 400); }
-    let { user_name, user_pwd, userId, forceRefresh } = body || {};
+    let { user_name, user_pwd, userId, forceRefresh, isManual, clientKnownKeys } = body || {};
     const sUid = userId ? String(userId) : null;
 
     let cached = sUid ? memoryDekanatCache.get(sUid) : null;
@@ -1864,18 +1956,48 @@ async function handleDekanatRoutes(request, env, ctx) {
     try {
       const freshData = await fetchDekanatGrades(user_name, user_pwd);
 
-      // Check for new grades and send Telegram alerts
-      if (cached && cached.data && Array.isArray(cached.data.subjects)) {
-        const newGrades = findNewGrades(cached.data.subjects, freshData.subjects);
-        if (newGrades.length > 0 && userId && env.BOT_TOKEN) {
-          for (const ng of newGrades) {
-            if (ctx && ctx.waitUntil) {
-              ctx.waitUntil(notifyTelegramNewGrade(env, userId, ng));
-            } else {
-              notifyTelegramNewGrade(env, userId, ng).catch(() => {});
+      // Check for new grades with persistent known keys & deduplication
+      if (userId && env.BOT_TOKEN && Array.isArray(freshData.subjects)) {
+        const knownKeysSet = await getUserKnownGradeKeys(kv, userId);
+
+        // Merge any client-supplied known keys (from localStorage)
+        if (Array.isArray(clientKnownKeys)) {
+          for (const k of clientKnownKeys) knownKeysSet.add(k);
+        }
+
+        // Merge cached keys if available
+        if (cached && cached.data && Array.isArray(cached.data.subjects)) {
+          for (const s of cached.data.subjects) {
+            for (const g of s.grades || []) {
+              knownKeysSet.add(makeGradeKey(s.subject, g.category, g.date, g.value));
             }
           }
         }
+
+        // First sync baseline guard: if user has no known keys recorded yet, this is baseline snapshot!
+        const isFirstSync = (knownKeysSet.size === 0);
+
+        if (!isFirstSync) {
+          const newGrades = findNewGrades(cached?.data?.subjects, freshData.subjects, knownKeysSet, 10);
+          if (newGrades.length > 0) {
+            for (const ng of newGrades) {
+              knownKeysSet.add(makeGradeKey(ng.subject, ng.category, ng.date, ng.value));
+              if (ctx && ctx.waitUntil) {
+                ctx.waitUntil(notifyTelegramNewGrade(env, userId, ng));
+              } else {
+                notifyTelegramNewGrade(env, userId, ng).catch(() => {});
+              }
+            }
+          }
+        }
+
+        // Commit all current grades into knownKeysSet so they are NEVER re-alerted
+        for (const s of freshData.subjects || []) {
+          for (const g of s.grades || []) {
+            knownKeysSet.add(makeGradeKey(s.subject, g.category, g.date, g.value));
+          }
+        }
+        await saveUserKnownGradeKeys(kv, userId, knownKeysSet);
       }
 
       if (sUid) {
@@ -5880,26 +6002,25 @@ async function runDekanatAutoCheck(env, ctx, options = {}) {
     }
   }
 
-  // Skip if user was checked within last 20 min
-  const SKIP_IF_NEWER_MS = (options.skipMs !== undefined) ? options.skipMs : (20 * 60 * 1000);
-
-  // Cloudflare subrequest safety limit: max 50 subrequests per invocation.
-  // Each student takes ~12-14 fetches. 2-3 students = ~26-38 subrequests.
-  const BATCH_SIZE = 2;
-  const adminId = env.ADMIN_USER_ID || "918235475";
+  // Skip if user was checked within last 45 min (ensures all users are rotated ~once per hour)
+  const SKIP_IF_NEWER_MS = (options.skipMs !== undefined) ? options.skipMs : (45 * 60 * 1000);
 
   let checkedCount = 0;
   let newGradesTotal = 0;
   const userResults = [];
+  let allKeys = [];
 
   try {
     const listed = await kv.list({ prefix: 'dekanat_creds:' });
-    const allKeys = listed.keys || [];
+    allKeys = listed.keys || [];
     if (allKeys.length === 0) {
       return { ok: true, checkedCount: 0, users: [] };
     }
 
-    // Get current cursor
+    // Dynamic batch size: with cron every 10 min (6 runs/hr), batch = ceil(N / 5) ensures 100% checked every hour
+    const BATCH_SIZE = Math.min(4, Math.max(2, Math.ceil(allKeys.length / 5)));
+
+    // Get current rotating cursor
     let cursor = 0;
     try {
       const rawCursor = await globalSafeKvGet(kv, 'cron_dekanat_cursor');
@@ -5908,13 +6029,13 @@ async function runDekanatAutoCheck(env, ctx, options = {}) {
 
     if (cursor >= allKeys.length) cursor = 0;
 
-    // Pick rotating users (exact batch size to stay safely within subrequest limits)
+    // Pick rotating users safely within subrequest limits (optimized fetchDekanatGrades = ~10 req/user)
     const selectedKeys = [];
-    for (let i = 0; i < BATCH_SIZE; i++) {
+    for (let i = 0; i < BATCH_SIZE && i < allKeys.length; i++) {
       const idx = (cursor + i) % allKeys.length;
       selectedKeys.push(allKeys[idx]);
     }
-    const nextCursor = (cursor + BATCH_SIZE) % allKeys.length;
+    const nextCursor = (cursor + selectedKeys.length) % allKeys.length;
     await globalSafeKvPut(kv, 'cron_dekanat_cursor', String(nextCursor));
 
     for (const key of selectedKeys) {
@@ -5929,7 +6050,7 @@ async function runDekanatAutoCheck(env, ctx, options = {}) {
         const rawCache = await globalSafeKvGet(kv, `dekanat_cache:${userId}`);
         const cached = rawCache ? JSON.parse(rawCache) : null;
 
-        // Skip if recently synced
+        // Skip if recently synced (within last 45 min)
         if (!options.force && cached && cached.ts && (Date.now() - cached.ts) < SKIP_IF_NEWER_MS) {
           userResults.push({ userId, user_name, skipped: 'recently_synced', ts: cached.ts });
           continue;
@@ -5947,14 +6068,27 @@ async function runDekanatAutoCheck(env, ctx, options = {}) {
         checkedCount++;
         let hasNewGrades = false;
 
-        // Compare with cached — find new grades & absences
+        // Load persistent known keys for this student
+        const knownKeysSet = await getUserKnownGradeKeys(kv, userId);
         if (cached && cached.data && Array.isArray(cached.data.subjects)) {
-          const newGrades = findNewGrades(cached.data.subjects, freshData.subjects);
+          for (const s of cached.data.subjects) {
+            for (const g of s.grades || []) {
+              knownKeysSet.add(makeGradeKey(s.subject, g.category, g.date, g.value));
+            }
+          }
+        }
+
+        // First sync baseline guard: if user has no known keys recorded yet, this is baseline snapshot!
+        const isFirstSync = (knownKeysSet.size === 0);
+
+        if (!isFirstSync && Array.isArray(freshData.subjects)) {
+          const newGrades = findNewGrades(cached?.data?.subjects, freshData.subjects, knownKeysSet, 10);
           if (newGrades.length > 0) {
             hasNewGrades = true;
             newGradesTotal += newGrades.length;
             for (const ng of newGrades) {
               ng.userName = user_name;
+              knownKeysSet.add(makeGradeKey(ng.subject, ng.category, ng.date, ng.value));
               if (ctx && ctx.waitUntil) {
                 ctx.waitUntil(notifyTelegramNewGrade(env, userId, ng));
               } else {
@@ -5963,6 +6097,14 @@ async function runDekanatAutoCheck(env, ctx, options = {}) {
             }
           }
         }
+
+        // Commit all current grades to knownKeysSet so they are NEVER re-alerted
+        for (const s of freshData.subjects || []) {
+          for (const g of s.grades || []) {
+            knownKeysSet.add(makeGradeKey(s.subject, g.category, g.date, g.value));
+          }
+        }
+        await saveUserKnownGradeKeys(kv, userId, knownKeysSet);
 
         // Update in-memory runtime cache & KV cache with fresh data & timestamp
         const sUid = String(userId);
@@ -5993,6 +6135,7 @@ async function runDekanatAutoCheck(env, ctx, options = {}) {
     ok: true,
     kyivHour,
     isNight,
+    totalUsers: allKeys.length,
     checkedCount,
     newGradesTotal,
     users: userResults
