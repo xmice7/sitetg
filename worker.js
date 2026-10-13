@@ -180,10 +180,10 @@ function checkKvBlocked() {
 
 function handleKvError(err, op, key) {
   const msg = err?.message || String(err || '');
-  if (msg.includes('limit exceeded') || msg.includes('daily operation limit') || msg.includes('quota') || msg.includes('exceeded for account')) {
-    // Disable further KV calls for 1 hour to prevent flooding Cloudflare and spamming user alerts
+  if (msg.includes('429') || msg.includes('limit exceeded') || msg.includes('daily operation limit') || msg.includes('quota') || msg.includes('exceeded') || msg.includes('temporarily blocked')) {
+    // Disable further KV write calls for 1 hour to prevent flooding Cloudflare and throwing unhandled errors
     kvBlockedUntil = Date.now() + 3600000;
-    console.warn(`[KV CircuitBreaker] Limit exceeded! Pausing KV operations. Failed ${op} for ${key}`);
+    console.warn(`[KV CircuitBreaker] 429/Limit exceeded! Pausing KV operations. Failed ${op} for ${key}`);
   } else {
     console.warn(`[KV] ${op} failed for ${key}:`, msg);
   }
@@ -221,6 +221,8 @@ async function globalSafeKvGet(kv, key) {
 const memoryScheduleCache = new Map(); // cacheKey -> { ts, schedule, normalized }
 const memoryAvatarCache = new Map();   // userId -> { buffer, contentType, ts }
 const memoryUserLastSaved = new Map(); // userId -> ts
+const memoryUinfoKvSaved = new Map();  // userId -> ts
+const memorySentNotifs = new Set();    // tgChatId:gradeKey -> dedupe in RAM
 const memoryDekanatCache = new Map();  // userId -> { ts, data }
 const memoryDekanatCreds = new Map();  // userId -> { user_name, user_pwd }
 const memoryUserSyncCache = new Map(); // uid -> syncData
@@ -298,9 +300,12 @@ async function handleScheduleRoutes(request, env, ctx) {
           memoryScheduleCache.set(cacheKey, entryObj);
           memoryScheduleCache.set(fallbackKey, entryObj);
           if (kv && !checkKvBlocked()) {
-            const entry = JSON.stringify(entryObj);
-            const saveTask = globalSafeKvPut(kv, cacheKey, entry, { expirationTtl: 1209600 });
-            if (ctx?.waitUntil) ctx.waitUntil(saveTask); else await saveTask.catch(() => {});
+            const lastKvTime = cachedEntry?.ts || 0;
+            if (Date.now() - lastKvTime > 6 * 3600 * 1000) {
+              const entry = JSON.stringify(entryObj);
+              const saveTask = globalSafeKvPut(kv, cacheKey, entry, { expirationTtl: 1209600 });
+              if (ctx?.waitUntil) ctx.waitUntil(saveTask); else await saveTask.catch(() => {});
+            }
           }
           return json(fresh, 200, {
             'Cache-Control': 'public, max-age=600',
@@ -1443,6 +1448,20 @@ function makeGradeKey(subject, category, date, value) {
   return `${normS}__${normC}__${normD}__${normV}`;
 }
 
+function getGradesFingerprint(data) {
+  if (!data) return '';
+  const abs = data.totalAbsences ?? 0;
+  const avg = data.average || '';
+  const list = [];
+  for (const s of (data.subjects || [])) {
+    const sName = String(s.subject || '').trim();
+    const sTotal = s.total ?? '';
+    const gList = (s.grades || []).map(g => `${g.category || ''}:${g.date || ''}:${g.value || ''}`).join(',');
+    list.push(`${sName}(${sTotal})=[${gList}]`);
+  }
+  return `${abs}|${avg}|${list.join(';')}`;
+}
+
 function parseGradeDate(dateStr) {
   if (!dateStr || typeof dateStr !== 'string') return null;
   const parts = dateStr.trim().split('.');
@@ -1742,18 +1761,31 @@ async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
     return;
   }
 
-  // 3. Global deduplication with semester-long TTL (180 days = ~6 months, NOT 24 hours!)
-  if (env.PREFS_KV && !newGradeInfo.isTest) {
+  // 3. Global deduplication with in-memory cache + semester-long KV TTL (180 days)
+  if (!newGradeInfo.isTest) {
     const gradeKey = makeGradeKey(subject, category, date, value);
-    const dedupeKey = `notif_sent:${tgChatId}:${gradeKey}`;
-    try {
-      const alreadySent = await globalSafeKvGet(env.PREFS_KV, dedupeKey);
-      if (alreadySent) {
-        console.log("[notif] Skipping duplicate alert (already sent in KV):", dedupeKey);
-        return;
-      }
-      await globalSafeKvPut(env.PREFS_KV, dedupeKey, "1", { expirationTtl: 180 * 86400 });
-    } catch (e) {}
+    const memNotifKey = `${tgChatId}:${gradeKey}`;
+    if (memorySentNotifs.has(memNotifKey)) {
+      console.log("[notif] Skipping duplicate alert (in RAM dedupe cache):", memNotifKey);
+      return;
+    }
+    if (env.PREFS_KV && !checkKvBlocked()) {
+      const dedupeKey = `notif_sent:${tgChatId}:${gradeKey}`;
+      try {
+        const alreadySent = await globalSafeKvGet(env.PREFS_KV, dedupeKey);
+        if (alreadySent) {
+          memorySentNotifs.add(memNotifKey);
+          console.log("[notif] Skipping duplicate alert (already sent in KV):", dedupeKey);
+          return;
+        }
+        await globalSafeKvPut(env.PREFS_KV, dedupeKey, "1", { expirationTtl: 180 * 86400 });
+      } catch (e) {}
+    }
+    memorySentNotifs.add(memNotifKey);
+    if (memorySentNotifs.size > 2000) {
+      const first = memorySentNotifs.values().next().value;
+      memorySentNotifs.delete(first);
+    }
   }
 
   let text;
@@ -1956,6 +1988,10 @@ async function handleDekanatRoutes(request, env, ctx) {
     try {
       const freshData = await fetchDekanatGrades(user_name, user_pwd);
 
+      const cachedFp = cached?.data ? getGradesFingerprint(cached.data) : null;
+      const freshFp = getGradesFingerprint(freshData);
+      const hasChanged = !cachedFp || cachedFp !== freshFp;
+
       // Check for new grades with persistent known keys & deduplication
       if (userId && env.BOT_TOKEN && Array.isArray(freshData.subjects)) {
         const knownKeysSet = await getUserKnownGradeKeys(kv, userId);
@@ -1977,7 +2013,9 @@ async function handleDekanatRoutes(request, env, ctx) {
         // First sync baseline guard: if user has no known keys recorded yet, this is baseline snapshot!
         const isFirstSync = (knownKeysSet.size === 0);
 
-        if (!isFirstSync) {
+        // When user manually refreshes in the web app (isManual), they are viewing the grades directly on screen.
+        // We only send background Telegram alerts if NOT isManual.
+        if (!isManual && !isFirstSync) {
           const newGrades = findNewGrades(cached?.data?.subjects, freshData.subjects, knownKeysSet, 10);
           if (newGrades.length > 0) {
             for (const ng of newGrades) {
@@ -1997,14 +2035,19 @@ async function handleDekanatRoutes(request, env, ctx) {
             knownKeysSet.add(makeGradeKey(s.subject, g.category, g.date, g.value));
           }
         }
-        await saveUserKnownGradeKeys(kv, userId, knownKeysSet);
+
+        // Only write knownKeysSet to KV if data actually changed or first sync
+        if (hasChanged || isFirstSync) {
+          await saveUserKnownGradeKeys(kv, userId, knownKeysSet);
+        }
       }
 
       if (sUid) {
         memoryDekanatCache.set(sUid, { ts: Date.now(), data: freshData });
       }
 
-      if (kv && userId && !checkKvBlocked()) {
+      // Only write cache to KV if data actually changed or first sync
+      if ((hasChanged || !cached) && kv && userId && !checkKvBlocked()) {
         await globalSafeKvPut(kv, `dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: freshData }));
       }
 
@@ -3421,12 +3464,15 @@ export default {
         if (raw && Array.isArray(raw.days) && raw.days.length > 0) {
           const info = normalizeSchedule(raw);
           memoryScheduleCache.set(memKey, { ts: Date.now(), schedule: raw, normalized: info });
-          if (KV) {
-            const saveTask = Promise.all([
-              safeKvPut(key, JSON.stringify(info), { expirationTtl: 1800 }),
-              safeKvPut(fallbackKey, JSON.stringify({ ts: Date.now(), schedule: raw }), { expirationTtl: 1209600 })
-            ]);
-            if (ctx?.waitUntil) ctx.waitUntil(saveTask); else await saveTask.catch(() => {});
+          if (KV && !checkKvBlocked()) {
+            const mem = memoryScheduleCache.get(fallbackKey);
+            const lastKv = mem?.lastKv || 0;
+            if (Date.now() - lastKv > 6 * 3600 * 1000) {
+              const entryObj = { ts: Date.now(), schedule: raw, lastKv: Date.now() };
+              memoryScheduleCache.set(fallbackKey, entryObj);
+              const saveTask = safeKvPut(fallbackKey, JSON.stringify({ ts: Date.now(), schedule: raw }), { expirationTtl: 1209600 });
+              if (ctx?.waitUntil) ctx.waitUntil(saveTask); else await saveTask.catch(() => {});
+            }
           }
           return info;
         }
@@ -3755,15 +3801,22 @@ export default {
 
       const cacheKey = `dekanat_cache:${userId}`;
       let gradesData = null;
+      let rawCache = null;
 
       if (creds && creds.user_name && creds.user_pwd) {
-        if (!force && KV) {
+        const mem = memoryDekanatCache.get(String(userId));
+        if (!force && mem?.data && (Date.now() - (mem.ts || 0) < 15 * 60 * 1000)) {
+          gradesData = mem.data;
+        }
+
+        if (!gradesData && !force && KV && !checkKvBlocked()) {
           try {
-            const rawCache = await KV.get(cacheKey);
+            rawCache = await KV.get(cacheKey);
             if (rawCache) {
               const c = JSON.parse(rawCache);
               if (c?.data && (Date.now() - (c.ts || 0) < 15 * 60 * 1000)) {
                 gradesData = c.data;
+                memoryDekanatCache.set(String(userId), c);
               }
             }
           } catch {}
@@ -3772,8 +3825,13 @@ export default {
         if (!gradesData) {
           try {
             gradesData = await fetchDekanatGrades(creds.user_name, creds.user_pwd);
-            if (KV && gradesData) {
-              await safeKvPut(cacheKey, JSON.stringify({ ts: Date.now(), data: gradesData }));
+            memoryDekanatCache.set(String(userId), { ts: Date.now(), data: gradesData });
+            if (KV && gradesData && !checkKvBlocked()) {
+              const cachedFp = rawCache ? getGradesFingerprint(JSON.parse(rawCache)?.data) : '';
+              const freshFp = getGradesFingerprint(gradesData);
+              if (!rawCache || cachedFp !== freshFp) {
+                await safeKvPut(cacheKey, JSON.stringify({ ts: Date.now(), data: gradesData }));
+              }
             }
           } catch (err) {
             if (KV) {
@@ -3984,9 +4042,11 @@ const editPlain = (chatId, msgId, text, reply_markup) =>
         }
         memoryUserCards.set(uidStr, { id: uidStr, name: uName, username: uUser, group: uGroup, ts: Date.now() });
 
-        if (KV && !checkKvBlocked()) {
+        const lastUinfoKv = memoryUinfoKvSaved.get(uidStr) || 0;
+        if (KV && !checkKvBlocked() && (explicitGroup || Date.now() - lastUinfoKv > 24 * 3600 * 1000)) {
           try {
             await safeKvPut("uinfo:" + uidStr, JSON.stringify({ id: uidStr, name: uName, username: uUser, group: uGroup }), { expirationTtl: 86400 * 30 });
+            memoryUinfoKvSaved.set(uidStr, Date.now());
           } catch {}
         }
       } catch (e) {
@@ -5995,11 +6055,9 @@ async function runDekanatAutoCheck(env, ctx, options = {}) {
   const kyivMin = now.getUTCMinutes();
   const isNight = kyivHour >= 0 && kyivHour < 7;
 
-  // At night (00:00–06:59): run only once every 2 hours on the hour (e.g. 00:00, 02:00, 04:00, 06:00)
+  // At night (00:00–06:59): return immediately, professors do not post grades at night
   if (!options.force && isNight) {
-    if (kyivMin > 14 || kyivHour % 2 !== 0) {
-      return { ok: true, skipped: 'night_throttled', kyivHour };
-    }
+    return { ok: true, skipped: 'night_sleep', kyivHour };
   }
 
   // Skip if user was checked within last 45 min (ensures all users are rotated ~once per hour)
@@ -6017,17 +6075,15 @@ async function runDekanatAutoCheck(env, ctx, options = {}) {
       return { ok: true, checkedCount: 0, users: [] };
     }
 
-    // Dynamic batch size: with cron every 10 min (6 runs/hr), batch = ceil(N / 5) ensures 100% checked every hour
-    const BATCH_SIZE = Math.min(4, Math.max(2, Math.ceil(allKeys.length / 5)));
+    // Cloudflare Free Worker limit: max 50 subrequests per invocation.
+    // Each student dekanat fetch takes ~7-9 subrequests, so max batch size is 4 (~32 subrequests, safely under 50 limit).
+    // With cron running every 10 min (6 runs/hr), batch = min(4, ceil(N / 6)) guarantees all students checked every hour.
+    const BATCH_SIZE = Math.min(4, Math.max(2, Math.ceil(allKeys.length / 6)));
 
-    // Get current rotating cursor
-    let cursor = 0;
-    try {
-      const rawCursor = await globalSafeKvGet(kv, 'cron_dekanat_cursor');
-      if (rawCursor) cursor = parseInt(rawCursor, 10) || 0;
-    } catch {}
-
-    if (cursor >= allKeys.length) cursor = 0;
+    // Deterministic time-based cursor (0 KV writes!)
+    // 10-minute interval index since epoch ensures consistent rotation across cron triggers
+    const intervalIndex = Math.floor(Date.now() / (10 * 60 * 1000));
+    const cursor = (intervalIndex * BATCH_SIZE) % allKeys.length;
 
     // Pick rotating users safely within subrequest limits (optimized fetchDekanatGrades = ~10 req/user)
     const selectedKeys = [];
@@ -6035,8 +6091,6 @@ async function runDekanatAutoCheck(env, ctx, options = {}) {
       const idx = (cursor + i) % allKeys.length;
       selectedKeys.push(allKeys[idx]);
     }
-    const nextCursor = (cursor + selectedKeys.length) % allKeys.length;
-    await globalSafeKvPut(kv, 'cron_dekanat_cursor', String(nextCursor));
 
     for (const key of selectedKeys) {
       const userId = key.name.replace('dekanat_creds:', '');
@@ -6067,6 +6121,9 @@ async function runDekanatAutoCheck(env, ctx, options = {}) {
 
         checkedCount++;
         let hasNewGrades = false;
+
+        const cachedFp = cached?.data ? getGradesFingerprint(cached.data) : null;
+        const freshFp = getGradesFingerprint(freshData);
 
         // Load persistent known keys for this student
         const knownKeysSet = await getUserKnownGradeKeys(kv, userId);
@@ -6104,14 +6161,18 @@ async function runDekanatAutoCheck(env, ctx, options = {}) {
             knownKeysSet.add(makeGradeKey(s.subject, g.category, g.date, g.value));
           }
         }
-        await saveUserKnownGradeKeys(kv, userId, knownKeysSet);
 
-        // Update in-memory runtime cache & KV cache with fresh data & timestamp
-        const sUid = String(userId);
-        memoryDekanatCache.set(sUid, { ts: Date.now(), data: freshData });
-        if (!checkKvBlocked()) {
+        const hasDataChanged = !cachedFp || cachedFp !== freshFp || hasNewGrades || isFirstSync;
+
+        // ONLY write to KV if grades or absences actually changed! Zero KV writes on routine runs.
+        if (hasDataChanged && !checkKvBlocked()) {
+          await saveUserKnownGradeKeys(kv, userId, knownKeysSet);
           await globalSafeKvPut(kv, `dekanat_cache:${userId}`, JSON.stringify({ ts: Date.now(), data: freshData }));
         }
+
+        // Always update in-memory runtime cache
+        const sUid = String(userId);
+        memoryDekanatCache.set(sUid, { ts: Date.now(), data: freshData });
 
         userResults.push({
           userId,
