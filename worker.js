@@ -1484,7 +1484,7 @@ function parseGradeDate(dateStr) {
   return new Date(year, month - 1, day);
 }
 
-function isGradeTooOld(dateStr, maxDays = 30) {
+function isGradeTooOld(dateStr, maxDays = 180) {
   const d = parseGradeDate(dateStr);
   if (!d) return false;
   const now = new Date();
@@ -1512,7 +1512,7 @@ async function saveUserKnownGradeKeys(kv, userId, keysSet) {
   } catch {}
 }
 
-function findNewGrades(oldSubjects, newSubjects, knownKeysSet = null, maxAgeDays = 30) {
+function findNewGrades(oldSubjects, newSubjects, knownKeysSet = null, maxAgeDays = 180) {
   const newItems = [];
   const oldGradeKeys = new Set(knownKeysSet ? Array.from(knownKeysSet) : []);
   const seenNewKeys = new Set();
@@ -1755,8 +1755,8 @@ async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
     return;
   }
 
-  // 2. Reject notifications for dates older than 30 days (safety guard against historical data)
-  if (!newGradeInfo.isTest && isGradeTooOld(date, 30)) {
+  // 2. Reject notifications for dates older than 6 months (180 days - whole semester window)
+  if (!newGradeInfo.isTest && isGradeTooOld(date, 180)) {
     console.log(`[notif] Grade date too old (${date}), skipping alert:`, subject, value);
     return;
   }
@@ -2016,7 +2016,7 @@ async function handleDekanatRoutes(request, env, ctx) {
         // When user manually refreshes in the web app (isManual), they are viewing the grades directly on screen.
         // We only send background Telegram alerts if NOT isManual.
         if (!isManual && !isFirstSync) {
-          const newGrades = findNewGrades(cached?.data?.subjects, freshData.subjects, knownKeysSet, 30);
+          const newGrades = findNewGrades(cached?.data?.subjects, freshData.subjects, knownKeysSet, 180);
           if (newGrades.length > 0) {
             for (const ng of newGrades) {
               knownKeysSet.add(makeGradeKey(ng.subject, ng.category, ng.date, ng.value));
@@ -6130,7 +6130,7 @@ async function runDekanatAutoCheck(env, ctx, options = {}) {
         const isFirstSync = (knownKeysSet.size === 0);
 
         if (!isFirstSync && Array.isArray(freshData.subjects)) {
-          const newGrades = findNewGrades(cached?.data?.subjects, freshData.subjects, knownKeysSet, 30);
+          const newGrades = findNewGrades(cached?.data?.subjects, freshData.subjects, knownKeysSet, 180);
           if (newGrades.length > 0) {
             hasNewGrades = true;
             newGradesTotal += newGrades.length;
