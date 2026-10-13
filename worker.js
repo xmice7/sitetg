@@ -1484,7 +1484,7 @@ function parseGradeDate(dateStr) {
   return new Date(year, month - 1, day);
 }
 
-function isGradeTooOld(dateStr, maxDays = 10) {
+function isGradeTooOld(dateStr, maxDays = 30) {
   const d = parseGradeDate(dateStr);
   if (!d) return false;
   const now = new Date();
@@ -1512,7 +1512,7 @@ async function saveUserKnownGradeKeys(kv, userId, keysSet) {
   } catch {}
 }
 
-function findNewGrades(oldSubjects, newSubjects, knownKeysSet = null, maxAgeDays = 10) {
+function findNewGrades(oldSubjects, newSubjects, knownKeysSet = null, maxAgeDays = 30) {
   const newItems = [];
   const oldGradeKeys = new Set(knownKeysSet ? Array.from(knownKeysSet) : []);
   const seenNewKeys = new Set();
@@ -1755,8 +1755,8 @@ async function notifyTelegramNewGrade(env, tgChatId, newGradeInfo) {
     return;
   }
 
-  // 2. Reject notifications for dates older than 10 days (safety guard against historical data)
-  if (!newGradeInfo.isTest && isGradeTooOld(date, 10)) {
+  // 2. Reject notifications for dates older than 30 days (safety guard against historical data)
+  if (!newGradeInfo.isTest && isGradeTooOld(date, 30)) {
     console.log(`[notif] Grade date too old (${date}), skipping alert:`, subject, value);
     return;
   }
@@ -2016,7 +2016,7 @@ async function handleDekanatRoutes(request, env, ctx) {
         // When user manually refreshes in the web app (isManual), they are viewing the grades directly on screen.
         // We only send background Telegram alerts if NOT isManual.
         if (!isManual && !isFirstSync) {
-          const newGrades = findNewGrades(cached?.data?.subjects, freshData.subjects, knownKeysSet, 10);
+          const newGrades = findNewGrades(cached?.data?.subjects, freshData.subjects, knownKeysSet, 30);
           if (newGrades.length > 0) {
             for (const ng of newGrades) {
               knownKeysSet.add(makeGradeKey(ng.subject, ng.category, ng.date, ng.value));
@@ -2945,7 +2945,7 @@ export default {
         let data = {};
         if (kv) {
           try {
-            const raw = await kv.get(groupKey);
+            const raw = await globalSafeKvGet(kv, groupKey);
             if (raw) data = JSON.parse(raw);
           } catch {}
         }
@@ -2983,17 +2983,13 @@ export default {
         let current = {};
         if (kv) {
           try {
-            const raw = await kv.get(groupKey);
+            const raw = await globalSafeKvGet(kv, groupKey);
             if (raw) current = JSON.parse(raw);
           } catch {}
         }
         const merged = Object.assign({}, current, data || {});
         if (kv) {
-          try {
-            await kv.put(groupKey, JSON.stringify(merged));
-          } catch (e) {
-            console.error("KV admin put error:", e);
-          }
+          await globalSafeKvPut(kv, groupKey, JSON.stringify(merged));
         }
         return jsonRes({ ok: true, data: merged });
       }
@@ -3174,7 +3170,7 @@ export default {
       let targetUid = String(target).trim();
       if (targetUid.startsWith("@") || isNaN(targetUid)) {
         if (kv) {
-          const cached = await kv.get("uname:" + targetUid.replace(/^@/, "").toLowerCase());
+          const cached = await globalSafeKvGet(kv, "uname:" + targetUid.replace(/^@/, "").toLowerCase());
           if (cached) targetUid = cached;
         }
       }
@@ -6055,11 +6051,6 @@ async function runDekanatAutoCheck(env, ctx, options = {}) {
   const kyivMin = now.getUTCMinutes();
   const isNight = kyivHour >= 0 && kyivHour < 7;
 
-  // At night (00:00–06:59): return immediately, professors do not post grades at night
-  if (!options.force && isNight) {
-    return { ok: true, skipped: 'night_sleep', kyivHour };
-  }
-
   // Skip if user was checked within last 45 min (ensures all users are rotated ~once per hour)
   const SKIP_IF_NEWER_MS = (options.skipMs !== undefined) ? options.skipMs : (45 * 60 * 1000);
 
@@ -6139,7 +6130,7 @@ async function runDekanatAutoCheck(env, ctx, options = {}) {
         const isFirstSync = (knownKeysSet.size === 0);
 
         if (!isFirstSync && Array.isArray(freshData.subjects)) {
-          const newGrades = findNewGrades(cached?.data?.subjects, freshData.subjects, knownKeysSet, 10);
+          const newGrades = findNewGrades(cached?.data?.subjects, freshData.subjects, knownKeysSet, 30);
           if (newGrades.length > 0) {
             hasNewGrades = true;
             newGradesTotal += newGrades.length;
