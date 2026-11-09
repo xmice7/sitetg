@@ -12,7 +12,7 @@
       ╚═════════╝               
 */
 
-const CACHE_NAME = 'fep-schedule-v19-ios-wallet-turbo';
+const CACHE_NAME = 'fep-schedule-v16-ios-push-pro';
 const OFFLINE_PAGE = './index.html';
 
 const PRECACHE_URLS = [
@@ -76,36 +76,44 @@ async function getCachedIndex(request) {
     );
 }
 
-// Navigation handler: Instant Cache-First with Stale-While-Revalidate
+// Navigation handler: Opens immediately even on weak/no internet
 async function handleNavigation(request) {
     const cachedResponse = await getCachedIndex(request);
 
-    // Background revalidation keeps cache fresh without blocking the UI
-    const revalidate = fetch(request).then(async (response) => {
-        if (response && response.ok) {
-            const cache = await caches.open(CACHE_NAME);
-            cache.put(request, response.clone());
-            cache.put(OFFLINE_PAGE, response.clone());
+    // Fast network race with 1500ms timeout
+    const fetchWithTimeout = async () => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 1500);
+        try {
+            const response = await fetch(request, { signal: controller.signal });
+            clearTimeout(timer);
+            if (response && response.ok) {
+                const clone = response.clone();
+                const cache = await caches.open(CACHE_NAME);
+                cache.put(request, clone);
+                cache.put(OFFLINE_PAGE, response.clone());
+            }
+            return response;
+        } catch (err) {
+            clearTimeout(timer);
+            throw err;
         }
-    }).catch(() => null);
+    };
 
-    // If cached, return in <10ms immediately!
     if (cachedResponse) {
-        return cachedResponse;
+        try {
+            return await fetchWithTimeout();
+        } catch (e) {
+            return cachedResponse;
+        }
     }
 
     try {
-        const response = await fetch(request);
-        if (response && response.ok) {
-            const cache = await caches.open(CACHE_NAME);
-            cache.put(request, response.clone());
-            cache.put(OFFLINE_PAGE, response.clone());
-        }
-        return response;
+        return await fetch(request);
     } catch (e) {
         const fallback = await getCachedIndex(request);
-        return fallback || new Response('<h1>Офлайн</h1><p>Будь ласка, оновіть сторінку при наявності з\'єднання.</p>', {
-            headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        return fallback || new Response('<h1>Офлайн</h1><p>Розклад доступний з кешу. Будь ласка, оновіть сторінку при наявності з\'єднання.</p>', {
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
         });
     }
 }

@@ -34,10 +34,6 @@
                     if (twa.disableVerticalSwipes) {
                         twa.disableVerticalSwipes();
                     }
-                    const curTh = localStorage.getItem('theme') || 'dark';
-                    const c = (curTh === 'light') ? '#ffffff' : ((curTh === 'black' || curTh === 'oled') ? '#000000' : '#151d2f');
-                    if (twa.setHeaderColor) twa.setHeaderColor(c);
-                    if (twa.setBackgroundColor) twa.setBackgroundColor(curTh === 'light' ? '#f2f2f7' : (curTh === 'black' ? '#000000' : '#0b0f19'));
                     const u = twa.initDataUnsafe && twa.initDataUnsafe.user;
                     if (u && u.id) {
                         const userData = {
@@ -61,10 +57,8 @@
         document.addEventListener('DOMContentLoaded', initTelegramWebApp);
     </script>
     <title>Розклад ФЕП</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="./script.js"></script>
     <script>
         // Global safe helper & offline stubs
@@ -815,204 +809,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .grades-card-line-val.is-abs { color:#ef4444; }
         .grades-card-line-val.is-good { color:#10b981; }
 
-        
-        /* --- NATIVE FULL-PAGE TAB VIEWS (NO MODAL OVERLAYS ON MAIN TABS) --- */
-        .page {
-            display: none;
-            animation: pageFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-            will-change: opacity, transform;
-        }
-        .page.active {
-            display: block;
-        }
-        @keyframes pageFadeIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        #settings-modal.page,
-        #grades-modal.page {
-            position: static !important;
-            width: 100% !important;
-            height: auto !important;
-            background: transparent !important;
-            backdrop-filter: none !important;
-            -webkit-backdrop-filter: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            pointer-events: auto !important;
-            opacity: 1 !important;
-            z-index: 1 !important;
-        }
-
-        #settings-modal.page .modal-content,
-        #grades-modal.page .grades-modal-content {
-            position: static !important;
-            width: 100% !important;
-            max-width: 600px !important;
-            margin: 0 auto !important;
-            padding: 0 16px !important;
-            height: auto !important;
-            max-height: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            background: transparent !important;
-            border: none !important;
-            transform: none !important;
-            overflow: visible !important;
-        }
-
-        #settings-modal.page .ios-grabber,
-        #settings-modal.page .ios-done-button,
-        #grades-modal.page .close-btn {
-            display: none !important;
-        }
-
-        #settings-modal.page .ios-top-bar {
-            position: sticky;
-            top: 0;
-            background: var(--bg-body);
-            padding: 14px 0 10px;
-            z-index: 20;
-            border-bottom: 0.5px solid var(--border);
-            margin-bottom: 14px;
-        }
-
-        #grades-modal.page .modal-header {
-            position: sticky;
-            top: 0;
-            background: var(--bg-body);
-            padding: 14px 0 10px;
-            z-index: 20;
-            border-bottom: 0.5px solid var(--border);
-            margin-bottom: 14px;
-            border-radius: 0;
-        }
-
-        #settings-modal.page .ios-scroll-body,
-        #grades-modal.page .grades-modal-body {
-            overflow: visible !important;
-            height: auto !important;
-            max-height: none !important;
-            padding: 0 0 calc(96px + env(safe-area-inset-bottom, 20px)) !important;
-        }
-
-        /* Telegram Wallet iOS Dock */
-        .bottom-nav {
-            position: fixed;
-            bottom: max(12px, env(safe-area-inset-bottom));
-            left: 50%;
-            transform: translateX(-50%);
-            width: calc(100% - 24px);
-            max-width: 520px;
-            background: rgba(24, 24, 27, 0.9);
-            backdrop-filter: blur(28px) saturate(210%);
-            -webkit-backdrop-filter: blur(28px) saturate(210%);
-            border: 0.5px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(255, 255, 255, 0.08) inset;
-            border-radius: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: space-around;
-            z-index: 9500;
-            padding: 6px 4px;
-            transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), background-color 0.3s ease, border-color 0.3s ease;
-        }
-        [data-theme="light"] .bottom-nav {
-            background: rgba(255, 255, 255, 0.92);
-            border: 0.5px solid rgba(0, 0, 0, 0.08);
-            box-shadow: 0 14px 36px -6px rgba(0, 0, 0, 0.12), 0 0 1px 1px rgba(255, 255, 255, 0.9) inset;
-        }
-        [data-theme="black"] .bottom-nav,
-        [data-theme="oled"] .bottom-nav {
-            background: rgba(10, 10, 12, 0.95);
-            border: 0.5px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.8), 0 0 1px 1px rgba(255, 255, 255, 0.06) inset;
-        }
-        .nav-item {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 2px 0 3px;
-            background: none;
-            border: none;
-            color: var(--text-muted, #8e8e93);
-            cursor: pointer;
-            border-radius: 20px;
-            transition: color 0.22s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-            position: relative;
-            user-select: none;
-            -webkit-user-select: none;
-            text-decoration: none;
-        }
+        .bottom-nav { position: fixed; bottom: max(14px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: calc(100% - 28px); max-width: 520px; background: var(--modal-bg); backdrop-filter: blur(28px) saturate(200%); -webkit-backdrop-filter: blur(28px) saturate(200%); border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.35), 0 0 1px 1px rgba(255, 255, 255, 0.1) inset; border-radius: 28px; display: flex; z-index: 90; padding: 6px 8px; transition: transform 0.3s var(--spring-easing), background 0.3s ease; }
+        [data-theme="light"] .bottom-nav { background: rgba(255, 255, 255, 0.86); border: 1px solid rgba(0, 0, 0, 0.08); box-shadow: 0 14px 36px -6px rgba(0, 0, 0, 0.12), 0 0 1px 1px rgba(255, 255, 255, 0.8) inset; }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px 0; background: none; border: none; color: var(--text-muted); font-size: 11px; font-weight: 700; cursor: pointer; border-radius: 20px; transition: color 0.25s var(--spring-easing), transform 0.25s var(--spring-easing); text-transform: uppercase; letter-spacing: 0.5px; position: relative; user-select: none; -webkit-user-select: none; }
         .nav-item:active { transform: scale(0.92); }
-        .nav-pill {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 58px;
-            height: 30px;
-            border-radius: 15px;
-            transition: background-color 0.24s cubic-bezier(0.32, 0.72, 0, 1), transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
-            position: relative;
-        }
-        .nav-item.active .nav-pill {
-            background: rgba(59, 130, 246, 0.24);
-            transform: translateY(-1px);
-        }
-        [data-theme="light"] .nav-item.active .nav-pill {
-            background: rgba(37, 99, 235, 0.14);
-        }
-        [data-theme="black"] .nav-item.active .nav-pill,
-        [data-theme="oled"] .nav-item.active .nav-pill {
-            background: rgba(59, 130, 246, 0.28);
-        }
-        .nav-item svg {
-            width: 21px;
-            height: 21px;
-            stroke: currentColor;
-            fill: none;
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            transition: stroke 0.2s ease, stroke-width 0.2s ease, transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        .nav-item.active svg {
-            stroke: var(--primary, #2563eb);
-            stroke-width: 2.3;
-        }
-        .nav-label {
-            font-size: 10px;
-            font-weight: 600;
-            line-height: 1.2;
-            margin-top: 2px;
-            letter-spacing: 0.2px;
-            color: var(--text-muted, #8e8e93);
-            transition: color 0.2s ease, font-weight 0.2s ease;
-        }
-        .nav-item.active .nav-label {
-            color: var(--primary, #2563eb);
-            font-weight: 700;
-        }
-        .nav-item .nav-badge {
-            position: absolute;
-            top: -2px;
-            right: -4px;
-            background: #ef4444;
-            color: #ffffff;
-            font-size: 9px;
-            font-weight: 800;
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            line-height: 1;
-            border: 1.5px solid var(--modal-bg, #1e293b);
-        }
+        .nav-item svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.25s var(--spring-bounce), stroke 0.2s ease, stroke-width 0.2s ease; }
+        .nav-item.active { color: var(--primary); }
+        .nav-item.active svg { transform: translateY(-2px) scale(1.08); stroke-width: 2.4; }
+        .nav-item.active::after { content: ''; position: absolute; bottom: 2px; width: 14px; height: 3px; border-radius: 3px; background: var(--primary); box-shadow: 0 2px 8px var(--primary); }
 
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s var(--spring-easing); display: flex; align-items: flex-end; justify-content: center; overscroll-behavior-y: contain; }
         .modal-overlay.active { opacity: 1; pointer-events: all; }
@@ -1240,7 +1044,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .ios-scroll-body {
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            padding: 20px 0 calc(96px + env(safe-area-inset-bottom, 20px));
+            padding: 20px 0 52px;
             flex: 1;
         }
 
@@ -3936,33 +3740,17 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         </div>
     </div>
 
-    <nav class="bottom-nav" id="app-bottom-nav">
-        <button class="nav-item active" data-tab-nav="schedule" aria-label="Розклад">
-            <div class="nav-pill">
-                <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-            </div>
-            <span class="nav-label">Розклад</span>
+    <nav class="bottom-nav">
+        <button class="nav-item active" data-page="schedule">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            Розклад
         </button>
-        <button class="nav-item" data-tab-nav="grades" aria-label="Оцінки">
-            <div class="nav-pill">
-                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <button class="nav-item" data-page="useful">
+            <div style="position:relative;display:inline-flex">
+                <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                <span id="unread-badge" style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;font-size:9px;font-weight:800;width:14px;height:14px;border-radius:50%;display:none;align-items:center;justify-content:center;line-height:1;">!</span>
             </div>
-            <span class="nav-label">Оцінки</span>
-        </button>
-        <button class="nav-item" data-tab-nav="useful" aria-label="Корисне">
-            <div class="nav-pill">
-                <div style="position:relative;display:inline-flex">
-                    <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                    <span id="unread-badge" class="nav-badge" style="display:none;">!</span>
-                </div>
-            </div>
-            <span class="nav-label">Корисне</span>
-        </button>
-        <button class="nav-item" data-tab-nav="settings" aria-label="Налаштування">
-            <div class="nav-pill">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-            </div>
-            <span class="nav-label">Налаштування</span>
+            Корисне
         </button>
     </nav>
 </div>
@@ -4104,7 +3892,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
     </div>
 </div>
 
-<div class="page" id="grades-modal">
+<div class="modal-overlay" id="grades-modal" style="z-index:9100;">
     <div class="modal-content grades-modal-content" style="max-width:540px;display:flex;flex-direction:column;">
         <div class="modal-header">
             <div style="display:flex;align-items:center;gap:10px;">
@@ -4116,7 +3904,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             </div>
             <button class="close-btn" id="close-grades">×</button>
         </div>
-        <div class="modal-body grades-modal-body" style="overflow-y:auto;padding:16px 18px calc(96px + env(safe-area-inset-bottom, 20px));flex:1;">
+        <div class="modal-body grades-modal-body" style="overflow-y:auto;padding:16px 18px 24px;flex:1;">
             <!-- VIEW 1: AUTHENTICATION FORM (APPLE 21ST CENTURY / FRAMER MOTION) -->
             <div id="grades-auth-view" style="display:none;">
                 <div class="grades-auth-hero">
@@ -4462,7 +4250,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
     </div>
 </div>
 
-<div class="page" id="settings-modal">
+<div class="modal-overlay" id="settings-modal">
     <div class="modal-content">
         <!-- iOS 18 Top Bar: Grabber, Large Title, Done Button, Spotlight Search -->
         <div class="ios-top-bar">
@@ -5995,60 +5783,6 @@ function syncHueSliderUI() {
     }
 }
 
-function updateTelegramBackButton() {
-    try {
-        if (!window.Telegram || !window.Telegram.WebApp || !window.Telegram.WebApp.BackButton) return;
-        const bb = window.Telegram.WebApp.BackButton;
-        const gradesModal = document.getElementById("grades-modal");
-        const settingsModal = document.getElementById("settings-modal");
-        const isGradesOpen = gradesModal && gradesModal.classList.contains("active");
-        const isSettingsOpen = settingsModal && settingsModal.classList.contains("active");
-        const isUsefulPage = document.getElementById("page-useful") && document.getElementById("page-useful").classList.contains("active");
-        const hasPopup = !!document.querySelector(".modal-overlay.active:not(#grades-modal):not(#settings-modal), .admin-modal-overlay.active");
-
-        if (isGradesOpen || isSettingsOpen || isUsefulPage || hasPopup) {
-            bb.show();
-        } else {
-            bb.hide();
-        }
-    } catch(e) {}
-}
-window.updateTelegramBackButton = updateTelegramBackButton;
-
-function syncTelegramThemeColors(themeName) {
-    try {
-        const twa = window.Telegram && window.Telegram.WebApp;
-        let headerColor = "#151d2f";
-        let bgColor = "#0b0f19";
-        if (themeName === "light") {
-            headerColor = "#ffffff";
-            bgColor = "#f2f2f7";
-        } else if (themeName === "black" || themeName === "oled") {
-            headerColor = "#000000";
-            bgColor = "#000000";
-        } else {
-            headerColor = "#151d2f";
-            bgColor = "#0b0f19";
-        }
-        const metaTheme = document.querySelector('meta[name="theme-color"]');
-        if (metaTheme) metaTheme.setAttribute("content", headerColor);
-        if (twa) {
-            if (twa.setHeaderColor) twa.setHeaderColor(headerColor);
-            if (twa.setBackgroundColor) twa.setBackgroundColor(bgColor);
-            if (twa.setBottomBarColor) twa.setBottomBarColor(bgColor);
-        }
-    } catch(e) {}
-}
-window.syncTelegramThemeColors = syncTelegramThemeColors;
-
-function updateBottomNavActive(tabKey) {
-    document.querySelectorAll("#app-bottom-nav .nav-item").forEach(btn => {
-        btn.classList.toggle("active", btn.dataset.tabNav === tabKey);
-    });
-    updateTelegramBackButton();
-}
-window.updateBottomNavActive = updateBottomNavActive;
-
 function init() {
     els = {
         groupSelect: document.getElementById('group-select'),
@@ -6103,111 +5837,19 @@ function init() {
     els.engSelect.addEventListener('change', e => { state.engTeacher=e.target.value; gset(state.scheduleGroup,'eng_teacher',state.engTeacher); gset(state.scheduleGroup,'configured','1'); render(); if(window.CloudSync) window.CloudSync.push(); });
     els.daysNav.addEventListener('click', e => { if(e.target.classList.contains('day-btn')) { state.tab=e.target.dataset.tab; render(); } });
 
-
-    document.querySelectorAll('#app-bottom-nav .nav-item').forEach(btn => {
+    document.querySelectorAll('.nav-item').forEach(btn => {
         btn.addEventListener('click', e => {
-            const target = btn.dataset.tabNav;
-            haptic('selection');
-
-            if (target === 'schedule') {
-                if (els.settingsModal) els.settingsModal.classList.remove('active');
-                const gm = document.getElementById('grades-modal');
-                if (gm) gm.classList.remove('active');
-                document.body.style.overflow = '';
-                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-                const p = document.getElementById('page-schedule');
-                if (p) p.classList.add('active');
-                updateBottomNavActive('schedule');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            } else if (target === 'useful') {
-                if (els.settingsModal) els.settingsModal.classList.remove('active');
-                const gm = document.getElementById('grades-modal');
-                if (gm) gm.classList.remove('active');
-                document.body.style.overflow = '';
-                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-                const p = document.getElementById('page-useful');
-                if (p) p.classList.add('active');
-                
-                const ts = gget(state.scheduleGroup, 'ann_cache_ts', '');
-                if (ts) gset(state.scheduleGroup, 'ann_last_seen', ts);
-                const badge = document.getElementById('unread-badge');
-                if (badge) badge.style.display = 'none';
-
-                updateBottomNavActive('useful');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            } else if (target === 'grades') {
-                if (els.settingsModal) els.settingsModal.classList.remove('active');
-                const openCard = document.getElementById('open-grades');
-                if (openCard) openCard.click();
-                updateBottomNavActive('grades');
-            } else if (target === 'settings') {
-                const gm = document.getElementById('grades-modal');
-                if (gm) gm.classList.remove('active');
-                if (els.settingsBtn) els.settingsBtn.click();
-                updateBottomNavActive('settings');
-            }
+            document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+            document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+            const t = e.currentTarget;
+            t.classList.add('active');
+            document.getElementById(`page-${t.dataset.page}`).classList.add('active');
         });
     });
 
-    els.settingsBtn.addEventListener('click', () => { 
-        haptic('light'); 
-        renderLocalCustomLessons(); 
-        renderSavedGroupsUI(); 
-        if(window.syncProfileBannerUI) window.syncProfileBannerUI(); 
-        els.settingsModal.classList.add('active'); 
-        updateBottomNavActive('settings');
-    });
-    els.closeSettingsBtn.addEventListener('click', () => { 
-        haptic('selection'); 
-        els.settingsModal.classList.remove('active'); 
-        const isUseful = document.getElementById('page-useful')?.classList.contains('active');
-        updateBottomNavActive(isUseful ? 'useful' : 'schedule');
-    });
-    els.settingsModal.addEventListener('click', e => { 
-        if(e.target===els.settingsModal) { 
-            haptic('selection'); 
-            els.settingsModal.classList.remove('active'); 
-            const isUseful = document.getElementById('page-useful')?.classList.contains('active');
-            updateBottomNavActive(isUseful ? 'useful' : 'schedule');
-        } 
-    });
-
-    try {
-        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.BackButton) {
-            window.Telegram.WebApp.BackButton.onClick(() => {
-                haptic('selection');
-                const popup = document.querySelector('.modal-overlay.active:not(#grades-modal):not(#settings-modal), .admin-modal-overlay.active');
-                if (popup) {
-                    popup.classList.remove('active');
-                    updateTelegramBackButton();
-                    return;
-                }
-                const gradesModal = document.getElementById('grades-modal');
-                if (gradesModal && gradesModal.classList.contains('active')) {
-                    const closeBtn = document.getElementById('close-grades');
-                    if (closeBtn) closeBtn.click();
-                    else gradesModal.classList.remove('active');
-                    document.body.style.overflow = '';
-                    const isUseful = document.getElementById('page-useful')?.classList.contains('active');
-                    updateBottomNavActive(isUseful ? 'useful' : 'schedule');
-                    return;
-                }
-                const settingsModal = document.getElementById('settings-modal');
-                if (settingsModal && settingsModal.classList.contains('active')) {
-                    if (els.closeSettingsBtn) els.closeSettingsBtn.click();
-                    else settingsModal.classList.remove('active');
-                    const isUseful = document.getElementById('page-useful')?.classList.contains('active');
-                    updateBottomNavActive(isUseful ? 'useful' : 'schedule');
-                    return;
-                }
-                const pageUseful = document.getElementById('page-useful');
-                if (pageUseful && pageUseful.classList.contains('active')) {
-                    const schedBtn = document.querySelector('#app-bottom-nav [data-tab-nav="schedule"]');
-                    if (schedBtn) schedBtn.click();
-                }
-            });
-        }
-    } catch(e) {}
+    els.settingsBtn.addEventListener('click', () => { haptic('light'); renderLocalCustomLessons(); renderSavedGroupsUI(); if(window.syncProfileBannerUI) window.syncProfileBannerUI(); els.settingsModal.classList.add('active'); });
+    els.closeSettingsBtn.addEventListener('click', () => { haptic('selection'); els.settingsModal.classList.remove('active'); });
+    els.settingsModal.addEventListener('click', e => { if(e.target===els.settingsModal) { haptic('selection'); els.settingsModal.classList.remove('active'); } });
     if(els.moodleBtn) {
         els.moodleBtn.addEventListener('click', () => els.moodleModal.classList.add('active'));
         els.closeMoodleBtn.addEventListener('click', () => els.moodleModal.classList.remove('active'));
@@ -6552,7 +6194,6 @@ function updateThemeUI() {
     if (els.themeBtns) {
         els.themeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.themeVal === state.theme));
     }
-    syncTelegramThemeColors(state.theme);
 }
 
 function getLocalMonday(d) { const di=new Date(d); const day=di.getDay()===0?7:di.getDay(); di.setDate(di.getDate()-day+1); di.setHours(0,0,0,0); return di; }
@@ -10208,7 +9849,6 @@ function initDekanatGrades() {
     }
 
     openCard.addEventListener('click', () => {
-        if (window.updateBottomNavActive) window.updateBottomNavActive('grades');
         haptic('impact');
         try {
             if (window.Telegram && window.Telegram.WebApp) {
@@ -10234,8 +9874,6 @@ function initDekanatGrades() {
         modal.classList.remove('active');
         document.body.style.overflow = '';
         clearGradesHash();
-        const isUseful = document.getElementById('page-useful')?.classList.contains('active');
-        if (window.updateBottomNavActive) window.updateBottomNavActive(isUseful ? 'useful' : 'schedule');
     });
 
     modal.addEventListener('click', (e) => {
@@ -10275,18 +9913,7 @@ function initDekanatGrades() {
 }
 
 document.addEventListener('DOMContentLoaded', () => { initAdminPanel(); loadAdminData(); initDekanatGrades(); if (window.LinesBg) window.LinesBg.init(); });
-function runInitApp() {
-    try {
-        init();
-    } catch (e) {
-        console.error("init error:", e);
-    }
-}
-if (document.readyState === "complete" || document.readyState === "interactive") {
-    runInitApp();
-} else {
-    document.addEventListener("DOMContentLoaded", runInitApp);
-}
+document.addEventListener('DOMContentLoaded', init);
 document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGroupPicker(); });
 
 (function() {
@@ -11527,32 +11154,22 @@ if ('serviceWorker' in navigator) {
         isCurrentlyOffline = !!offline;
 
         if (offline) {
-            if (headerPill) {
-                headerPill.style.display = "inline-flex";
-                const pillDot = headerPill.querySelector(".header-offline-dot");
-                const pillText = navigator.onLine ? "З кешу" : "Офлайн";
-                headerPill.innerHTML = (pillDot ? pillDot.outerHTML : '<span class="header-offline-dot"></span>') + pillText;
-                headerPill.title = navigator.onLine ? "Розклад завантажено з кешу (сервер оновлюється)" : "Офлайн режим (дані збережено на пристрої)";
-            }
+            if (headerPill) headerPill.style.display = 'inline-flex';
             if (banner) {
                 if (bannerDesc) {
-                    const savedText = cacheTs ? ` (збережено ${formatSavedTime(cacheTs)})` : "";
-                    if (!navigator.onLine) {
-                        bannerDesc.textContent = `Розклад доступний з кешу${savedText} — немає підключення до інтернету`;
-                    } else {
-                        bannerDesc.textContent = `Розклад завантажено з пам'яті${savedText} — сервер Деканату тимчасово недоступний`;
-                    }
+                    const savedText = cacheTs ? ` (збережено ${formatSavedTime(cacheTs)})` : '';
+                    bannerDesc.textContent = `Розклад доступний з кешу${savedText} — немає з'єднання з мережею`;
                 }
-                banner.classList.add("show");
+                banner.classList.add('show');
             }
         } else {
-            if (headerPill) headerPill.style.display = "none";
-            if (banner) banner.classList.remove("show");
+            if (headerPill) headerPill.style.display = 'none';
+            if (banner) banner.classList.remove('show');
             if (wasOff && toast) {
-                if (toastText) toastText.textContent = "Підключення відновлено!";
-                toast.classList.add("show");
+                if (toastText) toastText.textContent = 'Підключення відновлено!';
+                toast.classList.add('show');
                 clearTimeout(toastTimer);
-                toastTimer = setTimeout(() => toast.classList.remove("show"), 3200);
+                toastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
             }
         }
     };
