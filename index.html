@@ -5911,6 +5911,60 @@ function syncHueSliderUI() {
     }
 }
 
+function updateTelegramBackButton() {
+    try {
+        if (!window.Telegram || !window.Telegram.WebApp || !window.Telegram.WebApp.BackButton) return;
+        const bb = window.Telegram.WebApp.BackButton;
+        const gradesModal = document.getElementById("grades-modal");
+        const settingsModal = document.getElementById("settings-modal");
+        const isGradesOpen = gradesModal && gradesModal.classList.contains("active");
+        const isSettingsOpen = settingsModal && settingsModal.classList.contains("active");
+        const isUsefulPage = document.getElementById("page-useful") && document.getElementById("page-useful").classList.contains("active");
+        const hasPopup = !!document.querySelector(".modal-overlay.active:not(#grades-modal):not(#settings-modal), .admin-modal-overlay.active");
+
+        if (isGradesOpen || isSettingsOpen || isUsefulPage || hasPopup) {
+            bb.show();
+        } else {
+            bb.hide();
+        }
+    } catch(e) {}
+}
+window.updateTelegramBackButton = updateTelegramBackButton;
+
+function syncTelegramThemeColors(themeName) {
+    try {
+        const twa = window.Telegram && window.Telegram.WebApp;
+        let headerColor = "#151d2f";
+        let bgColor = "#0b0f19";
+        if (themeName === "light") {
+            headerColor = "#ffffff";
+            bgColor = "#f2f2f7";
+        } else if (themeName === "black" || themeName === "oled") {
+            headerColor = "#000000";
+            bgColor = "#000000";
+        } else {
+            headerColor = "#151d2f";
+            bgColor = "#0b0f19";
+        }
+        const metaTheme = document.querySelector('meta[name="theme-color"]');
+        if (metaTheme) metaTheme.setAttribute("content", headerColor);
+        if (twa) {
+            if (twa.setHeaderColor) twa.setHeaderColor(headerColor);
+            if (twa.setBackgroundColor) twa.setBackgroundColor(bgColor);
+            if (twa.setBottomBarColor) twa.setBottomBarColor(bgColor);
+        }
+    } catch(e) {}
+}
+window.syncTelegramThemeColors = syncTelegramThemeColors;
+
+function updateBottomNavActive(tabKey) {
+    document.querySelectorAll("#app-bottom-nav .nav-item").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.tabNav === tabKey);
+    });
+    updateTelegramBackButton();
+}
+window.updateBottomNavActive = updateBottomNavActive;
+
 function init() {
     els = {
         groupSelect: document.getElementById('group-select'),
@@ -5965,57 +6019,6 @@ function init() {
     els.engSelect.addEventListener('change', e => { state.engTeacher=e.target.value; gset(state.scheduleGroup,'eng_teacher',state.engTeacher); gset(state.scheduleGroup,'configured','1'); render(); if(window.CloudSync) window.CloudSync.push(); });
     els.daysNav.addEventListener('click', e => { if(e.target.classList.contains('day-btn')) { state.tab=e.target.dataset.tab; render(); } });
 
-    function updateTelegramBackButton() {
-        try {
-            if (!window.Telegram || !window.Telegram.WebApp || !window.Telegram.WebApp.BackButton) return;
-            const bb = window.Telegram.WebApp.BackButton;
-            const gradesModal = document.getElementById('grades-modal');
-            const settingsModal = document.getElementById('settings-modal');
-            const isGradesOpen = gradesModal && gradesModal.classList.contains('active');
-            const isSettingsOpen = settingsModal && settingsModal.classList.contains('active');
-            const isUsefulPage = document.getElementById('page-useful') && document.getElementById('page-useful').classList.contains('active');
-            const hasPopup = !!document.querySelector('.modal-overlay.active:not(#grades-modal):not(#settings-modal), .admin-modal-overlay.active');
-
-            if (isGradesOpen || isSettingsOpen || isUsefulPage || hasPopup) {
-                bb.show();
-            } else {
-                bb.hide();
-            }
-        } catch(e) {}
-    }
-
-    function syncTelegramThemeColors(themeName) {
-        try {
-            const twa = window.Telegram && window.Telegram.WebApp;
-            let headerColor = '#151d2f';
-            let bgColor = '#0b0f19';
-            if (themeName === 'light') {
-                headerColor = '#ffffff';
-                bgColor = '#f2f2f7';
-            } else if (themeName === 'black' || themeName === 'oled') {
-                headerColor = '#000000';
-                bgColor = '#000000';
-            } else {
-                headerColor = '#151d2f';
-                bgColor = '#0b0f19';
-            }
-            const metaTheme = document.querySelector('meta[name="theme-color"]');
-            if (metaTheme) metaTheme.setAttribute('content', headerColor);
-            if (twa) {
-                if (twa.setHeaderColor) twa.setHeaderColor(headerColor);
-                if (twa.setBackgroundColor) twa.setBackgroundColor(bgColor);
-                if (twa.setBottomBarColor) twa.setBottomBarColor(bgColor);
-            }
-        } catch(e) {}
-    }
-
-    function updateBottomNavActive(tabKey) {
-        document.querySelectorAll('#app-bottom-nav .nav-item').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tabNav === tabKey);
-        });
-        updateTelegramBackButton();
-    }
-    window.updateBottomNavActive = updateBottomNavActive;
 
     document.querySelectorAll('#app-bottom-nav .nav-item').forEach(btn => {
         btn.addEventListener('click', e => {
@@ -10188,7 +10191,18 @@ function initDekanatGrades() {
 }
 
 document.addEventListener('DOMContentLoaded', () => { initAdminPanel(); loadAdminData(); initDekanatGrades(); if (window.LinesBg) window.LinesBg.init(); });
-document.addEventListener('DOMContentLoaded', init);
+function runInitApp() {
+    try {
+        init();
+    } catch (e) {
+        console.error("init error:", e);
+    }
+}
+if (document.readyState === "complete" || document.readyState === "interactive") {
+    runInitApp();
+} else {
+    document.addEventListener("DOMContentLoaded", runInitApp);
+}
 document.addEventListener('DOMContentLoaded', () => { initWelcomeModal(); initGroupPicker(); });
 
 (function() {
