@@ -61,8 +61,10 @@
         document.addEventListener('DOMContentLoaded', initTelegramWebApp);
     </script>
     <title>Розклад ФЕП</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="./script.js"></script>
     <script>
         // Global safe helper & offline stubs
@@ -812,6 +814,88 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .grades-card-line-val { color:var(--text-main); font-weight:700; }
         .grades-card-line-val.is-abs { color:#ef4444; }
         .grades-card-line-val.is-good { color:#10b981; }
+
+        
+        /* --- NATIVE FULL-PAGE TAB VIEWS (NO MODAL OVERLAYS ON MAIN TABS) --- */
+        .page {
+            display: none;
+            animation: pageFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: opacity, transform;
+        }
+        .page.active {
+            display: block;
+        }
+        @keyframes pageFadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #settings-modal.page,
+        #grades-modal.page {
+            position: static !important;
+            width: 100% !important;
+            height: auto !important;
+            background: transparent !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            pointer-events: auto !important;
+            opacity: 1 !important;
+            z-index: 1 !important;
+        }
+
+        #settings-modal.page .modal-content,
+        #grades-modal.page .grades-modal-content {
+            position: static !important;
+            width: 100% !important;
+            max-width: 600px !important;
+            margin: 0 auto !important;
+            padding: 0 16px !important;
+            height: auto !important;
+            max-height: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            border: none !important;
+            transform: none !important;
+            overflow: visible !important;
+        }
+
+        #settings-modal.page .ios-grabber,
+        #settings-modal.page .ios-done-button,
+        #grades-modal.page .close-btn {
+            display: none !important;
+        }
+
+        #settings-modal.page .ios-top-bar {
+            position: sticky;
+            top: 0;
+            background: var(--bg-body);
+            padding: 14px 0 10px;
+            z-index: 20;
+            border-bottom: 0.5px solid var(--border);
+            margin-bottom: 14px;
+        }
+
+        #grades-modal.page .modal-header {
+            position: sticky;
+            top: 0;
+            background: var(--bg-body);
+            padding: 14px 0 10px;
+            z-index: 20;
+            border-bottom: 0.5px solid var(--border);
+            margin-bottom: 14px;
+            border-radius: 0;
+        }
+
+        #settings-modal.page .ios-scroll-body,
+        #grades-modal.page .grades-modal-body {
+            overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
+            padding: 0 0 calc(96px + env(safe-area-inset-bottom, 20px)) !important;
+        }
 
         /* Telegram Wallet iOS Dock */
         .bottom-nav {
@@ -4020,7 +4104,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
     </div>
 </div>
 
-<div class="modal-overlay" id="grades-modal" style="z-index:9100;">
+<div class="page" id="grades-modal">
     <div class="modal-content grades-modal-content" style="max-width:540px;display:flex;flex-direction:column;">
         <div class="modal-header">
             <div style="display:flex;align-items:center;gap:10px;">
@@ -4378,7 +4462,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
     </div>
 </div>
 
-<div class="modal-overlay" id="settings-modal" style="z-index:9100;">
+<div class="page" id="settings-modal">
     <div class="modal-content">
         <!-- iOS 18 Top Bar: Grabber, Large Title, Done Button, Spotlight Search -->
         <div class="ios-top-bar">
