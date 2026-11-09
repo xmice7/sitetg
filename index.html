@@ -830,7 +830,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             display: flex;
             align-items: center;
             justify-content: space-around;
-            z-index: 105;
+            z-index: 9500;
             padding: 6px 4px;
             transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), background-color 0.3s ease, border-color 0.3s ease;
         }
@@ -1156,7 +1156,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         .ios-scroll-body {
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            padding: 20px 0 52px;
+            padding: 20px 0 calc(96px + env(safe-area-inset-bottom, 20px));
             flex: 1;
         }
 
@@ -4032,7 +4032,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
             </div>
             <button class="close-btn" id="close-grades">×</button>
         </div>
-        <div class="modal-body grades-modal-body" style="overflow-y:auto;padding:16px 18px 24px;flex:1;">
+        <div class="modal-body grades-modal-body" style="overflow-y:auto;padding:16px 18px calc(96px + env(safe-area-inset-bottom, 20px));flex:1;">
             <!-- VIEW 1: AUTHENTICATION FORM (APPLE 21ST CENTURY / FRAMER MOTION) -->
             <div id="grades-auth-view" style="display:none;">
                 <div class="grades-auth-hero">
@@ -4378,7 +4378,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
     </div>
 </div>
 
-<div class="modal-overlay" id="settings-modal">
+<div class="modal-overlay" id="settings-modal" style="z-index:9100;">
     <div class="modal-content">
         <!-- iOS 18 Top Bar: Grabber, Large Title, Done Button, Spotlight Search -->
         <div class="ios-top-bar">
@@ -11443,22 +11443,32 @@ if ('serviceWorker' in navigator) {
         isCurrentlyOffline = !!offline;
 
         if (offline) {
-            if (headerPill) headerPill.style.display = 'inline-flex';
+            if (headerPill) {
+                headerPill.style.display = "inline-flex";
+                const pillDot = headerPill.querySelector(".header-offline-dot");
+                const pillText = navigator.onLine ? "З кешу" : "Офлайн";
+                headerPill.innerHTML = (pillDot ? pillDot.outerHTML : '<span class="header-offline-dot"></span>') + pillText;
+                headerPill.title = navigator.onLine ? "Розклад завантажено з кешу (сервер оновлюється)" : "Офлайн режим (дані збережено на пристрої)";
+            }
             if (banner) {
                 if (bannerDesc) {
-                    const savedText = cacheTs ? ` (збережено ${formatSavedTime(cacheTs)})` : '';
-                    bannerDesc.textContent = `Розклад доступний з кешу${savedText} — немає з'єднання з мережею`;
+                    const savedText = cacheTs ? ` (збережено ${formatSavedTime(cacheTs)})` : "";
+                    if (!navigator.onLine) {
+                        bannerDesc.textContent = `Розклад доступний з кешу${savedText} — немає підключення до інтернету`;
+                    } else {
+                        bannerDesc.textContent = `Розклад завантажено з пам'яті${savedText} — сервер Деканату тимчасово недоступний`;
+                    }
                 }
-                banner.classList.add('show');
+                banner.classList.add("show");
             }
         } else {
-            if (headerPill) headerPill.style.display = 'none';
-            if (banner) banner.classList.remove('show');
+            if (headerPill) headerPill.style.display = "none";
+            if (banner) banner.classList.remove("show");
             if (wasOff && toast) {
-                if (toastText) toastText.textContent = 'Підключення відновлено!';
-                toast.classList.add('show');
+                if (toastText) toastText.textContent = "Підключення відновлено!";
+                toast.classList.add("show");
                 clearTimeout(toastTimer);
-                toastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
+                toastTimer = setTimeout(() => toast.classList.remove("show"), 3200);
             }
         }
     };

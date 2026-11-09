@@ -12,7 +12,7 @@
       ╚═════════╝               
 */
 
-const CACHE_NAME = 'fep-schedule-v17-ios-wallet-pro';
+const CACHE_NAME = 'fep-schedule-v18-ios-wallet-stable';
 const OFFLINE_PAGE = './index.html';
 
 const PRECACHE_URLS = [
